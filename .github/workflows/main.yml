@@ -13,11 +13,6 @@ jobs:
         uses: rjstone/discord-webhook-notify@v1.0.4
         with:
           severity: info
-          text: "🚀 **Neues Projekt-Update gepusht!**"
-          description: |
-            👤 **Autor:** ${{ github.actor }}
-            📝 **Commit:** ${{ github.event.head_commit.message }}
-            🔗 [Änderungen auf GitHub ansehen](${{ github.event.head_commit.url }})
-          color: "0x2b2d31"
-          includeDetails: false
+          text: "🚀 Ein neues Update wurde im Projekt gepusht!"
+          details: "Autor: ${{ github.actor }} | Commit: ${{ github.event.head_commit.message }}"
           webhookUrl: ${{ secrets.DISCORD_WEBHOOK }}
