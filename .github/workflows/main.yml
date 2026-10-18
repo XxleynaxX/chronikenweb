@@ -1,0 +1,19 @@
+name: Discord Update
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  discord:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Discord Benachrichtigung
+        env:
+          DISCORD_WEBHOOK: ${{ secrets.DISCORD_WEBHOOK }}
+        run: |
+          curl -H "Content-Type: application/json" \
+            -d "{\"content\":\"🦊 **Chroniken wurde aktualisiert!**\\n👤 **${{ github.actor }}** hat Änderungen vorgenommen.\\n📝 **${{ github.event.head_commit.message }}**\\n🔗 https://github.com/${{ github.repository }}/commit/${{ github.sha }}\"}" \
+            "$https://discord.com/api/webhooks/1561182303542050826/2CYLH0_ZqF52_rjxZBvqpe7YkjMMUk7ayFZIvbl-JbpCygJKWVshpkoFYhPi4ledj1c7"
