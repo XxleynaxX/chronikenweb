@@ -9,34 +9,9 @@ jobs:
   discord:
     runs-on: ubuntu-latest
     steps:
-      - name: Send Discord Webhook
-        env:
-          DISCORD_WEBHOOK: ${{ secrets.DISCORD_WEBHOOK }}
-          COMMIT_MSG: ${{ github.event.head_commit.message }}
-          AUTHOR: ${{ github.actor }}
-          COMMIT_URL: ${{ github.event.head_commit.url }}
-        run: |
-          python3 -c '
-          import os, json, urllib.request
-
-          webhook_url = os.environ.get("DISCORD_WEBHOOK")
-          author = os.environ.get("AUTHOR", "Unbekannt")
-          commit_msg = os.environ.get("COMMIT_MSG", "Keine Commit-Nachricht")
-          commit_url = os.environ.get("COMMIT_URL", "https://github.com")
-
-          text = f"🚀 **Neues Update gepusht!**\n👤 **Autor:** {author}\n📝 **Was gemacht wurde:** {commit_msg}\n🔗 [Commit ansehen]({commit_url})"
-
-          data = {"content": text}
-          req = urllib.request.Request(
-              webhook_url,
-              data=json.dumps(data).encode("utf-8"),
-              headers={"Content-Type": "application/json"}
-          )
-          
-          try:
-              urllib.request.urlopen(req)
-              print("Discord Notification erfolgreich gesendet!")
-          except Exception as e:
-              print(f"Fehler beim Senden: {e}")
-              exit(1)
-          '
+      - name: Send Discord Notification
+        uses: rjstone/discord-webhook-notify@v1.0.4
+        with:
+          severity: info
+          details: "Ein neues Update wurde im Projekt gepusht!"
+          webhookUrl: ${{ secrets.DISCORD_WEBHOOK }}
