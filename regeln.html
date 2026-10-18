@@ -5,10 +5,78 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Regeln – Chroniken</title>
   <link rel="stylesheet" href="style.css">
+  <style>
+    .rule-card {
+      cursor: pointer;
+      position: relative;
+    }
+    .rule-card .short-text {
+      font-size: 0.95rem;
+      color: var(--text-muted);
+      display: -webkit-box;
+      -webkit-line-clamp: 3;
+      -webkit-box-orient: vertical;
+      overflow: hidden;
+    }
+    .rule-card .click-hint {
+      font-size: 0.75rem;
+      color: var(--purple);
+      margin-top: 0.6rem;
+    }
+    .rule-card.expanded {
+      grid-column: 1 / -1;
+      border-color: var(--purple);
+      box-shadow: 0 0 24px rgba(124, 58, 237, 0.3);
+    }
+    .rule-card.expanded .short-text {
+      display: none;
+    }
+    .rule-card .full-text {
+      display: none;
+      font-size: 1rem;
+      color: var(--text);
+      line-height: 1.7;
+      margin-top: 0.5rem;
+    }
+    .rule-card.expanded .full-text {
+      display: block;
+    }
+    .rule-card.expanded .click-hint {
+      display: none;
+    }
+    .rule-card .close-btn {
+      display: none;
+      margin-top: 1rem;
+    }
+    .rule-card.expanded .close-btn {
+      display: inline-block;
+    }
+    .full-text ul {
+      margin: 0.6rem 0 0.6rem 1.2rem;
+      padding: 0;
+    }
+    .full-text li {
+      margin-bottom: 0.35rem;
+    }
+    .full-text h3 {
+      margin: 1.2rem 0 0.5rem;
+      font-size: 1.1rem;
+      color: var(--purple);
+    }
+    .full-text h3:first-child {
+      margin-top: 0.4rem;
+    }
+    .full-text p {
+      margin: 0.5rem 0;
+    }
+    .full-text strong {
+      color: var(--text);
+    }
+  </style>
 </head>
 <body>
   <div class="bg-overlay"></div>
-    <header>
+  <header>
     <div class="logo-wrap">
       <div class="logo">Chroniken</div>
     </div>
@@ -29,7 +97,7 @@
 
   <main>
     <h1 class="page-title">Regeln</h1>
-    <p class="page-desc">Die Gesetze und Richtlinien, die im Portal gelten.</p>
+    <p class="page-desc">Die Gesetze und Richtlinien, die im Portal gelten. Klicke auf eine Kachel für den vollen Text.</p>
 
     <div class="wiki-controls">
       <button class="btn" id="btnUnlock">🔓 Schreiben freischalten</button>
@@ -38,21 +106,37 @@
       <span class="status" id="status">Schreibmodus: gesperrt</span>
     </div>
 
-    <!-- Anzeige -->
     <div id="contentView">
-      <div id="regelnContent"></div>
+      <div class="content-block">
+        <h2>Bauregeln</h2>
+        <div class="god-grid" id="bauGrid"></div>
+      </div>
+      <div class="content-block">
+        <h2>Rollenspielregeln</h2>
+        <div class="god-grid" id="rpGrid"></div>
+      </div>
+      <div class="content-block">
+        <h2>Charakter &amp; Magie</h2>
+        <div class="god-grid" id="charGrid"></div>
+      </div>
+      <div class="content-block">
+        <h2>Hinweis</h2>
+        <p>
+          Bei Fragen oder Unklarheiten könnt ihr euch jederzeit an das Support-Team wenden.
+          Diese Regeln sorgen für eine immersive und respektvolle Spielwelt für alle Spieler.
+        </p>
+      </div>
     </div>
 
-    <!-- Editor -->
     <div class="editor-area" id="editorArea">
       <div class="card">
-        <h3>Regeln bearbeiten</h3>
+        <h3>Regeln bearbeiten (JSON)</h3>
         <p style="color:var(--text-muted); font-size:0.9rem; margin-bottom:1rem;">
-          Du kannst HTML verwenden (z.B. &lt;h2&gt;, &lt;ul&gt;, &lt;li&gt;, &lt;p&gt;, &lt;strong&gt;).
+          Format: bau, rp und char – jeweils name, domain, short, full (full darf HTML enthalten).
         </p>
         <div class="form-group">
-          <label for="inputContent">Inhalt</label>
-          <textarea id="inputContent" style="min-height:420px;"></textarea>
+          <label for="inputContent">Daten (JSON)</label>
+          <textarea id="inputContent" style="min-height:420px; font-family:monospace; font-size:0.85rem;"></textarea>
         </div>
         <div style="display:flex; gap:0.8rem;">
           <button class="btn" id="btnSave">Speichern</button>
@@ -62,7 +146,6 @@
     </div>
   </main>
 
-  <!-- Passwort Modal -->
   <div class="modal-overlay" id="pwModal">
     <div class="modal">
       <h3>Schreibmodus freischalten</h3>
@@ -85,80 +168,297 @@
 
   <script>
     const PASSWORD = "portal123";
-    const STORAGE_KEY = "portal_regeln_content";
+    const STORAGE_KEY = "portal_regeln_data_v2";
 
-    const DEFAULT_CONTENT = `
-<div class="content-block">
-  <h2>1. Allgemeines Verhalten</h2>
-  <ul>
-    <li>Behandle alle Mitglieder mit Respekt – unabhängig von Herkunft, Glauben oder Rang.</li>
-    <li>Beleidigungen, Diskriminierung und persönliche Angriffe sind untersagt.</li>
-    <li>Spam, Werbung und unaufgefordertes Werben für externe Projekte sind verboten.</li>
-    <li>Halte Diskussionen sachlich und konstruktiv.</li>
-  </ul>
-</div>
-
-<div class="content-block">
-  <h2>2. Wiki & Wissen</h2>
-  <ul>
-    <li>Nur freigeschaltete Nutzer dürfen Themen erstellen oder bearbeiten.</li>
-    <li>Inhalte sollen wahrheitsgemäß und im Geiste des Portals verfasst sein.</li>
-    <li>Falschinformationen, absichtliche Irreführung und Vandalismus werden entfernt.</li>
-    <li>Fremde Texte bitte mit Quellenangabe versehen, sofern möglich.</li>
-  </ul>
-</div>
-
-<div class="content-block">
-  <h2>3. Götter & Kulte</h2>
-  <ul>
-    <li>Die Darstellung der Götter und Kulte folgt der offiziellen Lore des Portals.</li>
-    <li>Eigene Interpretationen sind willkommen, solange sie als solche gekennzeichnet werden.</li>
-    <li>Heilige Schriften und Rituale dürfen nicht mutwillig verhöhnt werden.</li>
-  </ul>
-</div>
-
-<div class="content-block">
-  <h2>4. Verstöße & Konsequenzen</h2>
-  <ul>
-    <li>Bei leichten Verstößen erfolgt eine Verwarnung.</li>
-    <li>Wiederholte oder schwere Verstöße können zum zeitweisen oder dauerhaften Ausschluss führen.</li>
-    <li>Die Portalwächter behalten sich das letzte Wort vor.</li>
-  </ul>
-</div>
-
-<div class="content-block">
-  <h2>5. Änderungen</h2>
-  <p>
-    Diese Regeln können jederzeit angepasst werden. Wesentliche Änderungen werden im Wiki oder an zentraler Stelle bekanntgegeben.
-    Mit der Nutzung des Portals erklärst du dich mit den geltenden Regeln einverstanden.
-  </p>
-</div>
-`.trim();
+    const DEFAULT_DATA = {
+      bau: [
+        {
+          name: "Bauteile-Beschränkungen",
+          domain: "Bauen · Limits · Fairness",
+          short: "Pro Person 1500 Bauteile, plus 350 pro weiterem Clanmitglied. Deco-Teile max. 500 pro Person.",
+          full: `<p>Um eine faire und performante Servererfahrung zu gewährleisten, gelten die folgenden Bauregeln. Bitte lest diese sorgfältig durch, bevor ihr mit dem Bauen beginnt.</p>
+<h3>Bauteile-Beschränkungen</h3>
+<ul>
+  <li>Pro Person sind 1500 Bauteile erlaubt.</li>
+  <li>Für jeden weiteren Clanmember im Maincharakter gibt es zusätzlich 350 Bauteile.</li>
+  <li>Deco-Teile sind auf 500 pro Person begrenzt (bei 2 Personen sind 1.000 Deco-Teile erlaubt).</li>
+</ul>
+<p><strong>Beispiel:</strong></p>
+<ul>
+  <li>1 Person: 1.500 Bauteile</li>
+  <li>2 Personen: 1.850 Bauteile</li>
+  <li>Fortlaufend pro zusätzlichem Mitglied.</li>
+</ul>
+<h3>Maximale Clan-Größe und Bauteile</h3>
+<ul>
+  <li>Der Maxcap für einen Clan liegt bei 8 Mitgliedern.</li>
+  <li>Der Maxcap für Bauteile pro Clan beträgt 6.000 Teile.</li>
+</ul>`
+        },
+        {
+          name: "Bauplatz & Fertighäuser",
+          domain: "Bauen · Platz · Häuser",
+          short: "Nicht in Sichtweite fremder Basen oder Admingebäude. Fertighäuser pro Clan begrenzt.",
+          full: `<h3>Bauplatzregeln</h3>
+<ul>
+  <li>Baut nicht in Sichtweite anderer Spielerbasen, es sei denn, eine Absprache und Erlaubnis wurde zuvor getroffen.</li>
+  <li>Der Richtwert für die Entfernung ist mittlere Sichtweite.</li>
+  <li>Das Bauen in Sichtweite von Admingebäuden ist nicht erlaubt.</li>
+</ul>
+<h3>Fertighäuser pro Clan</h3>
+<ul>
+  <li>Pro Clan dürfen folgende Fertighäuser platziert werden:
+    <ul>
+      <li>1 großes und 2 kleine Häuser oder</li>
+      <li>2 mittlere Häuser.</li>
+    </ul>
+  </li>
+  <li>Jedes weitere Clanmitglied generiert zusätzlich ein kleines und ein mittleres Haus.</li>
+</ul>
+<h3>Charaktergerechtes Bauen</h3>
+<ul>
+  <li>Wählt euren Bauplatz entsprechend der Rolle und Geschichte eures Charakters aus.</li>
+</ul>
+<h3>Clan-Erstellung</h3>
+<ul>
+  <li>Bitte erstellt einen Clan, auch wenn ihr alleine spielt.</li>
+</ul>
+<h3>Werkbänke</h3>
+<ul>
+  <li>Werkbänke sind nur in einer der Hauptstädte erlaubt und nicht im eigenen Clan.</li>
+</ul>`
+        }
+      ],
+      rp: [
+        {
+          name: "Grundregeln & Respekt",
+          domain: "RP · Respekt · Alter",
+          short: "Mindestalter 18, respektvoller Umgang, IC/OOC-Trennung und kein Metagaming.",
+          full: `<p>Um eine immersive und respektvolle Rollenspielerfahrung für alle Spieler zu gewährleisten, gelten die folgenden Regeln.</p>
+<h3>Mindestalter</h3>
+<ul>
+  <li>Um auf unserem Server zu spielen, ist ein Mindestalter von 18 Jahren erforderlich.</li>
+</ul>
+<h3>Charakter- und Discord-Namen</h3>
+<ul>
+  <li>Bitte passe deinen IC-Namen deinem Discord-Namen an.</li>
+</ul>
+<h3>Respektvoller Umgang</h3>
+<ul>
+  <li>Ein respektvoller Umgang im Spiel sowie auf Discord ist Voraussetzung für ein harmonisches Miteinander.</li>
+</ul>
+<h3>Metagaming und IC/OOC-Trennung</h3>
+<ul>
+  <li>Metagaming, das Mischen von IC- und OOC-Inhalten sowie Bugusing und das Ausnutzen von Fehlern sind untersagt.</li>
+</ul>
+<h3>Charakter- und Namenswahl</h3>
+<ul>
+  <li>Vermeidet es, Figuren oder Namen aus Filmen, Spielen oder Serien zu übernehmen. Ähnlichkeiten sind jedoch erlaubt.</li>
+</ul>
+<h3>Charakterfähigkeiten und Alter</h3>
+<ul>
+  <li>Der Altersbereich eures Charakters sollte zu seinen Fähigkeiten passen. Beispiel: Ein 18-jähriger Jäger kann keinen Meisterschuss auf 5 km Entfernung perfekt ausführen.</li>
+</ul>`
+        },
+        {
+          name: "Charakterwechsel & Grenzen",
+          domain: "RP · Wechsel · Grenzen",
+          short: "1 Monat Frist bei Charakterwechsel. Keine Übermächtigkeit, Götter/Halbgötter verboten.",
+          full: `<h3>Charakterwechsel</h3>
+<ul>
+  <li>Einem Charakterwechsel ist eine Frist von 1 Monat auferlegt, um Charakterhopping zu vermeiden. Dies gilt auch für Wechsel zwischen Main und Twink.</li>
+  <li>Alle Charakterwechsel und Main-Twink-Wechsel sowie Story-Charaktere müssen per Ticket angemeldet werden.</li>
+</ul>
+<h3>Keine Übermächtigkeit</h3>
+<ul>
+  <li>Charaktere dürfen nicht übermächtig (unsterblich) sein. Götter und Halbgötter sind nicht erlaubt.</li>
+</ul>
+<h3>Schwangerschaft und Kinder</h3>
+<ul>
+  <li>Schwangerschaften dürfen mit Genehmigung ausgespielt werden. Diese ist mit dem RP-Partner per Ticket anzumelden.</li>
+  <li>Kinder sind als NPCs per Ticket anzumelden und dürfen nicht ins ERP einbezogen werden.</li>
+  <li>Eure Charaktere sollten zudem im Aussehen und Kleidungsstil nicht kindlich wirken.</li>
+</ul>
+<h3>Begleiter</h3>
+<ul>
+  <li>Begleiter (Mounts, NPCs, Tänzerinnen) müssen mit Clan- oder Spielernamen versehen werden.</li>
+  <li>Maximal 5 Begleiter pro Person.</li>
+  <li>Erlaubt ist eine Tänzerin pro Clan.</li>
+  <li>Maximal 5 Handwerker pro Clan (die Tänzerin zählt nicht mit, aber zählt für Einzelspieler im 10er-Cap mit).</li>
+</ul>`
+        },
+        {
+          name: "ERP, Abwesenheit & Sonstiges",
+          domain: "RP · ERP · Alltag",
+          short: "ERP/Sklaverei/BDSM nur mit Consent. 31 Tage Abwesenheit = Löschung. Kein Fliegen über Städte.",
+          full: `<h3>ERP, Sklaverei und BDSM</h3>
+<ul>
+  <li>ERP, Sklaverei und BDSM sind auf unserem Server möglich, jedoch keine Pflicht.</li>
+  <li>Niemand darf gegen seinen Willen gezwungen werden, außer dies wurde OOC abgesprochen.</li>
+</ul>
+<h3>Chats und Screenshots</h3>
+<ul>
+  <li>Das Abscreengen von Chats ist untersagt, außer zu Supportzwecken.</li>
+</ul>
+<h3>Abwesenheit</h3>
+<ul>
+  <li>Wenn ihr länger als 31 Tage abwesend seid, werden euer Charakter und eure Base gelöscht.</li>
+</ul>
+<h3>Rechtschreibung</h3>
+<ul>
+  <li>Das Belustigen über die Rechtschreibung anderer ist nicht erwünscht.</li>
+</ul>
+<h3>Fliegen</h3>
+<ul>
+  <li>Das Fliegen über die Stadt oder Spielerbasen ist verboten, aber das Landen daneben ist erlaubt.</li>
+</ul>
+<h3>Wachen</h3>
+<ul>
+  <li>Mitgeführte Wachen müssen im Consent-Sheet eingetragen werden.</li>
+  <li>Sie können per POI an bestimmten Orten positioniert und beschrieben werden.</li>
+  <li>Wachen sollten auch in Emotes beschrieben werden (Aussehen, Standort, Bewaffnung).</li>
+</ul>`
+        },
+        {
+          name: "Sklavenregelung",
+          domain: "RP · Sklaverei · Consent",
+          short: "Nichts ohne OOC-Absprache. Consent-Sheet Pflicht. Max. 3 Sklaven für Treiber/Ausbilder.",
+          full: `<p><strong>!!!! Im Sklaven-RP findet NICHTS ohne Absprache statt (OOC-Absprache oder z.B. in Form eines Sklavenvertrages). !!!!</strong></p>
+<ul>
+  <li>Füllt als Sklave sowie als Sklavenmeister bitte euer Consent-Sheet aus.</li>
+  <li>In der Stadt kann man sich als Sklave registrieren oder die Registrierung aufheben.</li>
+  <li>In den Sklavenzellen hinter der Stadt kann man stündlich nach einem Sklavenmeister rufen. (Falls dieser Zeit hat, wird er zeitnah erscheinen – doch auch die Meister und Jäger haben RP.)</li>
+  <li>Der Besitz von Sklaven beschränkt sich auf das Nötigste und/oder dem, was der Meister ihm zur Verfügung stellt.</li>
+  <li>Flüchtigen Sklaven und Sklaven ohne Herren gewähren wir 200 Bauteile. (Baut immersiv. D. h. eher ein Zelt, wenn ihr flüchtig seid, einfache Steinhütte oder Holzhäuschen und keinen Palast.)</li>
+  <li>Flüchtige Sklaven, die gefangen werden wollen, markieren sich bitte entsprechend auf der Map über den RP-Finder auf der Karte!</li>
+  <li>Ein Sklave darf nur einen Beruf ausüben. (Bitte beachtet: z. B. als Alchemistin müssen die Zutaten über einen Dritten besorgt werden. Als Heiler müssten dann z. B. die Verbände und/oder Tränke auch über Dritte besorgt werden.)</li>
+  <li>Einem Sklaven muss immer die Möglichkeit gewährt werden, auch ohne den Meister RP zu haben (z. B. durch die Begleitung einer Wache oder einer Aufsichtsperson).</li>
+  <li>Der Meister muss den Sklaven nicht 24/7 bespaßen. Der Sklave kann durch die Aufsicht eines vertrauenswürdigen Dritten RP suchen.</li>
+  <li>Falls ihr einen Sklaven spielen wollt, der sich nicht an die Regeln des Meisters hält oder nicht lernfähig ist, dann rechnet auch RPlich mit Konsequenzen (z. B. Zeit alleine in einer Zelle – dem Sklaven muss trotzdem die Möglichkeit gegeben werden, bespielt zu werden bzw. RP finden zu können).</li>
+  <li>Passt euer Sklaven-RP an den Charakter an. Z. B.: Ein mächtiger Sturmdrache wird sich nie einem einfachen Menschlein beugen.</li>
+  <li>Ein normaler Bürger kann sich einen Sklaven halten, ihn aber nicht selber ausbilden oder fangen – dafür gibt es entsprechende Schulen und Sklavenjäger. (Gilt nicht für Sklaven, die schon einen Herren haben, da es ein bestehendes Verhältnis ist.)</li>
+  <li>Wer einen Sklaven hält, egal ob Sklavenmeister oder Bürger, verpflichtet sich, ihm einen angemessenen Schlafplatz, ausreichend Verpflegung und auch medizinische Versorgung zu gewähren. Auch der Beruf, den der Sklave ausübt, sollte ausgespielt werden.</li>
+  <li>Ein Sklaventreiber/Ausbilder (gewählter Beruf) darf insgesamt 3 Sklaven halten, um allen RPlich und zeitlich gerecht zu werden. Sklaven-Treiber/Ausbilder ist eine Rolle und ist dann auch fest vorgegeben – markiert euch bitte entsprechend auf der Karte (RP-Finder) und im Bio-Sheet.</li>
+  <li>Sklaven, die er von einem Bürger oder anderem Sklaventreiber einzig zur Ausbildung geschickt bekommt, zählen nicht in den Bestand mit ein. Die Anzahl der drei Sklaven ist begrenzt für jeden Sklavenmeister.</li>
+  <li>Falls ein weiterer Sklavenmeister im Clan ist, kann er nur noch 1 Sklaven mit in den Clan bringen!</li>
+</ul>`
+        }
+      ],
+      char: [
+        {
+          name: "Charakter-Änderung",
+          domain: "Charakter · Rasse · Klasse",
+          short: "Pro Charakter nur eine Rasse, eine Klasse und einen Shapeshift erlaubt.",
+          full: `<p>Pro Charakter ist es nur noch erlaubt, eine Rasse sowie eine Klasse und einen Shapeshift zu haben.</p>`
+        },
+        {
+          name: "Magieregeln",
+          domain: "Magie · Balance · Konsens",
+          short: "Max. zwei Magiearten + eine reine RP-Magie. Konsenspflicht, Quelle nötig, Nebenwirkungen.",
+          full: `<p>Um die Balance im Spiel zu erhalten und das Rollenspiel zu bereichern, gelten für die Nutzung von Magie die folgenden Regeln.</p>
+<h3>Beschränkung der Magiearten pro Charakter</h3>
+<ul>
+  <li>Jeder Charakter darf maximal zwei Magiearten beherrschen.</li>
+  <li>Zusätzlich kann eine reine RP-Magie (z. B. die Verführungsmagie einer Succubus) gewählt werden, die rein dem Rollenspiel dient.</li>
+  <li>Bitte achte darauf, keine gegensätzlichen Magien zu wählen. Beispiel: Wasser- und Feuermagie sind gegensätzlich und können nicht kombiniert werden.</li>
+</ul>
+<h3>Konsensbasierte Magienutzung</h3>
+<ul>
+  <li>Die Wirkung von Magie erfordert stets den Konsens aller Beteiligten.</li>
+  <li>Magie muss immer aus einer Quelle bezogen werden. Beispiel: Ein Feuermagier benötigt eine vorhandene Flamme, um seine Magie wirken zu können.</li>
+</ul>
+<h3>Malus und Nebenwirkungen</h3>
+<ul>
+  <li>Jede Magienutzung hat ihren Preis. Magie kostet Kraft und bringt Nebenwirkungen mit sich.</li>
+  <li>Beispiele dafür sind: Mangelerscheinungen, Brandnarben (für Feuermagier), Kopfschmerzen oder andere belastende Auswirkungen.</li>
+  <li>Es gibt keine festen Grenzen für Nebenwirkungen – sei kreativ, aber spiele sie glaubhaft aus!</li>
+</ul>
+<h3>Kein gottgleiches Verhalten</h3>
+<ul>
+  <li>Magie darf nicht als allmächtig oder als unbesiegbar dargestellt werden.</li>
+  <li>Magie sollte Herausforderungen mit sich bringen und niemals über allem stehen.</li>
+</ul>
+<h3>Passen der Magiefertigkeiten zum Charakter</h3>
+<ul>
+  <li>Die gewählten Magiefertigkeiten sollten glaubwürdig zur Hintergrundgeschichte deines Charakters passen und dessen Persönlichkeit sowie Spielweise unterstützen.</li>
+  <li>Magie sollte das Rollenspiel bereichern, aber nie das Spielerlebnis anderer einschränken oder dominieren.</li>
+</ul>
+<p>Wenn du Fragen zur Magienutzung hast oder Unklarheiten bestehen, wende dich bitte an unsere Moderatoren. Viel Freude beim Erschaffen magischer Geschichten!</p>`
+        }
+      ]
+    };
 
     let unlocked = false;
+    let expandedKey = null;
 
-    const contentEl   = document.getElementById("regelnContent");
+    const bauGrid = document.getElementById("bauGrid");
+    const rpGrid = document.getElementById("rpGrid");
+    const charGrid = document.getElementById("charGrid");
     const contentView = document.getElementById("contentView");
-    const editorArea  = document.getElementById("editorArea");
-    const statusEl    = document.getElementById("status");
-    const btnUnlock   = document.getElementById("btnUnlock");
-    const btnEdit     = document.getElementById("btnEdit");
-    const btnLock     = document.getElementById("btnLock");
-    const pwModal     = document.getElementById("pwModal");
-    const pwInput     = document.getElementById("pwInput");
+    const editorArea = document.getElementById("editorArea");
+    const statusEl = document.getElementById("status");
+    const btnUnlock = document.getElementById("btnUnlock");
+    const btnEdit = document.getElementById("btnEdit");
+    const btnLock = document.getElementById("btnLock");
+    const pwModal = document.getElementById("pwModal");
+    const pwInput = document.getElementById("pwInput");
     const inputContent = document.getElementById("inputContent");
 
-    function loadContent() {
-      const saved = localStorage.getItem(STORAGE_KEY);
-      return saved !== null ? saved : DEFAULT_CONTENT;
+    function loadData() {
+      try {
+        const raw = localStorage.getItem(STORAGE_KEY);
+        if (raw) return JSON.parse(raw);
+      } catch {}
+      return JSON.parse(JSON.stringify(DEFAULT_DATA));
     }
 
-    function saveContent(html) {
-      localStorage.setItem(STORAGE_KEY, html);
+    function saveData(data) {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+    }
+
+    function escapeHtml(s) {
+      return String(s)
+        .replace(/&/g, "&amp;").replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+    }
+
+    function makeCard(item, key) {
+      const card = document.createElement("div");
+      card.className = "rule-card god-card" + (expandedKey === key ? " expanded" : "");
+      card.innerHTML = `
+        <h3>${escapeHtml(item.name)}</h3>
+        <div class="domain">${escapeHtml(item.domain)}</div>
+        <p class="short-text">${escapeHtml(item.short)}</p>
+        <div class="full-text">${item.full}</div>
+        <div class="click-hint">Klicken zum Aufklappen →</div>
+        <button type="button" class="btn secondary close-btn">Zuklappen</button>
+      `;
+      card.addEventListener("click", (e) => {
+        if (e.target.classList.contains("close-btn")) {
+          expandedKey = null;
+          render();
+          return;
+        }
+        expandedKey = expandedKey === key ? null : key;
+        render();
+      });
+      return card;
     }
 
     function render() {
-      contentEl.innerHTML = loadContent();
+      const data = loadData();
+      bauGrid.innerHTML = "";
+      rpGrid.innerHTML = "";
+      charGrid.innerHTML = "";
+      (data.bau || []).forEach((item, i) => {
+        bauGrid.appendChild(makeCard(item, "bau-" + i));
+      });
+      (data.rp || []).forEach((item, i) => {
+        rpGrid.appendChild(makeCard(item, "rp-" + i));
+      });
+      (data.char || []).forEach((item, i) => {
+        charGrid.appendChild(makeCard(item, "char-" + i));
+      });
     }
 
     function setUnlocked(state) {
@@ -171,7 +471,7 @@
     }
 
     function openEditor() {
-      inputContent.value = loadContent();
+      inputContent.value = JSON.stringify(loadData(), null, 2);
       contentView.style.display = "none";
       editorArea.classList.add("visible");
       inputContent.focus();
@@ -188,11 +488,7 @@
       pwInput.value = "";
       pwInput.focus();
     });
-
-    document.getElementById("pwCancel").addEventListener("click", () => {
-      pwModal.classList.remove("open");
-    });
-
+    document.getElementById("pwCancel").addEventListener("click", () => pwModal.classList.remove("open"));
     document.getElementById("pwConfirm").addEventListener("click", () => {
       if (pwInput.value === PASSWORD) {
         setUnlocked(true);
@@ -203,19 +499,22 @@
         pwInput.focus();
       }
     });
-
     pwInput.addEventListener("keydown", e => {
       if (e.key === "Enter") document.getElementById("pwConfirm").click();
     });
-
     btnLock.addEventListener("click", () => setUnlocked(false));
     btnEdit.addEventListener("click", openEditor);
-
     document.getElementById("btnSave").addEventListener("click", () => {
-      saveContent(inputContent.value);
-      closeEditor();
+      try {
+        const data = JSON.parse(inputContent.value);
+        if (!data.bau && !data.rp && !data.char) throw new Error("bau/rp/char fehlt");
+        saveData(data);
+        expandedKey = null;
+        closeEditor();
+      } catch (err) {
+        alert("Ungültiges JSON: " + err.message);
+      }
     });
-
     document.getElementById("btnCancel").addEventListener("click", closeEditor);
 
     render();
