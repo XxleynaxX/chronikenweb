@@ -3,51 +3,40 @@ name: Discord Notification
 on:
   push:
     branches:
-      - main  # Passe das an, falls dein Hauptbranch "master" heißt
+      - main
 
 jobs:
   discord:
     runs-on: ubuntu-latest
     steps:
-      - name: Send Discord Webhook with Commit Details
+      - name: Send Discord Webhook
         env:
           DISCORD_WEBHOOK: ${{ secrets.DISCORD_WEBHOOK }}
-          AUTHOR: ${{ github.actor }}
           COMMIT_MSG: ${{ github.event.head_commit.message }}
+          AUTHOR: ${{ github.actor }}
           COMMIT_URL: ${{ github.event.head_commit.url }}
-          SHA: ${{ github.sha }}
         run: |
-          # Text für Discord vorbereiten
-          PAYLOAD=$(cat <<EOF
-          {
-            "embeds": [
-              {
-                "title": "🚀 Neues Update gepusht!",
-                "color": 3066993,
-                "fields": [
-                  {
-                    "name": "👤 Autor",
-                    "value": "$AUTHOR",
-                    "inline": true
-                  },
-                  {
-                    "name": "📝 Was gemacht wurde (Commit)",
-                    "value": "$COMMIT_MSG",
-                    "inline": false
-                  },
-                  {
-                    "name": "🔗 Commit Link",
-                    "value": "[Änderungen auf GitHub ansehen]($COMMIT_URL)",
-                    "inline": false
-                  }
-                ]
-              }
-            ]
-          }
-          EOF
-          )
+          python3 -c '
+          import os, json, urllib.request
 
-          curl -H "Content-Type: application/json" \
-               -X POST \
-               -d "$PAYLOAD" \
-               "$DISCORD_WEBHOOK"
+          webhook_url = os.environ.get("DISCORD_WEBHOOK")
+          author = os.environ.get("AUTHOR", "Unbekannt")
+          commit_msg = os.environ.get("COMMIT_MSG", "Keine Commit-Nachricht")
+          commit_url = os.environ.get("COMMIT_URL", "https://github.com")
+
+          text = f"🚀 **Neues Update gepusht!**\n👤 **Autor:** {author}\n📝 **Was gemacht wurde:** {commit_msg}\n🔗 [Commit ansehen]({commit_url})"
+
+          data = {"content": text}
+          req = urllib.request.Request(
+              webhook_url,
+              data=json.dumps(data).encode("utf-8"),
+              headers={"Content-Type": "application/json"}
+          )
+          
+          try:
+              urllib.request.urlopen(req)
+              print("Discord Notification erfolgreich gesendet!")
+          except Exception as e:
+              print(f"Fehler beim Senden: {e}")
+              exit(1)
+          '
