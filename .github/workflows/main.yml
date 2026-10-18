@@ -8,12 +8,18 @@ on:
 jobs:
   discord:
     runs-on: ubuntu-latest
-
     steps:
       - name: Discord Benachrichtigung
         env:
           DISCORD_WEBHOOK: ${{ secrets.DISCORD_WEBHOOK }}
         run: |
           curl -H "Content-Type: application/json" \
-            -d "{\"content\":\"🦊 **Chroniken wurde aktualisiert!**\\n👤 **${{ github.actor }}** hat Änderungen vorgenommen.\\n📝 **${{ github.event.head_commit.message }}**\\n🔗 https://github.com/${{ github.repository }}/commit/${{ github.sha }}\"}" \
+            -d "{
+              \"embeds\": [{
+                \"title\": \"Chroniken wurde aktualisiert\",
+                \"description\": \"**${{ github.actor }}** hat neue Änderungen gepusht.\",
+                \"url\": \"${{ github.server_url }}/${{ github.repository }}/commit/${{ github.sha }}\",
+                \"color\": 11098871
+              }]
+            }" \
             "$DISCORD_WEBHOOK"
