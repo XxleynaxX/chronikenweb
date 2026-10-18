@@ -1,25 +1,53 @@
-name: Discord Update
+name: Discord Notification
 
 on:
   push:
     branches:
-      - main
+      - main  # Passe das an, falls dein Hauptbranch "master" heißt
 
 jobs:
   discord:
     runs-on: ubuntu-latest
     steps:
-      - name: Discord Benachrichtigung
+      - name: Send Discord Webhook with Commit Details
         env:
           DISCORD_WEBHOOK: ${{ secrets.DISCORD_WEBHOOK }}
+          AUTHOR: ${{ github.actor }}
+          COMMIT_MSG: ${{ github.event.head_commit.message }}
+          COMMIT_URL: ${{ github.event.head_commit.url }}
+          SHA: ${{ github.sha }}
         run: |
+          # Text für Discord vorbereiten
+          PAYLOAD=$(cat <<EOF
+          {
+            "embeds": [
+              {
+                "title": "🚀 Neues Update gepusht!",
+                "color": 3066993,
+                "fields": [
+                  {
+                    "name": "👤 Autor",
+                    "value": "$AUTHOR",
+                    "inline": true
+                  },
+                  {
+                    "name": "📝 Was gemacht wurde (Commit)",
+                    "value": "$COMMIT_MSG",
+                    "inline": false
+                  },
+                  {
+                    "name": "🔗 Commit Link",
+                    "value": "[Änderungen auf GitHub ansehen]($COMMIT_URL)",
+                    "inline": false
+                  }
+                ]
+              }
+            ]
+          }
+          EOF
+          )
+
           curl -H "Content-Type: application/json" \
-            -d "{
-              \"embeds\": [{
-                \"title\": \"Chroniken wurde aktualisiert\",
-                \"description\": \"**${{ github.actor }}** hat neue Änderungen gepusht.\",
-                \"url\": \"${{ github.server_url }}/${{ github.repository }}/commit/${{ github.sha }}\",
-                \"color\": 11098871
-              }]
-            }" \
-            "$DISCORD_WEBHOOK"
+               -X POST \
+               -d "$PAYLOAD" \
+               "$DISCORD_WEBHOOK"
