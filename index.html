@@ -218,12 +218,33 @@
         <h2>Charakterbogen</h2>
         <p>Digitaler Charakterbogen · Chroniken</p>
       </a>
+      <a href="admin.html" class="gate admin-gate" id="adminGate" style="display:none;">
+        <span class="gate-icon">🛡️</span>
+        <h2>Admin · Charaktere</h2>
+        <p>Verwarnungen, Regelverstöße &amp; laufende IDs</p>
+      </a>
     </div>
   </main>
 
   <footer>
     <p>© Kiyasha</p>
   </footer>
+
+  <!-- Admin-Login oben links -->
+  <div id="loginPanel" class="login-panel">
+    <div id="loginFormWrap">
+      <div class="login-title">Admin-Login</div>
+      <input type="text" id="loginUser" placeholder="Benutzername" autocomplete="username">
+      <input type="password" id="loginPass" placeholder="Passwort" autocomplete="current-password">
+      <button type="button" class="btn" id="btnLogin" style="width:100%;">Anmelden</button>
+      <div class="login-err" id="loginErr"></div>
+    </div>
+    <div id="loginLoggedIn" style="display:none;">
+      <div class="login-title">Admin aktiv</div>
+      <a href="admin.html" class="btn" style="display:block; text-align:center; text-decoration:none; margin-bottom:0.4rem;">Zur Verwaltung</a>
+      <button type="button" class="btn secondary" id="btnLogoutPanel" style="width:100%;">Abmelden</button>
+    </div>
+  </div>
 
   <!-- FUCHS -->
   <div class="critter" id="fox" style="bottom:20px; right:20px; left:auto; top:auto;">
@@ -238,6 +259,57 @@
   </div>
 
   <script>
+    // ===== ADMIN LOGIN (oben links) =====
+    (function() {
+      const ADMIN_USER = "admin";
+      const ADMIN_PASS = "chroniken2026";
+      const AUTH_KEY = "portal_admin_auth";
+
+      function isAdmin() {
+        try { return sessionStorage.getItem(AUTH_KEY) === "1"; } catch { return false; }
+      }
+      function setAdmin(on) {
+        try {
+          if (on) sessionStorage.setItem(AUTH_KEY, "1");
+          else sessionStorage.removeItem(AUTH_KEY);
+        } catch {}
+      }
+      function refreshAdminUI() {
+        const logged = isAdmin();
+        const gate = document.getElementById("adminGate");
+        if (gate) gate.style.display = logged ? "" : "none";
+        const formWrap = document.getElementById("loginFormWrap");
+        const loggedIn = document.getElementById("loginLoggedIn");
+        if (formWrap) formWrap.style.display = logged ? "none" : "block";
+        if (loggedIn) loggedIn.style.display = logged ? "block" : "none";
+      }
+      function doLogin() {
+        const u = (document.getElementById("loginUser") || {}).value || "";
+        const p = (document.getElementById("loginPass") || {}).value || "";
+        const err = document.getElementById("loginErr");
+        if (u.trim() === ADMIN_USER && p === ADMIN_PASS) {
+          setAdmin(true);
+          if (err) err.textContent = "";
+          const passEl = document.getElementById("loginPass");
+          if (passEl) passEl.value = "";
+          refreshAdminUI();
+        } else if (err) {
+          err.textContent = "Falsche Zugangsdaten.";
+        }
+      }
+      function doLogout() {
+        setAdmin(false);
+        refreshAdminUI();
+      }
+      document.getElementById("btnLogin")?.addEventListener("click", doLogin);
+      document.getElementById("btnLogoutPanel")?.addEventListener("click", doLogout);
+      document.getElementById("loginPass")?.addEventListener("keydown", e => { if (e.key === "Enter") doLogin(); });
+      document.getElementById("loginUser")?.addEventListener("keydown", e => {
+        if (e.key === "Enter") document.getElementById("loginPass")?.focus();
+      });
+      refreshAdminUI();
+    })();
+
     // ===== LIVE NEWS =====
     (function() {
       const EVENTS_KEY = "portal_events";

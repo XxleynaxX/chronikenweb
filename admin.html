@@ -1,0 +1,711 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Chroniken – Admin · Charakterverwaltung</title>
+  <link rel="stylesheet" href="style.css">
+  <style>
+    .admin-layout { max-width: 1100px; margin: 0 auto; padding: 0 1.5rem 3rem; }
+    .admin-bar {
+      display: flex; flex-wrap: wrap; gap: 0.8rem; align-items: center;
+      margin-bottom: 1.5rem; padding: 1rem 1.2rem;
+      background: var(--bg-card); border: 1px solid var(--border); border-radius: 10px;
+    }
+    .admin-bar .status-ok { color: var(--success); font-weight: 600; }
+    .char-table { width: 100%; border-collapse: collapse; margin-top: 0.5rem; }
+    .char-table th, .char-table td {
+      text-align: left; padding: 0.75rem 0.9rem; border-bottom: 1px solid var(--border);
+      vertical-align: top; font-size: 0.92rem;
+    }
+    .char-table th { color: var(--accent-soft); font-weight: 600; background: rgba(168,85,247,0.06); }
+    .char-table tr:hover td { background: rgba(255,255,255,0.02); }
+    .char-id {
+      font-family: ui-monospace, monospace; color: var(--accent-soft);
+      font-weight: 700; white-space: nowrap;
+    }
+    .warn-badge {
+      display: inline-block; min-width: 1.6rem; text-align: center;
+      padding: 0.15rem 0.45rem; border-radius: 999px; font-size: 0.8rem; font-weight: 700;
+      background: rgba(225,29,72,0.15); color: #fb7185; border: 1px solid rgba(225,29,72,0.35);
+    }
+    .warn-badge.zero { background: rgba(34,197,94,0.12); color: #4ade80; border-color: rgba(34,197,94,0.3); }
+    .form-card {
+      background: var(--bg-card); border: 1px solid var(--border); border-radius: 10px;
+      padding: 1.4rem 1.5rem; margin-bottom: 1.5rem;
+    }
+    .form-card h2 { color: var(--accent-soft); font-size: 1.15rem; margin-bottom: 1rem; }
+    .form-grid {
+      display: grid; grid-template-columns: 1fr 1fr; gap: 1rem 1.2rem;
+    }
+    .form-grid .full { grid-column: 1 / -1; }
+    .form-group label { display: block; margin-bottom: 0.35rem; color: var(--text-muted); font-size: 0.88rem; }
+    .form-group input, .form-group textarea, .form-group select {
+      width: 100%; padding: 0.55rem 0.75rem; border-radius: 6px;
+      border: 1px solid var(--border); background: var(--bg-input); color: var(--text);
+      font-size: 0.95rem;
+    }
+    .form-group textarea { min-height: 90px; resize: vertical; }
+    .form-group input:focus, .form-group textarea:focus, .form-group select:focus {
+      outline: none; border-color: var(--accent); box-shadow: 0 0 0 2px rgba(168,85,247,0.2);
+    }
+    .form-actions { display: flex; flex-wrap: wrap; gap: 0.6rem; margin-top: 1.1rem; }
+    .empty-hint { color: var(--text-muted); padding: 1.5rem 0; text-align: center; }
+    .locked-msg {
+      max-width: 480px; margin: 4rem auto; text-align: center;
+      background: var(--bg-card); border: 1px solid var(--border); border-radius: 12px; padding: 2rem;
+    }
+    .locked-msg h2 { color: var(--accent-soft); margin-bottom: 0.6rem; }
+    .violation-preview {
+      font-size: 0.85rem; color: var(--text-muted); max-width: 220px;
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    }
+    .actions-cell { white-space: nowrap; }
+    .actions-cell button { margin-right: 0.35rem; }
+    @media (max-width: 700px) {
+      .form-grid { grid-template-columns: 1fr; }
+      .char-table { display: block; overflow-x: auto; }
+    }
+  </style>
+</head>
+<body>
+  <div class="bg-overlay"></div>
+  <header>
+    <div class="logo-wrap">
+      <div class="logo">Chroniken</div>
+    </div>
+    <nav>
+      <a href="index.html">Start</a>
+      <a href="news.html">News</a>
+      <a href="events.html">Events</a>
+      <a href="kalender.html">Kalender</a>
+      <a href="wiki.html">Wiki</a>
+      <a href="bibliothek.html">Bibliothek</a>
+      <a href="berufe.html">Berufe</a>
+      <a href="kreaturen.html">Kreaturen</a>
+      <a href="regeln.html">Regeln</a>
+      <a href="goetter.html">Götter</a>
+      <a href="charakterbogen.html">Charakterbogen</a>
+      <a href="admin.html" class="active" id="navAdmin">Admin</a>
+    </nav>
+  </header>
+
+  <main class="admin-layout">
+    <h1 class="page-title">Admin · Charakterverwaltung</h1>
+    <p class="page-desc">Charakterbögen anlegen, Verwarnungen und Regelverstöße dokumentieren. Jeder neue Charakter erhält eine laufende ID.</p>
+
+    <div id="lockedView" class="locked-msg" style="display:none;">
+      <h2>🔒 Nur für Admins</h2>
+      <p>Bitte unten links mit Benutzername und Passwort anmelden, um die Charakterverwaltung zu nutzen.</p>
+      <p style="margin-top:1rem;"><a href="index.html" class="btn secondary">Zur Startseite</a></p>
+    </div>
+
+    <div id="adminView" style="display:none;">
+      <div class="admin-bar">
+        <span class="status-ok">✓ Angemeldet als Admin</span>
+        <span class="status" id="charCount">0 Charaktere</span>
+        <button type="button" class="btn secondary" id="btnLogout" style="margin-left:auto;">Abmelden</button>
+      </div>
+
+      <div class="form-card">
+        <h2>Discord-Webhook (Channel-Benachrichtigung)</h2>
+        <p style="color:var(--text-muted); font-size:0.9rem; margin-bottom:0.9rem;">
+          Bei neuem Charakter, Bearbeitung, Regelverstoß/Verwarnung oder Löschen wird eine Nachricht in den Discord-Channel gesendet.
+          Webhook in Discord: Server-Einstellungen → Integrationen → Webhooks → Neuer Webhook → URL kopieren.
+        </p>
+        <div class="form-grid">
+          <div class="form-group full">
+            <label>Webhook-URL (geschützt – wird mit Sternen angezeigt)</label>
+            <input type="password" id="webhookUrl" autocomplete="off" placeholder="••••••••  (leer lassen = behalten / neu eintragen zum Ändern)" style="font-family:monospace; letter-spacing:0.12em;">
+            <p id="webhookHint" style="color:var(--text-muted);font-size:0.82rem;margin-top:0.35rem;"></p>
+          </div>
+        </div>
+        <div class="form-actions">
+          <button type="button" class="btn" id="btnSaveWebhook">Webhook speichern</button>
+          <button type="button" class="btn secondary" id="btnTestWebhook">Test senden</button>
+          <span class="status" id="webhookStatus"></span>
+        </div>
+      </div>
+
+      <div class="form-card" id="savedWebhookCard" style="display:none;">
+        <h2>Gespeicherter Discord-Channel</h2>
+        <div id="savedWebhookInfo"></div>
+        <div class="form-actions" style="margin-top:0.9rem;">
+          <button type="button" class="btn secondary" id="btnEditWebhook">Webhook bearbeiten</button>
+          <button type="button" class="btn secondary" id="btnTestSavedWebhook">Test senden</button>
+          <button type="button" class="btn" id="btnDeleteWebhook" style="border-color:#ef4444;color:#fca5a5;">Webhook löschen</button>
+        </div>
+      </div>
+
+      <div class="form-card">
+        <h2 id="formTitle">Neuer Charakterbogen</h2>
+        <form id="charForm">
+          <input type="hidden" id="editId" value="">
+          <div class="form-grid">
+            <div class="form-group">
+              <label>Laufende ID</label>
+              <input type="text" id="charIdDisplay" readonly placeholder="wird automatisch vergeben" style="opacity:0.85;">
+            </div>
+            <div class="form-group">
+              <label>Charaktername *</label>
+              <input type="text" id="charName" required placeholder="z. B. Elara Mondschatten">
+            </div>
+            <div class="form-group">
+              <label>Spieler / OOC-Name</label>
+              <input type="text" id="playerName" placeholder="Name des Spielers">
+            </div>
+            <div class="form-group">
+              <label>Volk / Rasse</label>
+              <select id="race">
+                <option value="">— bitte wählen —</option>
+                <option value="Mensch">Mensch</option>
+                <option value="Elf">Elf</option>
+                <option value="Zwerg">Zwerg</option>
+                <option value="Orc">Orc</option>
+                <option value="Kitsune">Kitsune</option>
+                <option value="Wolf">Wolf</option>
+                <option value="Troll">Troll</option>
+                <option value="Tiefling">Tiefling</option>
+                <option value="Gnom">Gnom</option>
+                <option value="Halbling">Halbling</option>
+                <option value="Minotaurus">Minotaurus</option>
+                <option value="Drachengeborener">Drachengeborener</option>
+                <option value="Dämon">Dämon</option>
+                <option value="Fee">Fee</option>
+                <option value="Halbgigant">Halbgigant</option>
+                <option value="Goblin">Goblin</option>
+                <option value="Wasserwesen">Wasserwesen</option>
+                <option value="Vogelwesen">Vogelwesen</option>
+                <option value="Tierwesen">Tierwesen</option>
+                <option value="Halborc">Halborc</option>
+                <option value="Halbelf">Halbelf</option>
+                <option value="Wargwandler">Wargwandler</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label>Anzahl Verwarnungen</label>
+              <input type="number" id="warnings" min="0" step="1" value="0">
+            </div>
+            <div class="form-group">
+              <label>Status</label>
+              <select id="status">
+                <option value="aktiv">Aktiv</option>
+                <option value="pausiert">Pausiert</option>
+                <option value="gesperrt">Gesperrt</option>
+                <option value="archiviert">Archiviert</option>
+              </select>
+            </div>
+            <div class="form-group full">
+              <label>Gegen welche Regel verstoßen?</label>
+              <textarea id="violation" placeholder="z. B. Regel 4.2 – Metagaming im Event X …"></textarea>
+            </div>
+            <div class="form-group full">
+              <label>Notizen (nur Admin sichtbar)</label>
+              <textarea id="notes" placeholder="Interne Notizen, Kontext, Absprachen …"></textarea>
+            </div>
+          </div>
+          <div class="form-actions">
+            <button type="submit" class="btn" id="btnSave">Speichern</button>
+            <button type="button" class="btn secondary" id="btnCancel" style="display:none;">Abbrechen</button>
+          </div>
+        </form>
+      </div>
+
+      <div class="form-card">
+        <h2>Registrierte Charakterbögen</h2>
+        <div id="tableWrap">
+          <p class="empty-hint" id="emptyHint">Noch keine Charaktere angelegt.</p>
+          <table class="char-table" id="charTable" style="display:none;">
+            <thead>
+              <tr>
+                <th>ID</th>
+                <th>Charakter</th>
+                <th>Spieler</th>
+                <th>Verwarnungen</th>
+                <th>Regelverstoß</th>
+                <th>Status</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody id="charBody"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <footer>
+    <p>© Kiyasha</p>
+  </footer>
+
+  <!-- Login-Panel (unten links) -->
+  <div id="loginPanel" class="login-panel">
+    <div id="loginFormWrap">
+      <div class="login-title">Admin-Login</div>
+      <input type="text" id="loginUser" placeholder="Benutzername" autocomplete="username">
+      <input type="password" id="loginPass" placeholder="Passwort" autocomplete="current-password">
+      <button type="button" class="btn" id="btnLogin" style="width:100%;">Anmelden</button>
+      <div class="login-err" id="loginErr"></div>
+    </div>
+    <div id="loginLoggedIn" style="display:none;">
+      <div class="login-title">Admin aktiv</div>
+      <button type="button" class="btn secondary" id="btnLogoutPanel" style="width:100%;">Abmelden</button>
+    </div>
+  </div>
+
+  <script>
+    // ===== Admin-Zugangsdaten (hier ändern) =====
+    const ADMIN_USER = "admin";
+    const ADMIN_PASS = "chroniken2026";
+    const AUTH_KEY = "portal_admin_auth";
+    const CHARS_KEY = "portal_char_registry";
+    const NEXT_ID_KEY = "portal_char_next_id";
+    const WEBHOOK_KEY = "portal_discord_webhook";
+
+    function isAdmin() {
+      try { return sessionStorage.getItem(AUTH_KEY) === "1"; } catch { return false; }
+    }
+    function setAdmin(on) {
+      try {
+        if (on) sessionStorage.setItem(AUTH_KEY, "1");
+        else sessionStorage.removeItem(AUTH_KEY);
+      } catch {}
+    }
+
+    function loadChars() {
+      try { return JSON.parse(localStorage.getItem(CHARS_KEY)) || []; }
+      catch { return []; }
+    }
+    function saveChars(list) {
+      localStorage.setItem(CHARS_KEY, JSON.stringify(list));
+    }
+    function nextId() {
+      let n = parseInt(localStorage.getItem(NEXT_ID_KEY) || "1", 10);
+      if (!Number.isFinite(n) || n < 1) n = 1;
+      localStorage.setItem(NEXT_ID_KEY, String(n + 1));
+      return "CH-" + String(n).padStart(4, "0");
+    }
+
+    function getWebhookUrl() {
+      try {
+        const raw = (localStorage.getItem(WEBHOOK_KEY) || "").trim();
+        if (!raw) return "";
+        try {
+          const data = JSON.parse(raw);
+          return typeof data === "string" ? data : String(data.url || "").trim();
+        } catch { return raw; }
+      } catch { return ""; }
+    }
+    function getWebhookData() {
+      try {
+        const raw = (localStorage.getItem(WEBHOOK_KEY) || "").trim();
+        if (!raw) return { url: "", channelName: "" };
+        try {
+          const data = JSON.parse(raw);
+          if (data && typeof data === "object") return { url: String(data.url || "").trim(), channelName: String(data.channelName || "").trim() };
+        } catch {}
+        return { url: raw, channelName: "" };
+      } catch { return { url: "", channelName: "" }; }
+    }
+    function setWebhookUrl(url, channelName = "") {
+      const clean = (url || "").trim();
+      if (!clean) { localStorage.removeItem(WEBHOOK_KEY); return; }
+      localStorage.setItem(WEBHOOK_KEY, JSON.stringify({ url: clean, channelName: (channelName || "").trim() }));
+    }
+
+    async function fetchWebhookInfo(url) {
+      try {
+        const res = await fetch(url, { method: "GET" });
+        if (!res.ok) return null;
+        const data = await res.json();
+        return {
+          channelName: data.channel_name || data.name || "Discord-Channel",
+          guildName: data.guild_name || "",
+          channelId: data.channel_id || ""
+        };
+      } catch { return null; }
+    }
+
+    function renderSavedWebhook() {
+      const card = document.getElementById("savedWebhookCard");
+      const info = document.getElementById("savedWebhookInfo");
+      if (!card || !info) return;
+      const data = getWebhookData();
+      if (!data.url) { card.style.display = "none"; return; }
+      card.style.display = "block";
+      const masked = data.url.replace(/^(.{25}).*(.{6})$/, "$1••••••$2");
+      info.innerHTML = `
+        <div style="display:flex;align-items:center;gap:0.9rem;padding:0.9rem;border:1px solid var(--border);border-radius:12px;background:rgba(255,255,255,0.025);">
+          <div style="font-size:1.7rem;">💬</div>
+          <div style="min-width:0;flex:1;">
+            <strong style="display:block;font-size:1.05rem;">${escapeHtml(data.channelName || "Discord-Channel")}</strong>
+            <span style="display:block;color:var(--text-muted);font-size:0.82rem;margin-top:0.2rem;">Webhook gespeichert · ${escapeHtml(masked)}</span>
+          </div>
+          <span style="color:var(--success);font-size:0.85rem;white-space:nowrap;">✓ Gespeichert</span>
+        </div>`;
+    }
+
+    /** Discord-Webhook-Benachrichtigung (funktioniert clientseitig) */
+    async function sendDiscordWebhook(payload) {
+      const url = getWebhookUrl();
+      if (!url || !url.startsWith("http")) return { ok: false, reason: "no_url" };
+      try {
+        const res = await fetch(url, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload)
+        });
+        if (!res.ok) return { ok: false, reason: "http_" + res.status };
+        return { ok: true };
+      } catch (err) {
+        console.warn("Webhook fehlgeschlagen:", err);
+        return { ok: false, reason: "network" };
+      }
+    }
+
+    function buildCharEmbed(type, char, extra) {
+      // type: created | updated | violation | deleted
+      const colors = {
+        created: 0x22c55e,   // grün
+        updated: 0xa855f7,   // lila
+        violation: 0xe11d48, // rot
+        deleted: 0x6b7280    // grau
+      };
+      const titles = {
+        created: "🆕 Charakter angelegt",
+        updated: "✏️ Charakter bearbeitet",
+        violation: "⚠️ Regelverstoß / Verwarnung",
+        deleted: "🗑️ Charakter gelöscht"
+      };
+      const fields = [
+        { name: "ID", value: char.id || "—", inline: true },
+        { name: "Charakter", value: char.name || "—", inline: true },
+        { name: "Spieler", value: char.player || "—", inline: true },
+        { name: "Volk", value: char.race || "—", inline: true },
+        { name: "Status", value: char.status || "aktiv", inline: true },
+        { name: "Verwarnungen", value: String(char.warnings ?? 0), inline: true }
+      ];
+      if (char.violation) {
+        fields.push({ name: "Regelverstoß", value: char.violation.slice(0, 1000), inline: false });
+      }
+      if (extra && extra.note) {
+        fields.push({ name: "Hinweis", value: String(extra.note).slice(0, 500), inline: false });
+      }
+      // Notizen bewusst nicht ins Discord (intern)
+      return {
+        username: "Chroniken Admin",
+        embeds: [{
+          title: titles[type] || "Charakter-Update",
+          color: colors[type] || 0xa855f7,
+          fields,
+          footer: { text: "Chroniken · Charakterverwaltung" },
+          timestamp: new Date().toISOString()
+        }]
+      };
+    }
+
+    async function notifyCharEvent(type, char, extra) {
+      const result = await sendDiscordWebhook(buildCharEmbed(type, char, extra));
+      const st = document.getElementById("webhookStatus");
+      if (!st) return;
+      if (result.reason === "no_url") {
+        st.textContent = "";
+        return;
+      }
+      if (result.ok) {
+        st.textContent = "✓ Channel benachrichtigt";
+        st.style.color = "var(--success)";
+      } else {
+        st.textContent = "Webhook fehlgeschlagen (" + (result.reason || "?") + ")";
+        st.style.color = "#fb7185";
+      }
+      setTimeout(() => { if (st.textContent.indexOf("Channel") >= 0 || st.textContent.indexOf("fehlgeschlagen") >= 0) st.textContent = ""; }, 4000);
+    }
+
+    function escapeHtml(s) {
+      return String(s ?? "")
+        .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;");
+    }
+
+    function updateLoginUI() {
+      const logged = isAdmin();
+      document.getElementById("loginFormWrap").style.display = logged ? "none" : "block";
+      document.getElementById("loginLoggedIn").style.display = logged ? "block" : "none";
+      document.getElementById("lockedView").style.display = logged ? "none" : "block";
+      document.getElementById("adminView").style.display = logged ? "block" : "none";
+      if (logged) {
+        const hasWh = !!getWebhookUrl();
+        document.getElementById("webhookUrl").value = "";
+        const hint = document.getElementById("webhookHint");
+        if (hint) {
+          hint.textContent = hasWh
+            ? "✓ Webhook gespeichert (URL aus Sicherheitsgründen ausgeblendet). Neue URL eintragen zum Überschreiben, speichern mit leerem Feld lässt die alte."
+            : "Noch kein Webhook hinterlegt.";
+        }
+        renderSavedWebhook();
+        renderTable();
+      }
+    }
+
+    function renderTable() {
+      const list = loadChars().slice().sort((a, b) => (a.id || "").localeCompare(b.id || ""));
+      const tbody = document.getElementById("charBody");
+      const table = document.getElementById("charTable");
+      const empty = document.getElementById("emptyHint");
+      document.getElementById("charCount").textContent = list.length + " Charakter" + (list.length === 1 ? "" : "e");
+
+      if (!list.length) {
+        table.style.display = "none";
+        empty.style.display = "block";
+        tbody.innerHTML = "";
+        return;
+      }
+      empty.style.display = "none";
+      table.style.display = "table";
+      tbody.innerHTML = list.map(c => {
+        const w = Number(c.warnings) || 0;
+        return `<tr>
+          <td class="char-id">${escapeHtml(c.id)}</td>
+          <td><strong>${escapeHtml(c.name)}</strong>${c.race ? `<div class="topic-meta">${escapeHtml(c.race)}</div>` : ""}</td>
+          <td>${escapeHtml(c.player || "—")}</td>
+          <td><span class="warn-badge ${w === 0 ? "zero" : ""}">${w}</span></td>
+          <td><div class="violation-preview" title="${escapeHtml(c.violation || "")}">${escapeHtml(c.violation || "—")}</div></td>
+          <td>${escapeHtml(c.status || "aktiv")}</td>
+          <td class="actions-cell">
+            <button type="button" class="btn secondary" data-edit="${escapeHtml(c.id)}">Bearbeiten</button>
+            <button type="button" class="btn danger" data-del="${escapeHtml(c.id)}">Löschen</button>
+          </td>
+        </tr>`;
+      }).join("");
+
+      tbody.querySelectorAll("[data-edit]").forEach(btn => {
+        btn.addEventListener("click", () => startEdit(btn.getAttribute("data-edit")));
+      });
+      tbody.querySelectorAll("[data-del]").forEach(btn => {
+        btn.addEventListener("click", async () => {
+          const id = btn.getAttribute("data-del");
+          if (!confirm("Charakter " + id + " wirklich löschen?")) return;
+          const list = loadChars();
+          const char = list.find(c => c.id === id);
+          if (!char) return;
+          saveChars(list.filter(c => c.id !== id));
+          if (document.getElementById("editId").value === id) resetForm();
+          renderTable();
+          await notifyCharEvent("deleted", char);
+        });
+      });
+    }
+
+    function resetForm() {
+      document.getElementById("charForm").reset();
+      document.getElementById("editId").value = "";
+      document.getElementById("charIdDisplay").value = "";
+      document.getElementById("warnings").value = "0";
+      document.getElementById("formTitle").textContent = "Neuer Charakterbogen";
+      document.getElementById("btnSave").textContent = "Speichern";
+      document.getElementById("btnCancel").style.display = "none";
+    }
+
+    function startEdit(id) {
+      const c = loadChars().find(x => x.id === id);
+      if (!c) return;
+      document.getElementById("editId").value = c.id;
+      document.getElementById("charIdDisplay").value = c.id;
+      document.getElementById("charName").value = c.name || "";
+      document.getElementById("playerName").value = c.player || "";
+      document.getElementById("race").value = c.race || "";
+      document.getElementById("warnings").value = c.warnings ?? 0;
+      document.getElementById("status").value = c.status || "aktiv";
+      document.getElementById("violation").value = c.violation || "";
+      document.getElementById("notes").value = c.notes || "";
+      document.getElementById("formTitle").textContent = "Charakter bearbeiten · " + c.id;
+      document.getElementById("btnSave").textContent = "Aktualisieren";
+      document.getElementById("btnCancel").style.display = "inline-block";
+      document.getElementById("charName").focus();
+    }
+
+    document.getElementById("charForm").addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const name = document.getElementById("charName").value.trim();
+      if (!name) return;
+      const editId = document.getElementById("editId").value;
+      const list = loadChars();
+      const old = editId ? list.find(c => c.id === editId) : null;
+      const payload = {
+        name,
+        player: document.getElementById("playerName").value.trim(),
+        race: document.getElementById("race").value.trim(),
+        warnings: Math.max(0, parseInt(document.getElementById("warnings").value, 10) || 0),
+        status: document.getElementById("status").value,
+        violation: document.getElementById("violation").value.trim(),
+        notes: document.getElementById("notes").value.trim(),
+        updatedAt: new Date().toISOString()
+      };
+
+      let saved;
+      let eventType = "created";
+
+      if (editId) {
+        const idx = list.findIndex(c => c.id === editId);
+        if (idx >= 0) {
+          list[idx] = { ...list[idx], ...payload };
+          saved = list[idx];
+        } else {
+          return;
+        }
+        // Regelverstoß / Verwarnung neu oder erhöht?
+        const violationChanged = (payload.violation || "") !== (old?.violation || "");
+        const warningsUp = payload.warnings > (Number(old?.warnings) || 0);
+        if ((payload.violation && violationChanged) || warningsUp) {
+          eventType = "violation";
+        } else {
+          eventType = "updated";
+        }
+      } else {
+        saved = {
+          id: nextId(),
+          createdAt: new Date().toISOString(),
+          ...payload
+        };
+        list.push(saved);
+        eventType = "created";
+        // Wenn direkt mit Verstoß/Verwarnung angelegt → zusätzlich violation-Hinweis im Embed
+        if (payload.violation || payload.warnings > 0) {
+          // bleibt "created", Embed zeigt Verstoß-Felder mit
+        }
+      }
+
+      saveChars(list);
+      await notifyCharEvent(eventType, saved, {
+        note: eventType === "violation"
+          ? (payload.warnings > (Number(old?.warnings) || 0)
+              ? "Verwarnungen erhöht (" + (old?.warnings ?? 0) + " → " + payload.warnings + ")"
+              : "Regelverstoß aktualisiert")
+          : null
+      });
+      resetForm();
+      renderTable();
+    });
+
+    document.getElementById("btnCancel").addEventListener("click", resetForm);
+
+    document.getElementById("btnSaveWebhook").addEventListener("click", async () => {
+      const input = document.getElementById("webhookUrl");
+      const url = input.value.trim();
+      const st = document.getElementById("webhookStatus");
+      const hint = document.getElementById("webhookHint");
+      if (!url) {
+        st.textContent = getWebhookUrl() ? "Keine Änderung (Feld leer = behalten)" : "Kein Webhook gesetzt";
+        st.style.color = "var(--text-muted)";
+        return;
+      }
+      if (!/^https?:\/\//i.test(url)) {
+        st.textContent = "Bitte eine gültige Webhook-URL eintragen.";
+        st.style.color = "#fb7185";
+        return;
+      }
+      st.textContent = "Speichere Webhook…";
+      st.style.color = "var(--text-muted)";
+      const meta = await fetchWebhookInfo(url);
+      const channelName = meta?.channelName || "Discord-Channel";
+      setWebhookUrl(url, channelName);
+      input.value = "";
+      st.textContent = "✓ Webhook gespeichert";
+      st.style.color = "var(--success)";
+      if (hint) hint.textContent = "✓ Webhook gespeichert. Im Feld darunter kannst du ihn bearbeiten, testen oder löschen.";
+      renderSavedWebhook();
+      setTimeout(() => { st.textContent = ""; }, 3000);
+    });
+
+    document.getElementById("btnEditWebhook").addEventListener("click", () => {
+      const data = getWebhookData();
+      const input = document.getElementById("webhookUrl");
+      input.value = data.url;
+      input.type = "text";
+      input.focus();
+      input.select();
+      document.getElementById("webhookHint").textContent = "Webhook wird bearbeitet. Nach der Änderung erneut auf „Webhook speichern“ klicken.";
+    });
+
+    document.getElementById("btnDeleteWebhook").addEventListener("click", () => {
+      if (!getWebhookUrl()) return;
+      if (!confirm("Diesen Discord-Webhook wirklich löschen?")) return;
+      localStorage.removeItem(WEBHOOK_KEY);
+      document.getElementById("webhookUrl").value = "";
+      document.getElementById("webhookUrl").type = "password";
+      document.getElementById("webhookHint").textContent = "Webhook gelöscht. Noch kein Webhook hinterlegt.";
+      document.getElementById("webhookStatus").textContent = "✓ Webhook gelöscht";
+      document.getElementById("webhookStatus").style.color = "var(--success)";
+      renderSavedWebhook();
+    });
+
+    document.getElementById("btnTestSavedWebhook").addEventListener("click", async () => {
+      const st = document.getElementById("webhookStatus");
+      st.textContent = "Sende Test…";
+      st.style.color = "var(--text-muted)";
+      const result = await sendDiscordWebhook({
+        username: "Chroniken Admin",
+        embeds: [{ title: "🔔 Webhook-Test", description: "Die Verbindung aus der Charakterverwaltung funktioniert.", color: 0xa855f7, footer: { text: "Chroniken · Test" }, timestamp: new Date().toISOString() }]
+      });
+      st.textContent = result.ok ? "✓ Test im Channel angekommen" : "Test fehlgeschlagen (" + (result.reason || "?") + ")";
+      st.style.color = result.ok ? "var(--success)" : "#fb7185";
+    });
+
+    document.getElementById("btnTestWebhook").addEventListener("click", async () => {
+      const typed = document.getElementById("webhookUrl").value.trim();
+      if (typed) setWebhookUrl(typed);
+      document.getElementById("webhookUrl").value = "";
+      const st = document.getElementById("webhookStatus");
+      st.textContent = "Sende Test…";
+      st.style.color = "var(--text-muted)";
+      const result = await sendDiscordWebhook({
+        username: "Chroniken Admin",
+        embeds: [{
+          title: "🔔 Webhook-Test",
+          description: "Die Verbindung aus der Charakterverwaltung funktioniert.",
+          color: 0xa855f7,
+          footer: { text: "Chroniken · Test" },
+          timestamp: new Date().toISOString()
+        }]
+      });
+      if (result.reason === "no_url") {
+        st.textContent = "Bitte zuerst eine Webhook-URL eintragen.";
+        st.style.color = "#fb7185";
+      } else if (result.ok) {
+        st.textContent = "✓ Test im Channel angekommen";
+        st.style.color = "var(--success)";
+      } else {
+        st.textContent = "Test fehlgeschlagen (" + (result.reason || "?") + ")";
+        st.style.color = "#fb7185";
+      }
+    });
+
+    function doLogin() {
+      const u = document.getElementById("loginUser").value.trim();
+      const p = document.getElementById("loginPass").value;
+      const err = document.getElementById("loginErr");
+      if (u === ADMIN_USER && p === ADMIN_PASS) {
+        setAdmin(true);
+        err.textContent = "";
+        document.getElementById("loginPass").value = "";
+        updateLoginUI();
+      } else {
+        err.textContent = "Falsche Zugangsdaten.";
+      }
+    }
+    function doLogout() {
+      setAdmin(false);
+      updateLoginUI();
+    }
+
+    document.getElementById("btnLogin").addEventListener("click", doLogin);
+    document.getElementById("loginPass").addEventListener("keydown", e => { if (e.key === "Enter") doLogin(); });
+    document.getElementById("loginUser").addEventListener("keydown", e => { if (e.key === "Enter") document.getElementById("loginPass").focus(); });
+    document.getElementById("btnLogout").addEventListener("click", doLogout);
+    document.getElementById("btnLogoutPanel").addEventListener("click", doLogout);
+
+    updateLoginUI();
+  </script>
+</body>
+</html>

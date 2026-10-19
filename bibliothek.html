@@ -172,7 +172,9 @@
       document.getElementById("viewTitle").textContent = t.title;
       document.getElementById("viewMeta").textContent =
         "Zuletzt geändert: " + new Date(t.updated).toLocaleString("de-DE");
-      document.getElementById("viewContent").textContent = t.content;
+      const vc = document.getElementById("viewContent");
+      // Zeilenumbrüche erhalten (Enter) + lange Zeilen umbrechen
+      vc.textContent = (t.content || "").replace(/\r\n/g, "\n").replace(/\r/g, "\n");
 
       const actions = document.getElementById("viewActions");
       actions.style.display = unlocked ? "flex" : "none";
