@@ -155,6 +155,10 @@
               <input type="text" id="playerName" placeholder="Name des Spielers">
             </div>
             <div class="form-group">
+              <label>Steam-ID</label>
+              <input type="text" id="steamId" placeholder="z. B. 76561198xxxxxxxx">
+            </div>
+            <div class="form-group">
               <label>Volk / Rasse</label>
               <select id="race">
                 <option value="">— bitte wählen —</option>
@@ -221,6 +225,7 @@
                 <th>ID</th>
                 <th>Charakter</th>
                 <th>Spieler</th>
+                <th>Steam-ID</th>
                 <th>Verwarnungen</th>
                 <th>Regelverstoß</th>
                 <th>Status</th>
@@ -381,6 +386,7 @@
         { name: "ID", value: char.id || "—", inline: true },
         { name: "Charakter", value: char.name || "—", inline: true },
         { name: "Spieler", value: char.player || "—", inline: true },
+        { name: "Steam-ID", value: char.steamId || "—", inline: true },
         { name: "Volk", value: char.race || "—", inline: true },
         { name: "Status", value: char.status || "aktiv", inline: true },
         { name: "Verwarnungen", value: String(char.warnings ?? 0), inline: true }
@@ -469,6 +475,7 @@
           <td class="char-id">${escapeHtml(c.id)}</td>
           <td><strong>${escapeHtml(c.name)}</strong>${c.race ? `<div class="topic-meta">${escapeHtml(c.race)}</div>` : ""}</td>
           <td>${escapeHtml(c.player || "—")}</td>
+          <td>${escapeHtml(c.steamId || "—")}</td>
           <td><span class="warn-badge ${w === 0 ? "zero" : ""}">${w}</span></td>
           <td><div class="violation-preview" title="${escapeHtml(c.violation || "")}">${escapeHtml(c.violation || "—")}</div></td>
           <td>${escapeHtml(c.status || "aktiv")}</td>
@@ -514,6 +521,7 @@
       document.getElementById("charIdDisplay").value = c.id;
       document.getElementById("charName").value = c.name || "";
       document.getElementById("playerName").value = c.player || "";
+      document.getElementById("steamId").value = c.steamId || "";
       document.getElementById("race").value = c.race || "";
       document.getElementById("warnings").value = c.warnings ?? 0;
       document.getElementById("status").value = c.status || "aktiv";
@@ -535,6 +543,7 @@
       const payload = {
         name,
         player: document.getElementById("playerName").value.trim(),
+        steamId: document.getElementById("steamId").value.trim(),
         race: document.getElementById("race").value.trim(),
         warnings: Math.max(0, parseInt(document.getElementById("warnings").value, 10) || 0),
         status: document.getElementById("status").value,

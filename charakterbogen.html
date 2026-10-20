@@ -414,6 +414,10 @@ textarea { min-height: 120px; resize: vertical; }
                     <input id="name" type="text" placeholder="Name des Charakters">
                 </div>
                 <div class="field">
+                    <label>Steam-ID</label>
+                    <input id="steamId" type="text" placeholder="z. B. 76561198xxxxxxxx">
+                </div>
+                <div class="field">
                     <label>Alter</label>
                     <input id="age" type="number" placeholder="Alter">
                 </div>
@@ -1670,6 +1674,7 @@ function registerBirthdayForEvents(data) {
 function collectCharacterData() {
     return {
         name: document.getElementById("name").value,
+        steamId: document.getElementById("steamId") ? document.getElementById("steamId").value : "",
         age: document.getElementById("age").value,
         gender: document.getElementById("gender").value,
         size: document.getElementById("size").value,
@@ -1714,6 +1719,9 @@ function collectCharacterData() {
 function applyCharacterData(data) {
     if (!data) return;
     document.getElementById("name").value = data.name || "";
+    if (document.getElementById("steamId")) {
+        document.getElementById("steamId").value = data.steamId || "";
+    }
     document.getElementById("age").value = data.age || "";
     document.getElementById("gender").value = data.gender || "";
     document.getElementById("size").value = data.size || "";
