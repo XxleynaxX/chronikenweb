@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Völker & Rassen – Chroniken</title>
+  <link rel="stylesheet" href="style.css">
+  <link rel="stylesheet" href="chroniken-admin.css">
+  <style>
+    .wrap { max-width: 1200px; margin: auto; padding: 2rem 1.5rem; }
+    .tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(340px, 1fr)); gap: 1.2rem; }
+    .tile { background: var(--bg-card); border: 1px solid var(--border); border-radius: 12px; padding: 1.4rem; transition: border-color 0.2s, box-shadow 0.2s; position: relative; }
+    .tile:hover { border-color: var(--accent-dim); box-shadow: 0 0 16px rgba(168, 85, 247, 0.15); }
+    .tile h3 { margin: 0 0 0.5rem; color: var(--accent-soft); font-size: 1.3rem; }
+    .muted { color: var(--text-muted); font-size: 0.92rem; line-height: 1.5; margin-bottom: 0.8rem; }
+    .detail-box { margin-top: 0.6rem; font-size: 0.9rem; background: rgba(255,255,255,0.02); padding: 0.5rem 0.7rem; border-radius: 8px; border-left: 3px solid var(--accent); }
+    .detail-box strong { color: var(--accent-soft); display: block; margin-bottom: 0.2rem; }
+    .badge-sub { display: inline-block; background: rgba(168,85,247,0.15); color: var(--accent-soft); border: 1px solid rgba(168,85,247,0.3); padding: 0.15rem 0.5rem; border-radius: 6px; font-size: 0.8rem; margin: 0.2rem 0.2rem 0 0; }
+    .subraces-wrap { margin-top: 0.8rem; }
+    .meta-info { font-size: 0.88rem; color: var(--accent); margin-bottom: 0.6rem; font-weight: 600; display: flex; flex-direction: column; gap: 0.2rem; }
+  </style>
+</head>
+<body>
+  <div class="bg-overlay"></div>
+  <header>
+    <div class="logo-wrap"><div class="logo">Chroniken</div></div>
+    <nav>
+      <a href="index.html">Start</a>
+      <a href="news.html">News</a>
+      <a href="events.html">Events</a>
+      <a href="kalender.html">Kalender</a>
+      <a href="wetter.html">Wetter</a>
+      <a href="wiki.html">Wiki</a>
+      <a href="bibliothek.html">Bibliothek</a>
+      <a href="voelker.html" class="active">Völker</a>
+      <a href="berufe.html">Berufe</a>
+      <a href="kreaturen.html">Kreaturen</a>
+      <a href="regeln.html">Regeln</a>
+      <a href="goetter.html">Götter</a>
+      <a href="charakterbogen.html">Charakterbogen</a>
+    </nav>
+  </header>
+
+  <main class="wrap">
+    <h1 class="page-title">Völker & Rassen</h1>
+    <p class="page-desc">Alle bekannten Völker aus den Chroniken inklusive Größe, Alter/Lebensspanne und Eigenschaften. Neue Einträge erscheinen automatisch im Charakterbogen.</p>
+
+    <!-- Admin-Bereich: nur sichtbar nach Anmeldung über index.html -->
+    <section class="admin-panel" id="adminPanel" style="display:none;">
+      <div class="admin-form">
+        <h2 id="formTitle" data-testid="voelker-form-title">Neues Volk anlegen</h2>
+        <div class="admin-grid">
+          <div class="admin-field"><label>Name *</label><input id="fName" data-testid="voelker-input-name" placeholder="z. B. Mensch"></div>
+          <div class="admin-field"><label>Symbol / Emoji</label><input id="fEmoji" data-testid="voelker-input-emoji" placeholder="🧑"></div>
+          <div class="admin-field"><label>Größe</label><input id="fSize" data-testid="voelker-input-size" placeholder="M: 155-195 cm | F: 150-185 cm"></div>
+          <div class="admin-field"><label>Alter / Lebensspanne</label><input id="fAge" data-testid="voelker-input-age" placeholder="60-100 Jahre"></div>
+          <div class="admin-field full"><label>Unterarten (mit Komma trennen)</label><input id="fSubraces" data-testid="voelker-input-subraces" placeholder="Waldelf, Hochelf, Dunkelelf"></div>
+          <div class="admin-field full"><label>Beschreibung</label><textarea id="fDesc" data-testid="voelker-input-desc"></textarea></div>
+          <div class="admin-field full"><label>💪 Stärken</label><textarea id="fStrengths" data-testid="voelker-input-strengths"></textarea></div>
+          <div class="admin-field full"><label>⚠️ Schwächen</label><textarea id="fWeaknesses" data-testid="voelker-input-weaknesses"></textarea></div>
+        </div>
+        <div class="admin-actions">
+          <button class="btn" id="btnSave" data-testid="voelker-save-btn">Speichern</button>
+          <button class="btn secondary" id="btnCancel" data-testid="voelker-cancel-btn" style="display:none;">Abbrechen</button>
+          <span class="admin-status" id="status"></span>
+        </div>
+      </div>
+      <h2 class="admin-sub-title">Vorhandene Völker</h2>
+    </section>
+
+    <div class="tiles" id="tiles"></div>
+  </main>
+
+  <footer><p>© Kiyasha</p></footer>
+
+  <script src="chroniken-data.js"></script>
+  <script>
+    const KEY = "voelker";
+    const esc = ChronikenData.esc;
+    let editIndex = null;
+
+    const el = id => document.getElementById(id);
+    function admin() { return ChronikenData.isAdmin(); }
+
+    function render() {
+      const list = ChronikenData.load(KEY);
+      el("adminPanel").style.display = admin() ? "block" : "none";
+      el("tiles").innerHTML = list.map((r, i) => `
+        <article class="tile">
+          <h3>${esc(r.emoji || "")} ${esc(r.name)}</h3>
+          <div class="meta-info">
+            ${r.size ? `<div>📏 <strong>Größe:</strong> ${esc(r.size)}</div>` : ""}
+            ${r.age ? `<div>⏳ <strong>Alter:</strong> ${esc(r.age)}</div>` : ""}
+          </div>
+          ${r.description ? `<p class="muted">${esc(r.description)}</p>` : ""}
+          ${r.strengths ? `<div class="detail-box"><strong>💪 Stärken</strong>${esc(r.strengths)}</div>` : ""}
+          ${r.weaknesses ? `<div class="detail-box"><strong>⚠️ Schwächen</strong>${esc(r.weaknesses)}</div>` : ""}
+          ${(r.subraces && r.subraces.length) ? `<div class="subraces-wrap"><strong style="font-size:.85rem;color:var(--accent-soft);">Unterarten:</strong><br>${r.subraces.map(s => `<span class="badge-sub">${esc(s)}</span>`).join("")}</div>` : ""}
+          ${admin() ? `<div class="tile-actions">
+            <button class="btn secondary" data-edit="${i}" data-testid="voelker-edit-${i}">Bearbeiten</button>
+            <button class="btn danger" data-del="${i}" data-testid="voelker-delete-${i}">Löschen</button>
+          </div>` : ""}
+        </article>`).join("");
+
+      el("tiles").querySelectorAll("[data-edit]").forEach(b => b.onclick = () => startEdit(+b.dataset.edit));
+      el("tiles").querySelectorAll("[data-del]").forEach(b => b.onclick = () => remove(+b.dataset.del));
+    }
+
+    function fillForm(r) {
+      el("fName").value = r.name || "";
+      el("fEmoji").value = r.emoji || "";
+      el("fSize").value = r.size || "";
+      el("fAge").value = r.age || "";
+      el("fSubraces").value = (r.subraces || []).join(", ");
+      el("fDesc").value = r.description || "";
+      el("fStrengths").value = r.strengths || "";
+      el("fWeaknesses").value = r.weaknesses || "";
+    }
+
+    function resetForm() {
+      editIndex = null;
+      fillForm({});
+      el("formTitle").textContent = "Neues Volk anlegen";
+      el("btnSave").textContent = "Speichern";
+      el("btnCancel").style.display = "none";
+      el("status").textContent = "";
+    }
+
+    function startEdit(i) {
+      const r = ChronikenData.load(KEY)[i];
+      if (!r) return;
+      editIndex = i;
+      fillForm(r);
+      el("formTitle").textContent = "Volk bearbeiten";
+      el("btnSave").textContent = "Änderungen speichern";
+      el("btnCancel").style.display = "inline-block";
+      window.scrollTo({ top: 0, behavior: "smooth" });
+    }
+
+    function remove(i) {
+      if (!confirm("Dieses Volk wirklich löschen?")) return;
+      const list = ChronikenData.load(KEY);
+      list.splice(i, 1);
+      ChronikenData.save(KEY, list);
+      if (editIndex === i) resetForm();
+      render();
+    }
+
+    function save() {
+      const name = el("fName").value.trim();
+      if (!name) { el("status").style.color = "#f87171"; el("status").textContent = "Bitte einen Namen eingeben."; return; }
+      const list = ChronikenData.load(KEY);
+      const entry = {
+        name,
+        emoji: el("fEmoji").value.trim(),
+        size: el("fSize").value.trim(),
+        age: el("fAge").value.trim(),
+        subraces: el("fSubraces").value.split(",").map(s => s.trim()).filter(Boolean),
+        description: el("fDesc").value.trim(),
+        strengths: el("fStrengths").value.trim(),
+        weaknesses: el("fWeaknesses").value.trim()
+      };
+      if (editIndex !== null && list[editIndex]) {
+        entry.minM = list[editIndex].minM; entry.maxM = list[editIndex].maxM;
+        entry.minF = list[editIndex].minF; entry.maxF = list[editIndex].maxF;
+        list[editIndex] = entry;
+      } else {
+        list.push(entry);
+      }
+      ChronikenData.save(KEY, list);
+      resetForm();
+      el("status").style.color = "#22c55e";
+      el("status").textContent = "✓ Gespeichert";
+      render();
+      setTimeout(() => { el("status").textContent = ""; }, 2500);
+    }
+
+    el("btnSave").onclick = save;
+    el("btnCancel").onclick = () => { resetForm(); };
+    render();
+    window.addEventListener("storage", render);
+  </script>
+</body>
+</html>

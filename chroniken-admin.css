@@ -1,0 +1,30 @@
+/* Gemeinsame Styles für die Admin-Verwaltung (Völker, Berufe, Götter, Wetter) */
+.admin-panel { margin: 1.5rem 0 2.5rem; }
+.admin-form {
+  background: var(--bg-card);
+  border: 1px solid var(--accent-dim, rgba(168,85,247,.35));
+  border-radius: 14px;
+  padding: 1.5rem;
+  box-shadow: 0 0 24px rgba(168, 85, 247, 0.1);
+}
+.admin-form h2 { margin: 0 0 1rem; color: var(--accent-soft); font-size: 1.3rem; }
+.admin-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 1rem; }
+.admin-field { display: flex; flex-direction: column; gap: .35rem; }
+.admin-field.full { grid-column: 1 / -1; }
+.admin-field label { font-size: .85rem; color: var(--text-muted); font-weight: 600; }
+.admin-field input, .admin-field textarea, .admin-field select {
+  width: 100%; padding: .65rem .7rem;
+  border: 1px solid var(--border);
+  background: var(--bg-input, rgba(255,255,255,.03));
+  color: var(--text); border-radius: 8px; font: inherit;
+}
+.admin-field textarea { min-height: 80px; resize: vertical; }
+.admin-actions { display: flex; gap: .7rem; flex-wrap: wrap; margin-top: 1.2rem; align-items: center; }
+.admin-status { font-size: .85rem; color: #22c55e; }
+.admin-sub-title { margin: 2rem 0 1rem; color: var(--accent-soft); font-size: 1.15rem; }
+.tile-actions { display: flex; gap: .5rem; flex-wrap: wrap; margin-top: .9rem; }
+.tile-actions .btn { padding: .4rem .8rem; font-size: .85rem; }
+.admin-note { color: var(--text-muted); font-size: .9rem; margin-bottom: 1rem; }
+.btn.danger { background: #9f1239; border-color: #9f1239; color: #fff; }
+.btn.danger:hover { background: #be123c; }
+@media (max-width: 640px) { .admin-grid { grid-template-columns: 1fr; } }

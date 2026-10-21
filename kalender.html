@@ -97,10 +97,16 @@ function loadBirthdays() {
   try { return JSON.parse(localStorage.getItem('portal_birthdays')) || []; }
   catch { return []; }
 }
+function loadCharacterEvents() {
+  try { return JSON.parse(localStorage.getItem('portal_events')) || []; }
+  catch { return []; }
+}
 
 const d = getDate();
 const h = holidayFor(d.mi, d.day);
 const birthdays = loadBirthdays();
+const characterEvents = loadCharacterEvents().filter(e => e.eventType === 'Geburtstag' && Number.isInteger(e.birthdayMonth) && Number.isInteger(e.birthdayDay));
+const todayEvents = characterEvents.filter(e => e.birthdayMonth === d.mi && e.birthdayDay === d.day);
 const todayBirthdays = birthdays.filter(b => b.month === d.mi && b.day === d.day);
 
 // Aktuelles Datum
@@ -111,9 +117,10 @@ let todayHtml = '';
 if (h) {
   todayHtml += `✨ <b>${h.n}</b><br>${h.t}`;
 }
-if (todayBirthdays.length) {
+if (todayBirthdays.length || todayEvents.length) {
   if (todayHtml) todayHtml += '<br><br>';
-  todayHtml += todayBirthdays.map(b => `🎂 <b>Geburtstag von ${b.name}</b>`).join('<br>');
+  const names = todayBirthdays.map(b => b.name).concat(todayEvents.map(e => e.characterName)).filter((v,i,a)=>v && a.indexOf(v)===i);
+  todayHtml += names.map(name => `🎂 <b>Geburtstag von ${name}</b>`).join('<br>');
 }
 if (!todayHtml) {
   todayHtml = 'Heute steht kein großer Feiertag im Kalender.';
@@ -124,9 +131,11 @@ document.getElementById('holidayNow').innerHTML = todayHtml;
 document.getElementById('months').innerHTML = months.map((m, i) => {
   const hs = holidays.filter(h => h.m === i);
   const bs = birthdays.filter(b => b.month === i);
+  const es = characterEvents.filter(e => e.birthdayMonth === i);
   let lines = [];
   if (hs.length) lines = lines.concat(hs.map(h => `🎉 ${h.d}. Tag: ${h.n}`));
   if (bs.length) lines = lines.concat(bs.map(b => `🎂 ${b.day}. Tag: Geburtstag von ${b.name}`));
+  if (es.length) lines = lines.concat(es.map(e => `📅 ${e.birthdayDay}. Tag: Event – ${e.characterName}`));
   const content = lines.length ? lines.join('<br>') : 'Keine festgelegten Feiertage oder Geburtstage';
   return `<div class="month-card ${i === d.mi ? 'current' : ''}"><h3>${i + 1}. ${m[0]}</h3><small>${m[1]}</small><div class="holiday">${content}</div></div>`;
 }).join('');
@@ -137,14 +146,18 @@ document.getElementById('holidays').innerHTML = holidays.map(h =>
 ).join('');
 
 // Zusätzliche Sektion für alle Geburtstage (falls vorhanden)
-if (birthdays.length) {
+if (birthdays.length || characterEvents.length) {
   const section = document.createElement('section');
   section.innerHTML = `
-    <h2 class="page-title">Geburtstage der Charaktere</h2>
+    <h2 class="page-title">Charakter-Events & Geburtstage</h2>
     <div class="holiday-list">
       ${birthdays
         .sort((a, b) => a.month - b.month || a.day - b.day)
         .map(b => `<div class="holiday-item"><strong>🎂 ${b.name}</strong><br>${b.day}. ${months[b.month][0]}</div>`)
+        .join('')}
+      ${characterEvents
+        .sort((a,b) => a.birthdayMonth - b.birthdayMonth || a.birthdayDay - b.birthdayDay)
+        .map(e => `<div class="holiday-item"><strong>📅 Event: ${e.characterName}</strong><br>${e.birthdayDay}. ${months[e.birthdayMonth][0]}</div>`)
         .join('')}
     </div>
   `;

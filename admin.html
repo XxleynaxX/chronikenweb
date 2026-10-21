@@ -62,6 +62,11 @@
     }
     .actions-cell { white-space: nowrap; }
     .actions-cell button { margin-right: 0.35rem; }
+    .master-tiles { display:grid; grid-template-columns:repeat(auto-fit,minmax(190px,1fr)); gap:1rem; }
+    .master-tile { display:flex; flex-direction:column; gap:.45rem; padding:1.2rem; border:1px solid var(--border); border-radius:12px; background:rgba(168,85,247,.05); color:var(--text); text-decoration:none; transition:.18s ease; }
+    .master-tile:hover { transform:translateY(-2px); border-color:var(--accent); background:rgba(168,85,247,.1); }
+    .master-tile small { color:var(--text-muted); line-height:1.4; }
+    .tile-icon { font-size:1.7rem; }
     @media (max-width: 700px) {
       .form-grid { grid-template-columns: 1fr; }
       .char-table { display: block; overflow-x: auto; }
@@ -108,15 +113,25 @@
       </div>
 
       <div class="form-card">
-        <h2>Discord-Webhook (Channel-Benachrichtigung)</h2>
+        <h2>Discord-Webhooks</h2>
         <p style="color:var(--text-muted); font-size:0.9rem; margin-bottom:0.9rem;">
-          Bei neuem Charakter, Bearbeitung, Regelverstoß/Verwarnung oder Löschen wird eine Nachricht in den Discord-Channel gesendet.
-          Webhook in Discord: Server-Einstellungen → Integrationen → Webhooks → Neuer Webhook → URL kopieren.
+          Du kannst mehrere Discord-Webhooks hinterlegen. Einen für Benachrichtigungen aus dem Charakterbogen und einen für das Wetter.
         </p>
         <div class="form-grid">
+          <div class="form-group">
+            <label>Bereich</label>
+            <select id="webhookScope">
+              <option value="charakter">📜 Charakterbogen</option>
+              <option value="wetter">🌦️ Wetter</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label>Name des Webhooks</label>
+            <input type="text" id="webhookName" placeholder="z. B. Chroniken Charaktere">
+          </div>
           <div class="form-group full">
-            <label>Webhook-URL (geschützt – wird mit Sternen angezeigt)</label>
-            <input type="password" id="webhookUrl" autocomplete="off" placeholder="••••••••  (leer lassen = behalten / neu eintragen zum Ändern)" style="font-family:monospace; letter-spacing:0.12em;">
+            <label>Webhook-URL</label>
+            <input type="password" id="webhookUrl" autocomplete="off" placeholder="Discord Webhook-URL eintragen" style="font-family:monospace; letter-spacing:0.08em;">
             <p id="webhookHint" style="color:var(--text-muted);font-size:0.82rem;margin-top:0.35rem;"></p>
           </div>
         </div>
@@ -127,13 +142,48 @@
         </div>
       </div>
 
+      <div class="form-card" id="webhookMessageCard">
+        <h2>📨 Nachrichten-Vorlagen</h2>
+        <p style="color:var(--text-muted);font-size:0.9rem;margin-bottom:1rem;">Lege fest, wie die Benachrichtigungen für Charakterbogen und Wetter in Discord aussehen. Platzhalter werden automatisch ersetzt.</p>
+        <div class="form-grid">
+          <div class="form-group">
+            <label>Was soll gemeldet werden?</label>
+            <select id="webhookType">
+              <option value="wetter">🌦️ Wetter</option>
+              <option value="charakter">📜 Charakterbogen</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label>Titel</label>
+            <input id="webhookMessageTitle" type="text" placeholder="Chroniken – %wetter%">
+          </div>
+          <div class="form-group full">
+            <label>Text</label>
+            <textarea id="webhookMessageText" rows="5" placeholder="%wetter% ist jetzt bei Chroniken."></textarea>
+            <p class="small" style="color:var(--text-muted);margin-top:.4rem;">Wetter: <code>%wetter%</code>, <code>%wetter_icon%</code>, <code>%wetter_beschreibung%</code>, <code>%naechster_wetterwechsel%</code>, <code>%datum%</code>, <code>%zeit%</code>. Charakter: <code>%charakter%</code>, <code>%steamid%</code>, <code>%spieler%</code>.</p>
+          </div>
+        </div>
+        <div class="form-actions">
+          <button type="button" class="btn" id="btnSaveWebhookMessage">Vorlage speichern</button>
+          <button type="button" class="btn secondary" id="btnTestWebhookMessage">Test an Discord senden</button>
+          <span class="status" id="webhookMessageStatus"></span>
+        </div>
+        <div id="webhookTemplates" style="margin-top:1rem;"></div>
+      </div>
+
       <div class="form-card" id="savedWebhookCard" style="display:none;">
-        <h2>Gespeicherter Discord-Channel</h2>
+        <h2>Gespeicherte Webhooks</h2>
         <div id="savedWebhookInfo"></div>
-        <div class="form-actions" style="margin-top:0.9rem;">
-          <button type="button" class="btn secondary" id="btnEditWebhook">Webhook bearbeiten</button>
-          <button type="button" class="btn secondary" id="btnTestSavedWebhook">Test senden</button>
-          <button type="button" class="btn" id="btnDeleteWebhook" style="border-color:#ef4444;color:#fca5a5;">Webhook löschen</button>
+      </div>
+
+      <div class="form-card">
+        <h2>Stammdaten</h2>
+        <p style="color:var(--text-muted);font-size:0.9rem;margin-bottom:1rem;">Völker, Berufe und Götter werden nicht mehr direkt hier angelegt. Öffne die jeweilige Kachel, um die Stammdaten zu verwalten. Neue Einträge erscheinen anschließend automatisch im Charakterbogen.</p>
+        <div class="master-tiles">
+          <a class="master-tile" href="voelker.html"><span class="tile-icon">🦊</span><strong>Völker & Rassen</strong><small>Beschreibung, Stärken, Schwächen und Größen</small></a>
+          <a class="master-tile" href="berufe.html"><span class="tile-icon">⚒️</span><strong>Berufe</strong><small>Hauptberuf oder Nebenberuf anlegen</small></a>
+          <a class="master-tile" href="goetter.html"><span class="tile-icon">✨</span><strong>Götter</strong><small>Götter und ihre Beschreibungen verwalten</small></a>
+          <a class="master-tile" href="wetter.html"><span class="tile-icon">🌦️</span><strong>Wetter</strong><small>Wetterwechsel alle 6 Stunden und Discord-Benachrichtigung</small></a>
         </div>
       </div>
 
@@ -265,7 +315,7 @@
     const AUTH_KEY = "portal_admin_auth";
     const CHARS_KEY = "portal_char_registry";
     const NEXT_ID_KEY = "portal_char_next_id";
-    const WEBHOOK_KEY = "portal_discord_webhook";
+    const WEBHOOK_KEY = "chroniken_discord_webhooks";
 
     function isAdmin() {
       try { return sessionStorage.getItem(AUTH_KEY) === "1"; } catch { return false; }
@@ -291,31 +341,36 @@
       return "CH-" + String(n).padStart(4, "0");
     }
 
-    function getWebhookUrl() {
+    function getWebhooks() {
       try {
-        const raw = (localStorage.getItem(WEBHOOK_KEY) || "").trim();
-        if (!raw) return "";
-        try {
-          const data = JSON.parse(raw);
-          return typeof data === "string" ? data : String(data.url || "").trim();
-        } catch { return raw; }
-      } catch { return ""; }
-    }
-    function getWebhookData() {
+        const raw = JSON.parse(localStorage.getItem(WEBHOOK_KEY) || '{}');
+        if (raw && typeof raw === 'object') return raw;
+      } catch {}
+      // Alte Einzel-Webhook-Version automatisch als Charakterbogen-Webhook übernehmen.
       try {
-        const raw = (localStorage.getItem(WEBHOOK_KEY) || "").trim();
-        if (!raw) return { url: "", channelName: "" };
-        try {
-          const data = JSON.parse(raw);
-          if (data && typeof data === "object") return { url: String(data.url || "").trim(), channelName: String(data.channelName || "").trim() };
-        } catch {}
-        return { url: raw, channelName: "" };
-      } catch { return { url: "", channelName: "" }; }
+        const old = JSON.parse(localStorage.getItem('portal_discord_webhook') || 'null');
+        if (old) {
+          const url = typeof old === 'string' ? old : old.url;
+          if (url) {
+            const migrated = { charakter: { url: String(url), name: String(old.channelName || 'Charakterbogen') }, wetter: null };
+            localStorage.setItem(WEBHOOK_KEY, JSON.stringify(migrated));
+            return migrated;
+          }
+        }
+      } catch {}
+      return {};
     }
-    function setWebhookUrl(url, channelName = "") {
-      const clean = (url || "").trim();
-      if (!clean) { localStorage.removeItem(WEBHOOK_KEY); return; }
-      localStorage.setItem(WEBHOOK_KEY, JSON.stringify({ url: clean, channelName: (channelName || "").trim() }));
+    function getWebhookData(scope = 'charakter') {
+      const all = getWebhooks();
+      const data = all[scope];
+      return data && data.url ? { url: String(data.url).trim(), name: String(data.name || '').trim() } : { url: '', name: '' };
+    }
+    function getWebhookUrl(scope = 'charakter') { return getWebhookData(scope).url; }
+    function setWebhook(scope, url, name = '') {
+      const all = getWebhooks();
+      if (!(url || '').trim()) delete all[scope];
+      else all[scope] = { url: url.trim(), name: (name || '').trim() };
+      localStorage.setItem(WEBHOOK_KEY, JSON.stringify(all));
     }
 
     async function fetchWebhookInfo(url) {
@@ -323,11 +378,7 @@
         const res = await fetch(url, { method: "GET" });
         if (!res.ok) return null;
         const data = await res.json();
-        return {
-          channelName: data.channel_name || data.name || "Discord-Channel",
-          guildName: data.guild_name || "",
-          channelId: data.channel_id || ""
-        };
+        return { channelName: data.channel_name || data.name || "Discord-Channel", guildName: data.guild_name || "", channelId: data.channel_id || "" };
       } catch { return null; }
     }
 
@@ -335,37 +386,36 @@
       const card = document.getElementById("savedWebhookCard");
       const info = document.getElementById("savedWebhookInfo");
       if (!card || !info) return;
-      const data = getWebhookData();
-      if (!data.url) { card.style.display = "none"; return; }
-      card.style.display = "block";
-      const masked = data.url.replace(/^(.{25}).*(.{6})$/, "$1••••••$2");
-      info.innerHTML = `
-        <div style="display:flex;align-items:center;gap:0.9rem;padding:0.9rem;border:1px solid var(--border);border-radius:12px;background:rgba(255,255,255,0.025);">
-          <div style="font-size:1.7rem;">💬</div>
-          <div style="min-width:0;flex:1;">
-            <strong style="display:block;font-size:1.05rem;">${escapeHtml(data.channelName || "Discord-Channel")}</strong>
-            <span style="display:block;color:var(--text-muted);font-size:0.82rem;margin-top:0.2rem;">Webhook gespeichert · ${escapeHtml(masked)}</span>
-          </div>
-          <span style="color:var(--success);font-size:0.85rem;white-space:nowrap;">✓ Gespeichert</span>
+      const all = getWebhooks();
+      const entries = [['charakter','📜','Charakterbogen'], ['wetter','🌦️','Wetter']].filter(([key]) => all[key]?.url);
+      card.style.display = entries.length ? 'block' : 'none';
+      info.innerHTML = entries.map(([key, icon, label]) => {
+        const data = all[key];
+        const masked = data.url.replace(/^(.{25}).*(.{6})$/, "$1••••••$2");
+        return `<div class="card" style="margin:.55rem 0;padding:.9rem;display:flex;align-items:center;gap:.8rem;">
+          <div style="font-size:1.5rem">${icon}</div><div style="min-width:0;flex:1"><strong>${escapeHtml(data.name || label)}</strong><small style="display:block;color:var(--text-muted);margin-top:.2rem;">${escapeHtml(label)} · ${escapeHtml(masked)}</small></div>
+          <button class="btn secondary" type="button" data-wh-edit-scope="${key}">Bearbeiten</button>
+          <button class="btn secondary" type="button" data-wh-test-scope="${key}">Test</button>
+          <button class="btn secondary" type="button" data-wh-delete-scope="${key}" style="border-color:#ef4444;color:#fca5a5;">Löschen</button>
         </div>`;
+      }).join('');
+      info.querySelectorAll('[data-wh-edit-scope]').forEach(b=>b.addEventListener('click',()=>{
+        const d=getWebhookData(b.dataset.whEditScope); document.getElementById('webhookScope').value=b.dataset.whEditScope; document.getElementById('webhookName').value=d.name; document.getElementById('webhookUrl').value=''; document.getElementById('webhookHint').textContent='Webhook wird bearbeitet. Neue URL eintragen und speichern.';
+      }));
+      info.querySelectorAll('[data-wh-delete-scope]').forEach(b=>b.addEventListener('click',()=>{ if(confirm('Diesen Webhook wirklich löschen?')) { const all=getWebhooks(); delete all[b.dataset.whDeleteScope]; localStorage.setItem(WEBHOOK_KEY,JSON.stringify(all)); renderSavedWebhook(); } }));
+      info.querySelectorAll('[data-wh-test-scope]').forEach(b=>b.addEventListener('click',async()=>{
+        const scope=b.dataset.whTestScope, result=await sendDiscordWebhook({username:'Chroniken',embeds:[{title:'🔔 Webhook-Test',description:scope==='wetter'?'Der Wetter-Webhook funktioniert.':'Der Charakterbogen-Webhook funktioniert.',color:0xa855f7,footer:{text:'Chroniken · Test'},timestamp:new Date().toISOString()}]},scope);
+        document.getElementById('webhookStatus').textContent=result.ok?'✓ Test gesendet':'Webhook konnte nicht gesendet werden';
+      }));
     }
 
-    /** Discord-Webhook-Benachrichtigung (funktioniert clientseitig) */
-    async function sendDiscordWebhook(payload) {
-      const url = getWebhookUrl();
+    async function sendDiscordWebhook(payload, scope = 'charakter') {
+      const url = getWebhookUrl(scope);
       if (!url || !url.startsWith("http")) return { ok: false, reason: "no_url" };
       try {
-        const res = await fetch(url, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(payload)
-        });
-        if (!res.ok) return { ok: false, reason: "http_" + res.status };
-        return { ok: true };
-      } catch (err) {
-        console.warn("Webhook fehlgeschlagen:", err);
-        return { ok: false, reason: "network" };
-      }
+        const res = await fetch(url, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) });
+        return { ok: res.ok, reason: res.ok ? '' : 'http_' + res.status };
+      } catch (err) { console.warn("Webhook fehlgeschlagen:", err); return { ok: false, reason: "network" }; }
     }
 
     function buildCharEmbed(type, char, extra) {
@@ -411,7 +461,7 @@
     }
 
     async function notifyCharEvent(type, char, extra) {
-      const result = await sendDiscordWebhook(buildCharEmbed(type, char, extra));
+      const result = await sendDiscordWebhook(buildCharEmbed(type, char, extra), "charakter");
       const st = document.getElementById("webhookStatus");
       if (!st) return;
       if (result.reason === "no_url") {
@@ -441,14 +491,12 @@
       document.getElementById("lockedView").style.display = logged ? "none" : "block";
       document.getElementById("adminView").style.display = logged ? "block" : "none";
       if (logged) {
-        const hasWh = !!getWebhookUrl();
+        const scope = document.getElementById("webhookScope").value;
+        const d = getWebhookData(scope);
+        document.getElementById("webhookName").value = d.name;
         document.getElementById("webhookUrl").value = "";
         const hint = document.getElementById("webhookHint");
-        if (hint) {
-          hint.textContent = hasWh
-            ? "✓ Webhook gespeichert (URL aus Sicherheitsgründen ausgeblendet). Neue URL eintragen zum Überschreiben, speichern mit leerem Feld lässt die alte."
-            : "Noch kein Webhook hinterlegt.";
-        }
+        if (hint) hint.textContent = d.url ? "✓ Webhook vorhanden. URL bleibt ausgeblendet." : "Noch kein Webhook für diesen Bereich hinterlegt.";
         renderSavedWebhook();
         renderTable();
       }
@@ -599,96 +647,64 @@
 
     document.getElementById("btnCancel").addEventListener("click", resetForm);
 
+    const WEBHOOK_TEMPLATES_KEY = "chroniken_webhook_templates";
+    const WEBHOOK_MESSAGES_KEY = "chroniken_webhook_messages";
+    const defaultWebhookTemplates = {
+      wetter: {title:"🌦️ Wetter in Chroniken", text:"%wetter% ist jetzt bei Chroniken.\n%wetter_beschreibung%\n\nNächster Wechsel: %naechster_wetterwechsel%"},
+      charakter: {title:"📜 Neuer Charakter", text:"Ein neuer Charakter wurde in Chroniken angelegt: %charakter%"},
+
+    };
+    function getWebhookTemplates(){ try { return {...defaultWebhookTemplates,...(JSON.parse(localStorage.getItem(WEBHOOK_TEMPLATES_KEY))||{})}; } catch { return {...defaultWebhookTemplates}; } }
+    function setWebhookTemplate(type,title,text){ const all=getWebhookTemplates(); all[type]={title,text}; localStorage.setItem(WEBHOOK_TEMPLATES_KEY,JSON.stringify(all)); }
+    function replaceWebhookVars(text, extra={}){
+      let weather={};
+      try { weather=JSON.parse(localStorage.getItem('chroniken_weather_state_v1'))||{}; } catch {}
+      const nextMs=window.ChronikenWeather?.msNext ? window.ChronikenWeather.msNext() : 0;
+      const next=window.ChronikenWeather?.format ? window.ChronikenWeather.format(nextMs) : '';
+      const now=new Date();
+      const vars={
+        wetter:weather.name||extra.wetter||'', wetter_icon:weather.icon||extra.wetter_icon||'', wetter_beschreibung:weather.description||extra.wetter_beschreibung||'',
+        naechster_wetterwechsel:next, datum:now.toLocaleDateString('de-DE'), zeit:now.toLocaleTimeString('de-DE'), ...extra
+      };
+      return String(text||'').replace(/%([a-zA-Z0-9_]+)%/g,(_,k)=>vars[k]!==undefined?vars[k]:`%${k}%`);
+    }
+    function renderWebhookTemplate(){
+      const type=document.getElementById('webhookType').value, t=getWebhookTemplates()[type]||defaultWebhookTemplates[type];
+      document.getElementById('webhookMessageTitle').value=t.title; document.getElementById('webhookMessageText').value=t.text;
+    }
+    function renderWebhookTemplateList(){
+      const el=document.getElementById('webhookTemplates'), all=getWebhookTemplates(); el.innerHTML=Object.entries(all).map(([k,v])=>`<div class="card" style="margin:.5rem 0;padding:.8rem;display:flex;justify-content:space-between;gap:1rem;align-items:center"><span><strong>${escapeHtml(v.title)}</strong><br><small>${escapeHtml(k)}</small></span><button class="btn secondary" type="button" data-wh-edit="${k}">Bearbeiten</button></div>`).join('');
+      el.querySelectorAll('[data-wh-edit]').forEach(b=>b.addEventListener('click',()=>{document.getElementById('webhookType').value=b.dataset.whEdit;renderWebhookTemplate();}));
+    }
+    document.getElementById('webhookType').addEventListener('change',renderWebhookTemplate);
+    document.getElementById('btnSaveWebhookMessage').addEventListener('click',()=>{ const type=document.getElementById('webhookType').value; setWebhookTemplate(type,document.getElementById('webhookMessageTitle').value.trim(),document.getElementById('webhookMessageText').value.trim()); document.getElementById('webhookMessageStatus').textContent='✓ Vorlage gespeichert'; renderWebhookTemplateList(); });
+    document.getElementById('btnTestWebhookMessage').addEventListener('click',async()=>{ const type=document.getElementById('webhookType').value,title=replaceWebhookVars(document.getElementById('webhookMessageTitle').value),text=replaceWebhookVars(document.getElementById('webhookMessageText').value); const result=await sendDiscordWebhook({username:'Chroniken',embeds:[{title,description:text,color:0xa855f7,footer:{text:`Chroniken · ${type}`},timestamp:new Date().toISOString()}]}, type); document.getElementById('webhookMessageStatus').textContent=result.ok?'✓ Discord-Nachricht gesendet':'Webhook konnte nicht gesendet werden'; });
+    renderWebhookTemplate(); renderWebhookTemplateList();
+
+    document.getElementById("webhookScope").addEventListener("change", () => {
+      const scope = document.getElementById("webhookScope").value;
+      const d = getWebhookData(scope);
+      document.getElementById("webhookName").value = d.name;
+      document.getElementById("webhookUrl").value = "";
+      document.getElementById("webhookHint").textContent = d.url ? "✓ Webhook vorhanden. Leer lassen, wenn du nichts ändern möchtest." : "Noch kein Webhook für diesen Bereich hinterlegt.";
+    });
     document.getElementById("btnSaveWebhook").addEventListener("click", async () => {
-      const input = document.getElementById("webhookUrl");
-      const url = input.value.trim();
-      const st = document.getElementById("webhookStatus");
-      const hint = document.getElementById("webhookHint");
-      if (!url) {
-        st.textContent = getWebhookUrl() ? "Keine Änderung (Feld leer = behalten)" : "Kein Webhook gesetzt";
-        st.style.color = "var(--text-muted)";
-        return;
-      }
-      if (!/^https?:\/\//i.test(url)) {
-        st.textContent = "Bitte eine gültige Webhook-URL eintragen.";
-        st.style.color = "#fb7185";
-        return;
-      }
-      st.textContent = "Speichere Webhook…";
-      st.style.color = "var(--text-muted)";
-      const meta = await fetchWebhookInfo(url);
-      const channelName = meta?.channelName || "Discord-Channel";
-      setWebhookUrl(url, channelName);
-      input.value = "";
-      st.textContent = "✓ Webhook gespeichert";
-      st.style.color = "var(--success)";
-      if (hint) hint.textContent = "✓ Webhook gespeichert. Im Feld darunter kannst du ihn bearbeiten, testen oder löschen.";
-      renderSavedWebhook();
-      setTimeout(() => { st.textContent = ""; }, 3000);
+      const scope=document.getElementById("webhookScope").value, input=document.getElementById("webhookUrl"), name=document.getElementById("webhookName").value.trim(), st=document.getElementById("webhookStatus");
+      const url=input.value.trim();
+      if(!url){ st.textContent=getWebhookUrl(scope)?"Keine Änderung (Feld leer = behalten)":"Bitte eine Webhook-URL eintragen."; return; }
+      if(!/^https?:\/\//i.test(url)){ st.textContent="Bitte eine gültige Webhook-URL eintragen."; return; }
+      st.textContent="Speichere Webhook…";
+      const meta=await fetchWebhookInfo(url);
+      setWebhook(scope,url,name || meta?.channelName || (scope==='wetter'?'Wetter':'Charakterbogen'));
+      input.value=""; st.textContent="✓ Webhook gespeichert"; document.getElementById("webhookHint").textContent="Webhook gespeichert. Die URL bleibt ausgeblendet."; renderSavedWebhook();
     });
-
-    document.getElementById("btnEditWebhook").addEventListener("click", () => {
-      const data = getWebhookData();
-      const input = document.getElementById("webhookUrl");
-      input.value = data.url;
-      input.type = "text";
-      input.focus();
-      input.select();
-      document.getElementById("webhookHint").textContent = "Webhook wird bearbeitet. Nach der Änderung erneut auf „Webhook speichern“ klicken.";
-    });
-
-    document.getElementById("btnDeleteWebhook").addEventListener("click", () => {
-      if (!getWebhookUrl()) return;
-      if (!confirm("Diesen Discord-Webhook wirklich löschen?")) return;
-      localStorage.removeItem(WEBHOOK_KEY);
-      document.getElementById("webhookUrl").value = "";
-      document.getElementById("webhookUrl").type = "password";
-      document.getElementById("webhookHint").textContent = "Webhook gelöscht. Noch kein Webhook hinterlegt.";
-      document.getElementById("webhookStatus").textContent = "✓ Webhook gelöscht";
-      document.getElementById("webhookStatus").style.color = "var(--success)";
-      renderSavedWebhook();
-    });
-
-    document.getElementById("btnTestSavedWebhook").addEventListener("click", async () => {
-      const st = document.getElementById("webhookStatus");
-      st.textContent = "Sende Test…";
-      st.style.color = "var(--text-muted)";
-      const result = await sendDiscordWebhook({
-        username: "Chroniken Admin",
-        embeds: [{ title: "🔔 Webhook-Test", description: "Die Verbindung aus der Charakterverwaltung funktioniert.", color: 0xa855f7, footer: { text: "Chroniken · Test" }, timestamp: new Date().toISOString() }]
-      });
-      st.textContent = result.ok ? "✓ Test im Channel angekommen" : "Test fehlgeschlagen (" + (result.reason || "?") + ")";
-      st.style.color = result.ok ? "var(--success)" : "#fb7185";
-    });
-
     document.getElementById("btnTestWebhook").addEventListener("click", async () => {
-      const typed = document.getElementById("webhookUrl").value.trim();
-      if (typed) setWebhookUrl(typed);
-      document.getElementById("webhookUrl").value = "";
-      const st = document.getElementById("webhookStatus");
-      st.textContent = "Sende Test…";
-      st.style.color = "var(--text-muted)";
-      const result = await sendDiscordWebhook({
-        username: "Chroniken Admin",
-        embeds: [{
-          title: "🔔 Webhook-Test",
-          description: "Die Verbindung aus der Charakterverwaltung funktioniert.",
-          color: 0xa855f7,
-          footer: { text: "Chroniken · Test" },
-          timestamp: new Date().toISOString()
-        }]
-      });
-      if (result.reason === "no_url") {
-        st.textContent = "Bitte zuerst eine Webhook-URL eintragen.";
-        st.style.color = "#fb7185";
-      } else if (result.ok) {
-        st.textContent = "✓ Test im Channel angekommen";
-        st.style.color = "var(--success)";
-      } else {
-        st.textContent = "Test fehlgeschlagen (" + (result.reason || "?") + ")";
-        st.style.color = "#fb7185";
-      }
+      const scope=document.getElementById("webhookScope").value, typed=document.getElementById("webhookUrl").value.trim();
+      if(typed) setWebhook(scope,typed,document.getElementById("webhookName").value.trim());
+      const result=await sendDiscordWebhook({username:'Chroniken',embeds:[{title:'🔔 Webhook-Test',description:scope==='wetter'?'Der Wetter-Webhook funktioniert.':'Der Charakterbogen-Webhook funktioniert.',color:0xa855f7,footer:{text:'Chroniken · Test'},timestamp:new Date().toISOString()}]},scope);
+      document.getElementById("webhookStatus").textContent=result.ok?'✓ Test gesendet':'Webhook konnte nicht gesendet werden'; renderSavedWebhook();
     });
+    renderSavedWebhook();
 
     function doLogin() {
       const u = document.getElementById("loginUser").value.trim();
@@ -715,6 +731,7 @@
     document.getElementById("btnLogoutPanel").addEventListener("click", doLogout);
 
     updateLoginUI();
-  </script>
+  
+</script>
 </body>
 </html>

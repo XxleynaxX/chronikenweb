@@ -410,8 +410,12 @@ textarea { min-height: 120px; resize: vertical; }
             <h2>Allgemeine Daten</h2>
             <div class="grid">
                 <div class="field">
-                    <label>Name</label>
+                    <label>Name *</label>
                     <input id="name" type="text" placeholder="Name des Charakters">
+                </div>
+                <div class="field">
+                    <label>Discord-Name *</label>
+                    <input id="discordName" type="text" placeholder="Dein Discord-Name (z. B. Name#0000)">
                 </div>
                 <div class="field">
                     <label>Steam-ID</label>
@@ -423,7 +427,7 @@ textarea { min-height: 120px; resize: vertical; }
                 </div>
                 <div class="field">
                     <label>Geschlecht</label>
-                    <select id="gender">
+                    <select id="gender" onchange="updateSubraces()">
                         <option value="">Bitte auswählen</option>
                         <option value="Männlich">Männlich</option>
                         <option value="Weiblich">Weiblich</option>
@@ -512,6 +516,13 @@ textarea { min-height: 120px; resize: vertical; }
                     <option value="Halbelf">Halbelf</option>
                     <option value="Wargwandler">Wargwandler</option>
                 </select>
+            </div>
+
+            <div id="raceAutoInfo" class="field full" style="display:none;margin-top:15px;padding:12px;border:1px solid #2a2a32;border-radius:8px;background:#17171c;">
+                <div style="color:#c084fc;font-weight:600;margin-bottom:6px;">Automatische Volksdaten</div>
+                <div id="raceAutoDescription" style="color:#b8b0c8;"></div>
+                <div id="raceAutoStrengths" style="margin-top:6px;"></div>
+                <div id="raceAutoWeaknesses" style="margin-top:4px;"></div>
             </div>
 
             <div id="subraceContainer" class="field full" style="display: none; margin-top: 15px;">
@@ -630,24 +641,12 @@ textarea { min-height: 120px; resize: vertical; }
                     <label>Hauptberuf</label>
                     <select id="mainJob">
                         <option value="">Bitte auswählen</option>
-                        <option value="Tierpfleger">Der Tierpfleger</option>
-                        <option value="Feinschmied">Der Feinschmied</option>
-                        <option value="Bogner">Der Bogner</option>
-                        <option value="Alchemist">Der Alchemist</option>
-                        <option value="Waffenschmied">Der Waffenschmied</option>
-                        <option value="Rüstungsschmied">Der Rüstungsschmied</option>
                     </select>
                 </div>
                 <div class="field">
                     <label>Nebenberuf</label>
                     <select id="subJob">
                         <option value="">Keiner / Bitte auswählen</option>
-                        <option value="Schneider">Der Schneider</option>
-                        <option value="Koch und Wirt">Der Koch und der Wirt</option>
-                        <option value="Sucher nach Arbeitern">Der Sucher nach Arbeitern</option>
-                        <option value="Landwirt">Der Landwirt</option>
-                        <option value="Mönch und Priester">Mönch und Priester</option>
-                        <option value="Heiler">Heiler</option>
                     </select>
                 </div>
             </div>
@@ -669,6 +668,15 @@ textarea { min-height: 120px; resize: vertical; }
                         <option value="🦊 Egoistisch / Skrupellos">🦊 Egoistisch / Skrupellos (Vorteilsbedacht)</option>
                         <option value="🔥 Böse / Boshaft">🔥 Böse / Boshaft (Rücksichtslos & destruktiv)</option>
                     </select>
+                </div>
+
+                <!-- GÖTTER -->
+                <div class="field full">
+                    <label>Gott / Göttin</label>
+                    <select id="god">
+                        <option value="">Keine / Bitte auswählen</option>
+                    </select>
+                    <small style="color:#a89cc8;">Die Auswahl wird automatisch aus den angelegten Göttern geladen.</small>
                 </div>
 
                 <!-- AUSSEHEN -->
@@ -730,7 +738,21 @@ textarea { min-height: 120px; resize: vertical; }
             </div>
         </div>
 
-        <div class="card">
+        <div class="card" style="background:#121216; border:1px solid #3b2a55;">
+            <h2 style="color:#c084fc; margin-top:0;">📋 Hinweis zur Charakterverwaltung</h2>
+            <p style="color:#ccc; font-size:0.95rem; line-height:1.55; margin:0 0 1rem;">
+                Wenn ihr euren Charakterbogen vollständig ausgefüllt und abgeschickt habt, werden einige der angegebenen Informationen automatisch in unserer Charakterverwaltung gespeichert.
+            </p>
+            <p style="color:#ccc; font-size:0.95rem; line-height:1.55; margin:0 0 1rem;">
+                So können wir als Team die Charaktere übersichtlich verwalten und wichtige Informationen schneller einsehen. Die gespeicherten Daten helfen uns außerdem dabei, Änderungen und Bearbeitungen am Charakterbogen einfacher nachzuvollziehen.
+            </p>
+            <p style="color:#a89cc8; font-size:0.9rem; margin:0 0 1rem;">
+                Bitte trage oben deinen <strong>Charaktername</strong> und deinen <strong>Discord-Name</strong> ein. Mit dem Abschicken bestätigst du, dass diese Angaben korrekt sind.
+            </p>
+            <label class="checkbox-item" style="width:fit-content; margin-bottom:1rem;">
+                <input type="checkbox" id="adminInfoConfirm">
+                Ich bestätige, dass Charaktername und Discord-Name korrekt sind und die Infos in der Charakterverwaltung gespeichert werden dürfen.
+            </label>
             <button type="button" class="main-button" onclick="preCheckCharacter()">
                 📜 Charakter fertigstellen & als Bild speichern
             </button>
@@ -897,10 +919,14 @@ textarea { min-height: 120px; resize: vertical; }
             <!-- Allgemeine Daten -->
             <div class="img-box">
                 <div class="img-box-title">👤 Allgemeine Daten</div>
+                <div class="img-field-row"><span class="img-field-label">Discord:</span> <span id="imgDiscordName">-</span></div>
+                <div class="img-field-row"><span class="img-field-label">Steam-ID:</span> <span id="imgSteamId">-</span></div>
+                <div class="img-field-row"><span class="img-field-label">Geburtstag:</span> <span id="imgBirthday">-</span></div>
                 <div class="img-field-row"><span class="img-field-label">Alter:</span> <span id="imgAge">-</span></div>
                 <div class="img-field-row"><span class="img-field-label">Geschlecht:</span> <span id="imgGender">-</span></div>
                 <div class="img-field-row"><span class="img-field-label">Größe:</span> <span id="imgSize">-</span></div>
                 <div class="img-field-row"><span class="img-field-label">Gesinnung:</span> <span id="imgAlignment">-</span></div>
+                <div class="img-field-row"><span class="img-field-label">Gott/Göttin:</span> <span id="imgGod">-</span></div>
                 <div id="imgSizeStatus" class="img-status-badge" style="display:none;"></div>
             </div>
 
@@ -1148,6 +1174,79 @@ const races = {
     }
 };
 
+function buildRaceContent(r){
+  let c="";
+  if(r.description) c+='<div class="detail-box"><strong>Allgemeines</strong><p>'+r.description+(r.age?' Lebensspanne: '+r.age+'.':'')+'</p></div>';
+  if(r.strengths) c+='<div class="detail-box"><strong>💪 Stärken</strong><p>'+r.strengths+'</p></div>';
+  if(r.weaknesses) c+='<div class="detail-box"><strong>⚠️ Schwächen</strong><p>'+r.weaknesses+'</p></div>';
+  return c;
+}
+function mergeDynamicRaces(){
+  // Völker werden zentral in localStorage "voelker" verwaltet (voelker.html)
+  let list=null;
+  try { const x=JSON.parse(localStorage.getItem("voelker")||"null"); if(Array.isArray(x)&&x.length) list=x; } catch(e){}
+  if(!list || typeof races === "undefined") return;
+  Object.keys(races).forEach(k=>delete races[k]);
+  list.forEach(r=>{
+    if(!r || !r.name) return;
+    races[r.name]={
+      title:((r.emoji?r.emoji+" ":"")+r.name).trim(),
+      value:r.name,
+      subraces:Array.isArray(r.subraces)?r.subraces:[],
+      size:r.size||"",
+      age:r.age||"",
+      minM:r.minM,maxM:r.maxM,minF:r.minF,maxF:r.maxF,
+      description:r.description||"",
+      strengths:r.strengths||"",
+      weaknesses:r.weaknesses||"",
+      content:buildRaceContent(r)
+    };
+  });
+}
+function renderDynamicRaceOptions(){
+  const select=document.getElementById("race"); if(!select) return;
+  mergeDynamicRaces();
+  const old=select.value;
+  const values=Object.keys(races);
+  select.innerHTML='<option value="">Bitte auswählen</option>'+values.map(k=>`<option value="${String(k).replace(/"/g,'&quot;')}">${String(races[k].value||k).replace(/</g,'&lt;')}</option>`).join('');
+  select.value=old;
+}
+
+// Dynamische Daten aus der Verwaltung
+const DEFAULT_JOBS = [
+  {name:"Tierpfleger", category:"Hauptberuf"},{name:"Feinschmied", category:"Hauptberuf"},{name:"Bogner", category:"Hauptberuf"},
+  {name:"Alchemist", category:"Hauptberuf"},{name:"Waffenschmied", category:"Hauptberuf"},{name:"Rüstungsschmied", category:"Hauptberuf"},
+  {name:"Mönch und Priester", category:"Nebenberuf"},{name:"Heiler", category:"Nebenberuf"},{name:"Schneider", category:"Nebenberuf"},
+  {name:"Koch und Wirt", category:"Nebenberuf"},{name:"Sucher nach Arbeitern", category:"Nebenberuf"},{name:"Landwirt", category:"Nebenberuf"}
+];
+function loadDynamicJobs(){
+  try { const x=JSON.parse(localStorage.getItem("berufe")||""); if(Array.isArray(x)&&x.length) return x; } catch(e){}
+  return DEFAULT_JOBS;
+}
+function loadDynamicGods(){
+  const defaults=[
+    {name:"Aurelion",domain:"Licht • Ordnung • Sonne"},{name:"Nyxara",domain:"Nacht • Geheimnisse • Träume"},{name:"Thalor",domain:"Meer • Sturm • Wandel"},{name:"Veyra",domain:"Leben • Wachstum • Heilung"},{name:"Mordak",domain:"Krieg • Ehre • Stahl"},{name:"Syleth",domain:"Schatten • Verrat • Verfall"}
+  ];
+  try { const x=JSON.parse(localStorage.getItem("goetter")||"null"); if(Array.isArray(x)&&x.length) return x; } catch(e){}
+  return defaults;
+}
+function renderDynamicCharacterOptions(){
+  const main=document.getElementById("mainJob"), sub=document.getElementById("subJob"), god=document.getElementById("god");
+  if(main && sub){
+    const oldMain=main.value, oldSub=sub.value;
+    const jobs=loadDynamicJobs();
+    main.innerHTML='<option value="">Bitte auswählen</option>'+jobs.filter(j=>j.category!=="Nebenberuf").map(j=>`<option value="${String(j.name).replace(/"/g,'&quot;')}">${j.name}</option>`).join('');
+    sub.innerHTML='<option value="">Keiner / Bitte auswählen</option>'+jobs.filter(j=>j.category==="Nebenberuf").map(j=>`<option value="${String(j.name).replace(/"/g,'&quot;')}">${j.name}</option>`).join('');
+    main.value=oldMain; sub.value=oldSub;
+  }
+  if(god){
+    const old=god.value, gods=loadDynamicGods();
+    god.innerHTML='<option value="">Keine / Bitte auswählen</option>'+gods.map(g=>`<option value="${String(g.name).replace(/"/g,'&quot;')}">${String(g.name).replace(/</g,'&lt;')}</option>`).join('');
+    god.value=old;
+  }
+}
+window.addEventListener("storage", () => { renderDynamicRaceOptions(); renderDynamicCharacterOptions(); });
+
 const magicSchools = {
     feuer: { title: "🔥 Feuermagie", source: "Offenes Feuer", strengths: "Zerstörung, Hitze", weaknesses: "Brandnarben, Hitzewallungen" },
     wasser: { title: "💧 Wassermagie", source: "Gewässer, Regen", strengths: "Flexibilität, Heilung", weaknesses: "Unterkühlung, Erschöpfung" },
@@ -1240,8 +1339,23 @@ function updateSubraces() {
     const raceVal = document.getElementById("race").value;
     const container = document.getElementById("subraceContainer");
     const list = document.getElementById("subraceList");
+    const raceInfo = document.getElementById("raceAutoInfo");
+    const race = races[raceVal];
     list.innerHTML = "";
-    if (races[raceVal] && races[raceVal].subraces) {
+    if (raceInfo) {
+        if (race) {
+            raceInfo.style.display = "block";
+            document.getElementById("raceAutoDescription").innerHTML = race.description || (race.content ? race.content.replace(/<[^>]*>/g,' ').replace(/\s+/g,' ').trim() : "");
+            document.getElementById("raceAutoStrengths").innerHTML = race.strengths ? "<b>💪 Stärken:</b> " + race.strengths : "";
+            document.getElementById("raceAutoWeaknesses").innerHTML = race.weaknesses ? "<b>⚠️ Schwächen:</b> " + race.weaknesses : "";
+            const gender = document.getElementById("gender")?.value;
+            let min = gender === "Weiblich" ? race.minF : race.minM;
+            let max = gender === "Weiblich" ? race.maxF : race.maxM;
+            if (min && max && max < 99) document.getElementById("size").value = (min.toFixed(2).replace('.',',') + "–" + max.toFixed(2).replace('.',',') + " m");
+            else if (race.size && !document.getElementById("size").value) document.getElementById("size").value = race.size;
+        } else { raceInfo.style.display = "none"; }
+    }
+    if (race && race.subraces) {
         races[raceVal].subraces.forEach(sub => {
             list.innerHTML += `
                 <label class="checkbox-item">
@@ -1358,11 +1472,15 @@ function parseSizeToMeters(sizeStr) {
 
 function preCheckCharacter() {
     const name = document.getElementById("name").value.trim();
+    const discordName = document.getElementById("discordName")?.value.trim() || "";
     const race = document.getElementById("race").value;
     const gender = document.getElementById("gender").value;
     const sizeInput = document.getElementById("size").value.trim();
+    const adminInfoOk = document.getElementById("adminInfoConfirm")?.checked;
 
-    if (!name) { alert("Bitte gib einen Namen ein."); return; }
+    if (!name) { alert("Bitte gib einen Charaktername ein."); return; }
+    if (!discordName) { alert("Bitte gib deinen Discord-Name ein."); return; }
+    if (!adminInfoOk) { alert("Bitte bestätige den Hinweis zur Charakterverwaltung (Charaktername & Discord-Name)."); return; }
     if (!race) { alert("Bitte wähle ein Volk / eine Rasse aus."); return; }
 
     const hasMagic = document.getElementById("hasMagic").checked;
@@ -1415,10 +1533,20 @@ function generateCharacterFinal() {
     const selectedSubraces = Array.from(document.querySelectorAll(".subrace-check:checked")).map(cb => cb.value);
     document.getElementById("imgRaceSub").textContent = race + (selectedSubraces.length ? " (" + selectedSubraces.join(", ") + ")" : "");
 
+    const steamId = document.getElementById("steamId")?.value.trim() || "-";
+    const discordName = document.getElementById("discordName")?.value.trim() || "-";
+    const bDay = document.getElementById("birthdayDay")?.value;
+    const bMonth = document.getElementById("birthdayMonth")?.value;
+    const bYear = document.getElementById("birthdayYear")?.value;
+    const birthdayText = (bDay && bMonth !== "" && bYear) ? `${bDay}. ${INGAME_MONTHS[parseInt(bMonth,10)] || "Monat"} ${bYear}` : "-";
+    if (document.getElementById("imgDiscordName")) document.getElementById("imgDiscordName").textContent = discordName;
+    document.getElementById("imgSteamId").textContent = steamId;
+    document.getElementById("imgBirthday").textContent = birthdayText;
     document.getElementById("imgAge").textContent = document.getElementById("age").value || "-";
     document.getElementById("imgGender").textContent = document.getElementById("gender").value || "-";
     document.getElementById("imgSize").textContent = document.getElementById("size").value || "-";
     document.getElementById("imgAlignment").textContent = document.getElementById("alignment").value || "-";
+    document.getElementById("imgGod").textContent = document.getElementById("god")?.value || "-";
 
     // Größen-Status
     const sizeStatusEl = document.getElementById("imgSizeStatus");
@@ -1549,6 +1677,88 @@ function generateCharacterFinal() {
     createPNG(name);
 }
 
+function registerCharacterInManagement(data) {
+    // Jeder fertiggestellte Charakter wird automatisch in die Charakterverwaltung übernommen.
+    // Bei erneutem Fertigstellen desselben Bogens wird der bestehende Eintrag aktualisiert.
+    const KEY = "portal_char_registry";
+    const NEXT = "portal_char_next_id";
+    let list = [];
+    try { list = JSON.parse(localStorage.getItem(KEY) || "[]"); } catch (e) { list = []; }
+    if (!Array.isArray(list)) list = [];
+
+    let registryId = data.registryId || "";
+    let existingIndex = registryId ? list.findIndex(c => c.id === registryId) : -1;
+
+    // Fallback für ältere Bögen ohne Verwaltungs-ID: gleicher Charaktername + Steam-ID.
+    if (existingIndex < 0 && data.name) {
+        const steam = String(data.steamId || "").trim();
+        existingIndex = list.findIndex(c =>
+            String(c.name || "").trim().toLowerCase() === String(data.name || "").trim().toLowerCase() &&
+            (!steam || String(c.steamId || "").trim() === steam)
+        );
+        if (existingIndex >= 0) registryId = list[existingIndex].id;
+    }
+
+    if (!registryId) {
+        let n = parseInt(localStorage.getItem(NEXT) || "1", 10);
+        if (!Number.isFinite(n) || n < 1) n = 1;
+        registryId = "CH-" + String(n).padStart(4, "0");
+        localStorage.setItem(NEXT, String(n + 1));
+    }
+
+    const now = new Date().toISOString();
+    const previous = existingIndex >= 0 ? list[existingIndex] : {};
+    const entry = {
+        ...previous,
+        id: registryId,
+        name: data.name || "",
+        player: data.discordName || data.verifiedUsername || data.consentVerifiedUsername || previous.player || "",
+        discordName: data.discordName || previous.discordName || "",
+        steamId: data.steamId || "",
+        race: data.race || "",
+        god: data.god || "",
+        mainJob: data.mainJob || "",
+        subJob: data.subJob || "",
+        size: data.size || "",
+        gender: data.gender || "",
+        age: data.age || "",
+        birthdayDay: data.birthdayDay || "",
+        birthdayMonth: data.birthdayMonth || "",
+        birthdayYear: data.birthdayYear || "",
+        status: previous.status || "aktiv",
+        warnings: Number(previous.warnings) || 0,
+        violation: previous.violation || "",
+        notes: previous.notes || "",
+        characterData: data,
+        createdAt: previous.createdAt || now,
+        updatedAt: now,
+        completedAt: now,
+        completed: true
+    };
+
+    if (existingIndex >= 0) list[existingIndex] = entry;
+    else list.push(entry);
+    localStorage.setItem(KEY, JSON.stringify(list));
+
+    // ID auch im gespeicherten Charakterbogen behalten, damit spätere Fertigstellungen
+    // denselben Verwaltungseintrag aktualisieren.
+    data.registryId = registryId;
+    localStorage.setItem("chroniken_charakter", JSON.stringify(data));
+    return entry;
+}
+
+function createCharacterEvent(data) {
+    const key = "portal_events";
+    let events=[]; try { events=JSON.parse(localStorage.getItem(key)||"[]"); } catch(e) {}
+    const eventId = data.characterEventId || ("char_" + Date.now() + "_" + Math.random().toString(36).slice(2,7));
+    const day=parseInt(data.birthdayDay,10), month=parseInt(data.birthdayMonth,10), year=parseInt(data.birthdayYear,10);
+    const monthName=(!isNaN(month)?INGAME_MONTHS[month]:"");
+    const date = (!isNaN(day)&&!isNaN(month)) ? `${day}. ${monthName}${!isNaN(year)?" "+year:""}` : "";
+    events=events.filter(e=>e.characterEventId!==eventId && e.characterName!==data.name);
+    events.push({id:"e_"+Date.now()+"_"+Math.random().toString(36).slice(2,7), characterEventId:eventId, characterName:data.name, title:"🎂 Geburtstag von "+data.name, date, eventType:"Geburtstag", content:"Automatisch aus dem Charakterbogen erstellt.", showInNews:true, created:Date.now(), updated:Date.now(), birthdayDay:day, birthdayMonth:month, birthdayYear:year});
+    localStorage.setItem(key, JSON.stringify(events));
+}
+
 function createPNG(name) {
     const card = document.getElementById("characterCard");
     html2canvas(card, { scale: 2, backgroundColor: null }).then(canvas => {
@@ -1557,6 +1767,10 @@ function createPNG(name) {
         const safeName = name ? name.replace(/[^a-z0-9äöüÄÖÜß_-]/gi, "_") : "Charakter";
         link.download = "Chroniken-" + safeName + ".png";
         link.href = canvas.toDataURL("image/png");
+        const data = collectCharacterData();
+        registerCharacterInManagement(data);
+        registerBirthdayForEvents(data);
+        createCharacterEvent(data);
         link.click();
         document.getElementById("success").style.display = "block";
         document.getElementById("success").scrollIntoView({ behavior: "smooth" });
@@ -1673,7 +1887,9 @@ function registerBirthdayForEvents(data) {
 /* ===================== LOCALSTORAGE & JSON ===================== */
 function collectCharacterData() {
     return {
+        registryId: (JSON.parse(localStorage.getItem("chroniken_charakter") || "null") || {}).registryId || "",
         name: document.getElementById("name").value,
+        discordName: document.getElementById("discordName") ? document.getElementById("discordName").value : "",
         steamId: document.getElementById("steamId") ? document.getElementById("steamId").value : "",
         age: document.getElementById("age").value,
         gender: document.getElementById("gender").value,
@@ -1697,6 +1913,7 @@ function collectCharacterData() {
         otherInput: document.getElementById("otherInput").value,
         mainJob: document.getElementById("mainJob").value,
         subJob: document.getElementById("subJob").value,
+        god: document.getElementById("god") ? document.getElementById("god").value : "",
         alignment: document.getElementById("alignment").value,
         hairInput: document.getElementById("hairInput").value,
         eyesInput: document.getElementById("eyesInput").value,
@@ -1719,6 +1936,9 @@ function collectCharacterData() {
 function applyCharacterData(data) {
     if (!data) return;
     document.getElementById("name").value = data.name || "";
+    if (document.getElementById("discordName")) {
+        document.getElementById("discordName").value = data.discordName || data.player || "";
+    }
     if (document.getElementById("steamId")) {
         document.getElementById("steamId").value = data.steamId || "";
     }
@@ -1774,8 +1994,10 @@ function applyCharacterData(data) {
     toggleField("otherField", !!data.hasOther);
     document.getElementById("otherInput").value = data.otherInput || "";
 
+    renderDynamicCharacterOptions();
     document.getElementById("mainJob").value = data.mainJob || "";
     document.getElementById("subJob").value = data.subJob || "";
+    if (document.getElementById("god")) document.getElementById("god").value = data.god || "";
     document.getElementById("alignment").value = data.alignment || "";
     document.getElementById("hairInput").value = data.hairInput || "";
     document.getElementById("eyesInput").value = data.eyesInput || "";
@@ -1834,6 +2056,7 @@ function importJSON(event) {
 
 /* ===================== START ===================== */
 window.onload = () => {
+    mergeDynamicRaces();
     initRaceOverview();
     initMagicOverview();
     initJobOverview();
@@ -1844,6 +2067,9 @@ window.onload = () => {
     }
     try { updateAgeFromBirthday(); } catch (e) {}
 };
+
+// Optionen beim Öffnen laden
+document.addEventListener("DOMContentLoaded", () => { renderDynamicRaceOptions(); renderDynamicCharacterOptions(); });
 </script>
 
 <footer style="text-align:center;padding:1.5rem;border-top:1px solid #2a2a32;color:#a89cc8;font-size:0.85rem;margin-top:40px;">

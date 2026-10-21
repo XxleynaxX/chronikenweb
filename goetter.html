@@ -5,67 +5,30 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Götter & Kulte – Chroniken</title>
   <link rel="stylesheet" href="style.css">
+  <link rel="stylesheet" href="chroniken-admin.css">
   <style>
-    .god-card {
-      cursor: pointer;
-      position: relative;
-    }
-    .god-card .short-text {
-      font-size: 0.95rem;
-      color: var(--text-muted);
-      display: -webkit-box;
-      -webkit-line-clamp: 3;
-      -webkit-box-orient: vertical;
-      overflow: hidden;
-    }
-    .god-card .click-hint {
-      font-size: 0.75rem;
-      color: var(--purple);
-      margin-top: 0.6rem;
-    }
-    .god-card.expanded {
-      grid-column: 1 / -1;
-      border-color: var(--purple);
-      box-shadow: 0 0 24px rgba(124, 58, 237, 0.3);
-    }
-    .god-card.expanded .short-text {
-      display: none;
-    }
-    .god-card .full-text {
-      display: none;
-      font-size: 1rem;
-      color: var(--text);
-      line-height: 1.7;
-      margin-top: 0.5rem;
-    }
-    .god-card.expanded .full-text {
-      display: block;
-    }
-    .god-card.expanded .click-hint {
-      display: none;
-    }
-    .god-card .close-btn {
-      display: none;
-      margin-top: 1rem;
-    }
-    .god-card.expanded .close-btn {
-      display: inline-block;
-    }
+    .wrap { max-width: 1100px; margin: auto; padding: 2rem 1.5rem; }
+    .god-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 1.2rem; }
+    .god-card { background: var(--bg-card); border: 1px solid var(--border); border-radius: 12px; padding: 1.3rem; transition: border-color 0.2s, box-shadow 0.2s; }
+    .god-card:hover { border-color: var(--accent-dim); box-shadow: 0 0 16px rgba(168, 85, 247, 0.15); }
+    .god-card h3 { margin: 0 0 0.3rem; color: var(--accent-soft); font-size: 1.25rem; }
+    .god-card .domain { font-size: 0.85rem; color: var(--accent); margin-bottom: 0.6rem; font-weight: 600; }
+    .god-card .full-text { font-size: 0.95rem; color: var(--text-muted); line-height: 1.6; }
   </style>
 </head>
 <body>
   <div class="bg-overlay"></div>
-    <header>
-    <div class="logo-wrap">
-      <div class="logo">Chroniken</div>
-    </div>
+  <header>
+    <div class="logo-wrap"><div class="logo">Chroniken</div></div>
     <nav>
       <a href="index.html">Start</a>
       <a href="news.html">News</a>
       <a href="events.html">Events</a>
       <a href="kalender.html">Kalender</a>
+      <a href="wetter.html">Wetter</a>
       <a href="wiki.html">Wiki</a>
       <a href="bibliothek.html">Bibliothek</a>
+      <a href="voelker.html">Völker</a>
       <a href="berufe.html">Berufe</a>
       <a href="kreaturen.html">Kreaturen</a>
       <a href="regeln.html">Regeln</a>
@@ -74,247 +37,106 @@
     </nav>
   </header>
 
-  <main>
+  <main class="wrap">
     <h1 class="page-title">Götter & Kulte</h1>
-    <p class="page-desc">Die Mächte, die über das Portal und die Welten wachen. Klicke auf eine Kachel für den vollen Text.</p>
+    <p class="page-desc">Die Mächte und Götter der Welt. Neue Einträge erscheinen automatisch im Charakterbogen.</p>
 
-    <div class="wiki-controls">
-      <button class="btn" id="btnUnlock">🔓 Schreiben freischalten</button>
-      <button class="btn secondary" id="btnEdit" style="display:none;">Bearbeiten</button>
-      <button class="btn secondary" id="btnLock" style="display:none;">🔒 Sperren</button>
-      <span class="status" id="status">Schreibmodus: gesperrt</span>
-    </div>
-
-    <div id="contentView">
-      <div class="content-block">
-        <h2>Die Großen Götter</h2>
-        <div class="god-grid" id="godGrid"></div>
-      </div>
-      <div class="content-block">
-        <h2>Wichtige Kulte</h2>
-        <ul id="kulteList"></ul>
-      </div>
-      <div class="content-block">
-        <h2>Hinweis</h2>
-        <p>
-          Die hier beschriebenen Götter und Kulte bilden die Grundlage der Portal-Lore.
-          Ergänzungen und eigene Interpretationen können im Wiki festgehalten werden.
-        </p>
-      </div>
-    </div>
-
-    <div class="editor-area" id="editorArea">
-      <div class="card">
-        <h3>Götter & Kulte bearbeiten (JSON)</h3>
-        <p style="color:var(--text-muted); font-size:0.9rem; margin-bottom:1rem;">
-          Format: gods (name, domain, short, full) und kulte (Array von Texten).
-        </p>
-        <div class="form-group">
-          <label for="inputContent">Daten (JSON)</label>
-          <textarea id="inputContent" style="min-height:420px; font-family:monospace; font-size:0.85rem;"></textarea>
+    <section class="admin-panel" id="adminPanel" style="display:none;">
+      <div class="admin-form">
+        <h2 id="formTitle" data-testid="goetter-form-title">Neuen Gott anlegen</h2>
+        <div class="admin-grid">
+          <div class="admin-field"><label>Name *</label><input id="fName" data-testid="goetter-input-name" placeholder="z. B. Aurelion"></div>
+          <div class="admin-field"><label>Domäne</label><input id="fDomain" data-testid="goetter-input-domain" placeholder="Licht • Ordnung • Sonne"></div>
+          <div class="admin-field full"><label>Kurztext</label><textarea id="fShort" data-testid="goetter-input-short"></textarea></div>
+          <div class="admin-field full"><label>Ausführlicher Text</label><textarea id="fFull" data-testid="goetter-input-full"></textarea></div>
         </div>
-        <div style="display:flex; gap:0.8rem;">
-          <button class="btn" id="btnSave">Speichern</button>
-          <button class="btn secondary" id="btnCancel">Abbrechen</button>
+        <div class="admin-actions">
+          <button class="btn" id="btnSave" data-testid="goetter-save-btn">Speichern</button>
+          <button class="btn secondary" id="btnCancel" data-testid="goetter-cancel-btn" style="display:none;">Abbrechen</button>
+          <span class="admin-status" id="status"></span>
         </div>
       </div>
-    </div>
+      <h2 class="admin-sub-title">Vorhandene Götter</h2>
+    </section>
+
+    <div class="god-grid" id="tiles"></div>
   </main>
 
-  <div class="modal-overlay" id="pwModal">
-    <div class="modal">
-      <h3>Schreibmodus freischalten</h3>
-      <p style="color:var(--text-muted); margin-bottom:1rem; font-size:0.9rem;">
-        Passwort eingeben, um Götter & Kulte zu bearbeiten.
-      </p>
-      <div class="form-group">
-        <input type="password" id="pwInput" placeholder="Passwort..." autocomplete="off">
-      </div>
-      <div class="modal-actions">
-        <button class="btn" id="pwConfirm">Freischalten</button>
-        <button class="btn secondary" id="pwCancel">Abbrechen</button>
-      </div>
-    </div>
-  </div>
+  <footer><p>© Kiyasha</p></footer>
 
-  <footer>
-    <p>© Kiyasha</p>
-  </footer>
-
+  <script src="chroniken-data.js"></script>
   <script>
-    const PASSWORD = "portal123";
-    const STORAGE_KEY = "portal_goetter_data_v2";
-
-    const DEFAULT_DATA = {
-      gods: [
-        {
-          name: "Aurelion",
-          domain: "Licht • Ordnung • Sonne",
-          short: "Der strahlende Herrscher des Tages. Seine Anhänger streben nach Gerechtigkeit und Klarheit.",
-          full: "Der strahlende Herrscher des Tages. Seine Anhänger streben nach Gerechtigkeit und Klarheit. Tempel des Aurelion sind oft auf Anhöhen errichtet und von goldenen Symbolen geziert. Priester des Aurelion tragen oft weiße und goldene Gewänder und segnen die Gläubigen bei Sonnenaufgang."
-        },
-        {
-          name: "Nyxara",
-          domain: "Nacht • Geheimnisse • Träume",
-          short: "Die verschleierte Göttin der Nacht. Sie bewahrt verborgenes Wissen und schenkt Visionen.",
-          full: "Die verschleierte Göttin der Nacht. Sie bewahrt verborgenes Wissen und schenkt Visionen denen, die in der Stille lauschen. Ihr Kult pflegt die Kunst der Wahrsagung. In Mondnächten sollen ihre Stimmen besonders klar zu hören sein."
-        },
-        {
-          name: "Thalor",
-          domain: "Meer • Sturm • Wandel",
-          short: "Der unberechenbare Herr der Gezeiten. Seeleute und Wanderer opfern ihm vor großen Reisen.",
-          full: "Der unberechenbare Herr der Gezeiten. Seeleute und Wanderer opfern ihm vor großen Reisen. Seine Stimmung wechselt so schnell wie das Wetter auf offener See. Stürme und ruhige See gelten gleichermaßen als Zeichen seines Willens."
-        },
-        {
-          name: "Veyra",
-          domain: "Leben • Wachstum • Heilung",
-          short: "Die nährende Mutter. Ihre Priesterinnen und Priester heilen Wunden und segnen die Ernten.",
-          full: "Die nährende Mutter. Ihre Priesterinnen und Priester heilen Wunden und segnen die Ernten. Heilige Haine und Quellen sind ihr geweiht. Wer Veyra ehrt, pflegt oft Pflanzen und kümmert sich um Kranke und Verletzte."
-        },
-        {
-          name: "Mordak",
-          domain: "Krieg • Ehre • Stahl",
-          short: "Der unerbittliche Kriegsgott. Nur wer mit Mut und Disziplin kämpft, findet seine Gunst.",
-          full: "Der unerbittliche Kriegsgott. Nur wer mit Mut und Disziplin kämpft, findet seine Gunst. Seine Tempel gleichen Festungen, und Initiationsriten sind hart. Feigheit und Verrat werden in seinem Namen streng bestraft."
-        },
-        {
-          name: "Syleth",
-          domain: "Schatten • Verrat • Verfall",
-          short: "Der gefürchtete Gott der Finsternis. Sein Kult operiert im Verborgenen.",
-          full: "Der gefürchtete Gott der Finsternis. Sein Kult operiert im Verborgenen. Viele leugnen seine Existenz – doch die Schatten wissen es besser. Gerüchte sprechen von geheimen Pakten und Opfern in mondlosen Nächten."
-        }
-      ],
-      kulte: [
-        "Orden des Goldenen Strahls – Anhänger Aurelion. Bewahren Gesetz und Licht.",
-        "Schwestern der Mondschleier – Nyxaras geweihte Seherinnen und Traumdeuterinnen.",
-        "Sturmbrüder – Seefahrer und Sturmrufende, die Thalor huldigen.",
-        "Grüne Hand – Heiler und Druiden im Dienst Veyras.",
-        "Eisenklinge – Kriegerorden unter Mordaks Banner.",
-        "Die Lautlosen – Geheimer Kult Syleths. Wenige trauen sich, darüber zu sprechen."
-      ]
-    };
-
-    let unlocked = false;
-    let expandedId = null;
-
-    const godGrid = document.getElementById("godGrid");
-    const kulteList = document.getElementById("kulteList");
-    const contentView = document.getElementById("contentView");
-    const editorArea = document.getElementById("editorArea");
-    const statusEl = document.getElementById("status");
-    const btnUnlock = document.getElementById("btnUnlock");
-    const btnEdit = document.getElementById("btnEdit");
-    const btnLock = document.getElementById("btnLock");
-    const pwModal = document.getElementById("pwModal");
-    const pwInput = document.getElementById("pwInput");
-    const inputContent = document.getElementById("inputContent");
-
-    function loadData() {
-      try {
-        const raw = localStorage.getItem(STORAGE_KEY);
-        if (raw) return JSON.parse(raw);
-      } catch {}
-      return JSON.parse(JSON.stringify(DEFAULT_DATA));
-    }
-
-    function saveData(data) {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
-    }
-
-    function escapeHtml(s) {
-      return String(s)
-        .replace(/&/g, "&amp;").replace(/</g, "&lt;")
-        .replace(/>/g, "&gt;").replace(/"/g, "&quot;");
-    }
+    const KEY = "goetter";
+    const esc = ChronikenData.esc;
+    let editIndex = null;
+    const el = id => document.getElementById(id);
+    function admin() { return ChronikenData.isAdmin(); }
 
     function render() {
-      const data = loadData();
-      godGrid.innerHTML = "";
-      data.gods.forEach((g, i) => {
-        const card = document.createElement("div");
-        card.className = "god-card" + (expandedId === i ? " expanded" : "");
-        card.innerHTML = `
-          <h3>${escapeHtml(g.name)}</h3>
-          <div class="domain">${escapeHtml(g.domain)}</div>
-          <p class="short-text">${escapeHtml(g.short)}</p>
-          <p class="full-text">${escapeHtml(g.full)}</p>
-          <div class="click-hint">Klicken zum Aufklappen →</div>
-          <button type="button" class="btn secondary close-btn">Zuklappen</button>
-        `;
-        card.addEventListener("click", (e) => {
-          if (e.target.classList.contains("close-btn")) {
-            expandedId = null;
-            render();
-            return;
-          }
-          expandedId = expandedId === i ? null : i;
-          render();
-        });
-        godGrid.appendChild(card);
-      });
-
-      kulteList.innerHTML = data.kulte.map(k =>
-        `<li>${escapeHtml(k)}</li>`
-      ).join("");
+      const list = ChronikenData.load(KEY);
+      el("adminPanel").style.display = admin() ? "block" : "none";
+      el("tiles").innerHTML = list.map((g, i) => `
+        <div class="god-card">
+          <h3>${esc(g.name)}</h3>
+          <div class="domain">${esc(g.domain || "")}</div>
+          <p class="full-text">${esc(g.full || g.short || "")}</p>
+          ${admin() ? `<div class="tile-actions">
+            <button class="btn secondary" data-edit="${i}" data-testid="goetter-edit-${i}">Bearbeiten</button>
+            <button class="btn danger" data-del="${i}" data-testid="goetter-delete-${i}">Löschen</button>
+          </div>` : ""}
+        </div>`).join("");
+      el("tiles").querySelectorAll("[data-edit]").forEach(b => b.onclick = () => startEdit(+b.dataset.edit));
+      el("tiles").querySelectorAll("[data-del]").forEach(b => b.onclick = () => remove(+b.dataset.del));
     }
 
-    function setUnlocked(state) {
-      unlocked = state;
-      statusEl.textContent = state ? "Schreibmodus: freigeschaltet" : "Schreibmodus: gesperrt";
-      statusEl.classList.toggle("unlocked", state);
-      btnUnlock.style.display = state ? "none" : "inline-block";
-      btnEdit.style.display = state ? "inline-block" : "none";
-      btnLock.style.display = state ? "inline-block" : "none";
+    function resetForm() {
+      editIndex = null;
+      el("fName").value = ""; el("fDomain").value = ""; el("fShort").value = ""; el("fFull").value = "";
+      el("formTitle").textContent = "Neuen Gott anlegen";
+      el("btnSave").textContent = "Speichern";
+      el("btnCancel").style.display = "none";
+      el("status").textContent = "";
     }
 
-    function openEditor() {
-      inputContent.value = JSON.stringify(loadData(), null, 2);
-      contentView.style.display = "none";
-      editorArea.classList.add("visible");
-      inputContent.focus();
+    function startEdit(i) {
+      const g = ChronikenData.load(KEY)[i];
+      if (!g) return;
+      editIndex = i;
+      el("fName").value = g.name || ""; el("fDomain").value = g.domain || ""; el("fShort").value = g.short || ""; el("fFull").value = g.full || "";
+      el("formTitle").textContent = "Gott bearbeiten";
+      el("btnSave").textContent = "Änderungen speichern";
+      el("btnCancel").style.display = "inline-block";
+      window.scrollTo({ top: 0, behavior: "smooth" });
     }
 
-    function closeEditor() {
-      editorArea.classList.remove("visible");
-      contentView.style.display = "block";
+    function remove(i) {
+      if (!confirm("Diesen Gott wirklich löschen?")) return;
+      const list = ChronikenData.load(KEY);
+      list.splice(i, 1);
+      ChronikenData.save(KEY, list);
+      if (editIndex === i) resetForm();
       render();
     }
 
-    btnUnlock.addEventListener("click", () => {
-      pwModal.classList.add("open");
-      pwInput.value = "";
-      pwInput.focus();
-    });
-    document.getElementById("pwCancel").addEventListener("click", () => pwModal.classList.remove("open"));
-    document.getElementById("pwConfirm").addEventListener("click", () => {
-      if (pwInput.value === PASSWORD) {
-        setUnlocked(true);
-        pwModal.classList.remove("open");
-      } else {
-        alert("Falsches Passwort.");
-        pwInput.value = "";
-        pwInput.focus();
-      }
-    });
-    pwInput.addEventListener("keydown", e => {
-      if (e.key === "Enter") document.getElementById("pwConfirm").click();
-    });
-    btnLock.addEventListener("click", () => setUnlocked(false));
-    btnEdit.addEventListener("click", openEditor);
-    document.getElementById("btnSave").addEventListener("click", () => {
-      try {
-        const data = JSON.parse(inputContent.value);
-        if (!data.gods || !Array.isArray(data.gods)) throw new Error("gods fehlt");
-        saveData(data);
-        expandedId = null;
-        closeEditor();
-      } catch (err) {
-        alert("Ungültiges JSON: " + err.message);
-      }
-    });
-    document.getElementById("btnCancel").addEventListener("click", closeEditor);
+    function save() {
+      const name = el("fName").value.trim();
+      if (!name) { el("status").style.color = "#f87171"; el("status").textContent = "Bitte einen Namen eingeben."; return; }
+      const list = ChronikenData.load(KEY);
+      const short = el("fShort").value.trim();
+      const entry = { name, domain: el("fDomain").value.trim(), short, full: el("fFull").value.trim() || short };
+      if (editIndex !== null && list[editIndex]) list[editIndex] = entry; else list.push(entry);
+      ChronikenData.save(KEY, list);
+      resetForm();
+      el("status").style.color = "#22c55e";
+      el("status").textContent = "✓ Gespeichert";
+      render();
+      setTimeout(() => { el("status").textContent = ""; }, 2500);
+    }
 
+    el("btnSave").onclick = save;
+    el("btnCancel").onclick = resetForm;
     render();
+    window.addEventListener("storage", render);
   </script>
 </body>
 </html>

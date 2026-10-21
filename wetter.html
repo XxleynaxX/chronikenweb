@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Chroniken – Wetter</title>
+  <link rel="stylesheet" href="style.css">
+  <link rel="stylesheet" href="chroniken-admin.css">
+  <script src="chroniken-data.js"></script>
+  <script src="wetter.js"></script>
+  <style>
+    .weather-wrap{max-width:900px;margin:0 auto;padding:2rem 1.5rem 4rem}
+    .weather-card{background:var(--bg-card);border:1px solid var(--border);border-radius:18px;padding:2rem;text-align:center}
+    .weather-icon{font-size:5rem}.weather-name{font-size:2rem;color:var(--accent-soft);margin:.5rem 0}
+    .weather-desc{color:var(--text-muted);font-size:1.05rem}
+    .timer{margin-top:1.4rem;padding:1rem;border:1px solid var(--border);border-radius:12px;background:rgba(168,85,247,.06)}
+    .history{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:.8rem;margin-top:1.2rem}
+    .history div.wcard{padding:1rem;border:1px solid var(--border);border-radius:12px;background:rgba(255,255,255,.02)}
+    .small{color:var(--text-muted);font-size:.85rem}
+  </style>
+</head>
+<body>
+  <div class="bg-overlay"></div>
+  <header>
+    <div class="logo-wrap"><div class="logo">Chroniken</div></div>
+    <nav>
+      <a href="index.html">Start</a>
+      <a href="news.html">News</a>
+      <a href="events.html">Events</a>
+      <a href="kalender.html">Kalender</a>
+      <a href="wetter.html" class="active">Wetter</a>
+      <a href="wiki.html">Wiki</a>
+      <a href="bibliothek.html">Bibliothek</a>
+      <a href="voelker.html">Völker</a>
+      <a href="berufe.html">Berufe</a>
+      <a href="kreaturen.html">Kreaturen</a>
+      <a href="regeln.html">Regeln</a>
+      <a href="goetter.html">Götter</a>
+      <a href="charakterbogen.html">Charakterbogen</a>
+    </nav>
+  </header>
+
+  <main class="weather-wrap">
+    <section class="hero"><h1>🌦️ Wetter</h1><p class="subtitle">Das Wetter der Chroniken wechselt alle sechs Stunden.</p></section>
+    <div class="weather-card">
+      <div class="weather-icon" id="icon">🌤️</div>
+      <h2 class="weather-name" id="name">Wetter</h2>
+      <p class="weather-desc" id="desc"></p>
+      <div class="timer"><strong>Nächster Wetterwechsel</strong><div id="countdown" style="font-size:1.6rem;margin-top:.4rem">00:00:00</div></div>
+    </div>
+
+    <!-- Admin-Bereich: nur sichtbar nach Anmeldung über index.html -->
+    <section class="admin-panel" id="adminPanel" style="display:none;">
+      <div class="admin-form">
+        <h2 id="formTitle" data-testid="wetter-form-title">Neues Wetter anlegen</h2>
+        <div class="admin-grid">
+          <div class="admin-field"><label>Symbol / Emoji</label><input id="fIcon" data-testid="wetter-input-icon" placeholder="🌧️"></div>
+          <div class="admin-field"><label>Name *</label><input id="fName" data-testid="wetter-input-name" placeholder="Sturm"></div>
+          <div class="admin-field full"><label>Beschreibung</label><textarea id="fDesc" data-testid="wetter-input-desc"></textarea></div>
+        </div>
+        <div class="admin-actions">
+          <button class="btn" id="btnSave" data-testid="wetter-save-btn">Speichern</button>
+          <button class="btn secondary" id="btnCancel" data-testid="wetter-cancel-btn" style="display:none;">Abbrechen</button>
+          <span class="admin-status" id="status"></span>
+        </div>
+      </div>
+      <h2 class="admin-sub-title">Vorhandenes Wetter</h2>
+    </section>
+
+    <section style="margin-top:2rem">
+      <h2 id="listTitle">🌙 Mögliche Wetterlagen</h2>
+      <div class="history" id="tiles"></div>
+    </section>
+  </main>
+
+  <footer><p>© Kiyasha</p></footer>
+
+  <script>
+    const KEY = "wetter";
+    const esc = ChronikenData.esc;
+    let editIndex = null;
+    const el = id => document.getElementById(id);
+    function admin() { return ChronikenData.isAdmin(); }
+
+    function draw() {
+      const x = ChronikenWeather.get();
+      el("icon").textContent = x.icon;
+      el("name").textContent = x.name;
+      el("desc").textContent = x.description;
+      el("countdown").textContent = ChronikenWeather.format(ChronikenWeather.msNext());
+    }
+
+    function render() {
+      const list = ChronikenData.load(KEY);
+      el("adminPanel").style.display = admin() ? "block" : "none";
+      el("listTitle").textContent = admin() ? "" : "🌙 Mögliche Wetterlagen";
+      el("tiles").innerHTML = list.map((w, i) => `
+        <div class="wcard">
+          <strong>${esc(w.icon)} ${esc(w.name)}</strong>
+          <p class="small">${esc(w.description)}</p>
+          ${admin() ? `<div class="tile-actions">
+            <button class="btn secondary" data-edit="${i}" data-testid="wetter-edit-${i}">Bearbeiten</button>
+            <button class="btn danger" data-del="${i}" data-testid="wetter-delete-${i}">Löschen</button>
+          </div>` : ""}
+        </div>`).join("");
+      el("tiles").querySelectorAll("[data-edit]").forEach(b => b.onclick = () => startEdit(+b.dataset.edit));
+      el("tiles").querySelectorAll("[data-del]").forEach(b => b.onclick = () => remove(+b.dataset.del));
+    }
+
+    function resetForm() {
+      editIndex = null;
+      el("fIcon").value = ""; el("fName").value = ""; el("fDesc").value = "";
+      el("formTitle").textContent = "Neues Wetter anlegen";
+      el("btnSave").textContent = "Speichern";
+      el("btnCancel").style.display = "none";
+      el("status").textContent = "";
+    }
+
+    function startEdit(i) {
+      const w = ChronikenData.load(KEY)[i];
+      if (!w) return;
+      editIndex = i;
+      el("fIcon").value = w.icon || ""; el("fName").value = w.name || ""; el("fDesc").value = w.description || "";
+      el("formTitle").textContent = "Wetter bearbeiten";
+      el("btnSave").textContent = "Änderungen speichern";
+      el("btnCancel").style.display = "inline-block";
+      window.scrollTo({ top: 0, behavior: "smooth" });
+    }
+
+    function remove(i) {
+      if (!confirm("Diese Wetterlage wirklich löschen?")) return;
+      const list = ChronikenData.load(KEY);
+      list.splice(i, 1);
+      ChronikenData.save(KEY, list);
+      if (editIndex === i) resetForm();
+      render();
+    }
+
+    function save() {
+      const name = el("fName").value.trim();
+      if (!name) { el("status").style.color = "#f87171"; el("status").textContent = "Bitte einen Namen eingeben."; return; }
+      const list = ChronikenData.load(KEY);
+      const entry = { name, icon: el("fIcon").value.trim() || "🌦️", description: el("fDesc").value.trim() };
+      if (editIndex !== null && list[editIndex]) list[editIndex] = entry; else list.push(entry);
+      ChronikenData.save(KEY, list);
+      resetForm();
+      el("status").style.color = "#22c55e";
+      el("status").textContent = "✓ Gespeichert";
+      render();
+      setTimeout(() => { el("status").textContent = ""; }, 2500);
+    }
+
+    el("btnSave").onclick = save;
+    el("btnCancel").onclick = resetForm;
+    draw(); render();
+    setInterval(draw, 1000);
+    window.addEventListener("storage", render);
+  </script>
+</body>
+</html>
