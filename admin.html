@@ -6,765 +6,387 @@
   <title>Chroniken – Admin · Charakterverwaltung</title>
   <link rel="stylesheet" href="style.css">
   <style>
-    .admin-layout { max-width: 1100px; margin: 0 auto; padding: 0 1.5rem 3rem; }
-    .admin-bar {
-      display: flex; flex-wrap: wrap; gap: 0.8rem; align-items: center;
-      margin-bottom: 1.5rem; padding: 1rem 1.2rem;
-      background: var(--bg-card); border: 1px solid var(--border); border-radius: 10px;
-    }
-    .admin-bar .status-ok { color: var(--success); font-weight: 600; }
-    .char-table { width: 100%; border-collapse: collapse; margin-top: 0.5rem; }
-    .char-table th, .char-table td {
-      text-align: left; padding: 0.75rem 0.9rem; border-bottom: 1px solid var(--border);
-      vertical-align: top; font-size: 0.92rem;
-    }
-    .char-table th { color: var(--accent-soft); font-weight: 600; background: rgba(168,85,247,0.06); }
-    .char-table tr:hover td { background: rgba(255,255,255,0.02); }
-    .char-id {
-      font-family: ui-monospace, monospace; color: var(--accent-soft);
-      font-weight: 700; white-space: nowrap;
-    }
-    .warn-badge {
-      display: inline-block; min-width: 1.6rem; text-align: center;
-      padding: 0.15rem 0.45rem; border-radius: 999px; font-size: 0.8rem; font-weight: 700;
-      background: rgba(225,29,72,0.15); color: #fb7185; border: 1px solid rgba(225,29,72,0.35);
-    }
-    .warn-badge.zero { background: rgba(34,197,94,0.12); color: #4ade80; border-color: rgba(34,197,94,0.3); }
-    .form-card {
-      background: var(--bg-card); border: 1px solid var(--border); border-radius: 10px;
-      padding: 1.4rem 1.5rem; margin-bottom: 1.5rem;
-    }
-    .form-card h2 { color: var(--accent-soft); font-size: 1.15rem; margin-bottom: 1rem; }
-    .form-grid {
-      display: grid; grid-template-columns: 1fr 1fr; gap: 1rem 1.2rem;
-    }
-    .form-grid .full { grid-column: 1 / -1; }
-    .form-group label { display: block; margin-bottom: 0.35rem; color: var(--text-muted); font-size: 0.88rem; }
-    .form-group input, .form-group textarea, .form-group select {
-      width: 100%; padding: 0.55rem 0.75rem; border-radius: 6px;
-      border: 1px solid var(--border); background: var(--bg-input); color: var(--text);
-      font-size: 0.95rem;
-    }
-    .form-group textarea { min-height: 90px; resize: vertical; }
-    .form-group input:focus, .form-group textarea:focus, .form-group select:focus {
-      outline: none; border-color: var(--accent); box-shadow: 0 0 0 2px rgba(168,85,247,0.2);
-    }
-    .form-actions { display: flex; flex-wrap: wrap; gap: 0.6rem; margin-top: 1.1rem; }
-    .empty-hint { color: var(--text-muted); padding: 1.5rem 0; text-align: center; }
-    .locked-msg {
-      max-width: 480px; margin: 4rem auto; text-align: center;
-      background: var(--bg-card); border: 1px solid var(--border); border-radius: 12px; padding: 2rem;
-    }
-    .locked-msg h2 { color: var(--accent-soft); margin-bottom: 0.6rem; }
-    .violation-preview {
-      font-size: 0.85rem; color: var(--text-muted); max-width: 220px;
-      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
-    }
-    .actions-cell { white-space: nowrap; }
-    .actions-cell button { margin-right: 0.35rem; }
-    .master-tiles { display:grid; grid-template-columns:repeat(auto-fit,minmax(190px,1fr)); gap:1rem; }
-    .master-tile { display:flex; flex-direction:column; gap:.45rem; padding:1.2rem; border:1px solid var(--border); border-radius:12px; background:rgba(168,85,247,.05); color:var(--text); text-decoration:none; transition:.18s ease; }
-    .master-tile:hover { transform:translateY(-2px); border-color:var(--accent); background:rgba(168,85,247,.1); }
-    .master-tile small { color:var(--text-muted); line-height:1.4; }
-    .tile-icon { font-size:1.7rem; }
-    @media (max-width: 700px) {
-      .form-grid { grid-template-columns: 1fr; }
-      .char-table { display: block; overflow-x: auto; }
-    }
+    .admin-layout{max-width:1100px;margin:0 auto;padding:0 1.5rem 3rem}
+    .admin-bar{display:flex;flex-wrap:wrap;gap:.8rem;align-items:center;margin-bottom:1.5rem;padding:1rem 1.2rem;background:var(--bg-card);border:1px solid var(--border);border-radius:10px}
+    .admin-bar .status-ok{color:var(--success);font-weight:600}
+    .char-table{width:100%;border-collapse:collapse;margin-top:.5rem}
+    .char-table th,.char-table td{text-align:left;padding:.75rem .9rem;border-bottom:1px solid var(--border);vertical-align:top;font-size:.92rem}
+    .char-table th{color:var(--accent-soft);font-weight:600;background:rgba(168,85,247,.06)}
+    .char-table tr:hover td{background:rgba(255,255,255,.02)}
+    .char-id{font-family:ui-monospace,monospace;color:var(--accent-soft);font-weight:700;white-space:nowrap}
+    .warn-badge{display:inline-block;min-width:1.6rem;text-align:center;padding:.15rem .45rem;border-radius:999px;font-size:.8rem;font-weight:700;background:rgba(225,29,72,.15);color:#fb7185;border:1px solid rgba(225,29,72,.35)}
+    .warn-badge.zero{background:rgba(34,197,94,.12);color:#4ade80;border-color:rgba(34,197,94,.3)}
+    .form-card{background:var(--bg-card);border:1px solid var(--border);border-radius:10px;padding:1.4rem 1.5rem;margin-bottom:1.5rem}
+    .form-card h2{color:var(--accent-soft);font-size:1.15rem;margin-bottom:1rem}
+    .form-grid{display:grid;grid-template-columns:1fr 1fr;gap:1rem 1.2rem}
+    .form-grid .full{grid-column:1/-1}
+    .form-group label{display:block;margin-bottom:.35rem;color:var(--text-muted);font-size:.88rem}
+    .form-group input,.form-group textarea,.form-group select{width:100%;padding:.55rem .75rem;border-radius:6px;border:1px solid var(--border);background:var(--bg-input);color:var(--text);font-size:.95rem}
+    .form-group textarea{min-height:90px;resize:vertical}
+    .form-group input:focus,.form-group textarea:focus,.form-group select:focus{outline:none;border-color:var(--accent);box-shadow:0 0 0 2px rgba(168,85,247,.2)}
+    .form-actions{display:flex;flex-wrap:wrap;gap:.6rem;margin-top:1.1rem}
+    .empty-hint{color:var(--text-muted);padding:1.5rem 0;text-align:center}
+    .locked-msg{max-width:480px;margin:4rem auto;text-align:center;background:var(--bg-card);border:1px solid var(--border);border-radius:12px;padding:2rem}
+    .locked-msg h2{color:var(--accent-soft);margin-bottom:.6rem}
+    .violation-preview{font-size:.85rem;color:var(--text-muted);max-width:220px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+    .actions-cell{white-space:nowrap}.actions-cell button{margin-right:.35rem}
+    .master-tiles{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:1rem}
+    .master-tile{display:flex;flex-direction:column;gap:.45rem;padding:1.2rem;border:1px solid var(--border);border-radius:12px;background:rgba(168,85,247,.05);color:var(--text);text-decoration:none;transition:.18s ease}
+    .master-tile:hover{transform:translateY(-2px);border-color:var(--accent);background:rgba(168,85,247,.1)}
+    .master-tile small{color:var(--text-muted);line-height:1.4}.tile-icon{font-size:1.7rem}
+    @media(max-width:700px){.form-grid{grid-template-columns:1fr}.char-table{display:block;overflow-x:auto}}
   </style>
 </head>
 <body>
-  <div class="bg-overlay"></div>
-  <header>
-    <div class="logo-wrap">
-      <div class="logo">Chroniken</div>
-    </div>
-    <nav>
-      <a href="index.html">Start</a>
-      <a href="news.html">News</a>
-      <a href="events.html">Events</a>
-      <a href="kalender.html">Kalender</a>
-      <a href="wiki.html">Wiki</a>
-      <a href="bibliothek.html">Bibliothek</a>
-      <a href="berufe.html">Berufe</a>
-      <a href="kreaturen.html">Kreaturen</a>
-      <a href="regeln.html">Regeln</a>
-      <a href="goetter.html">Götter</a>
-      <a href="charakterbogen.html">Charakterbogen</a>
-      <a href="admin.html" class="active" id="navAdmin">Admin</a>
-    </nav>
-  </header>
+<div class="bg-overlay"></div>
+<header>
+  <div class="logo-wrap"><div class="logo">Chroniken</div></div>
+  <nav>
+    <a href="index.html">Start</a><a href="news.html">News</a><a href="events.html">Events</a><a href="kalender.html">Kalender</a>
+    <a href="wiki.html">Wiki</a><a href="bibliothek.html">Bibliothek</a><a href="berufe.html">Berufe</a><a href="kreaturen.html">Kreaturen</a>
+    <a href="regeln.html">Regeln</a><a href="goetter.html">Götter</a><a href="charakterbogen.html">Charakterbogen</a>
+    <a href="admin.html" class="active" id="navAdmin">Admin</a>
+  </nav>
+</header>
 
-  <main class="admin-layout">
-    <h1 class="page-title">Admin · Charakterverwaltung</h1>
-    <p class="page-desc">Charakterbögen anlegen, Verwarnungen und Regelverstöße dokumentieren. Jeder neue Charakter erhält eine laufende ID.</p>
+<main class="admin-layout">
+  <h1 class="page-title">Admin · Charakterverwaltung</h1>
+  <p class="page-desc">Charakterbögen anlegen, Verwarnungen und Regelverstöße dokumentieren. Jeder neue Charakter erhält eine laufende ID.</p>
 
-    <div id="lockedView" class="locked-msg" style="display:none;">
-      <h2>🔒 Nur für Admins</h2>
-      <p>Bitte unten links mit Benutzername und Passwort anmelden, um die Charakterverwaltung zu nutzen.</p>
-      <p style="margin-top:1rem;"><a href="index.html" class="btn secondary">Zur Startseite</a></p>
-    </div>
-
-    <div id="adminView" style="display:none;">
-      <div class="admin-bar">
-        <span class="status-ok">✓ Angemeldet als Admin</span>
-        <span class="status" id="charCount">0 Charaktere</span>
-        <button type="button" class="btn secondary" id="btnLogout" style="margin-left:auto;">Abmelden</button>
-      </div>
-
-      <div class="form-card">
-        <h2>Discord-Webhooks</h2>
-        <p style="color:var(--text-muted); font-size:0.9rem; margin-bottom:0.9rem;">
-          Du kannst mehrere Discord-Webhooks hinterlegen. Einen für Benachrichtigungen aus dem Charakterbogen und einen für das Wetter.
-        </p>
-        <div class="form-grid">
-          <div class="form-group">
-            <label>Bereich</label>
-            <select id="webhookScope">
-              <option value="charakter">📜 Charakterbogen</option>
-              <option value="wetter">🌦️ Wetter</option>
-            </select>
-          </div>
-          <div class="form-group">
-            <label>Name des Webhooks</label>
-            <input type="text" id="webhookName" placeholder="z. B. Chroniken Charaktere">
-          </div>
-          <div class="form-group full">
-            <label>Webhook-URL</label>
-            <input type="password" id="webhookUrl" autocomplete="off" placeholder="Discord Webhook-URL eintragen" style="font-family:monospace; letter-spacing:0.08em;">
-            <p id="webhookHint" style="color:var(--text-muted);font-size:0.82rem;margin-top:0.35rem;"></p>
-          </div>
-        </div>
-        <div class="form-actions">
-          <button type="button" class="btn" id="btnSaveWebhook">Webhook speichern</button>
-          <button type="button" class="btn secondary" id="btnTestWebhook">Test senden</button>
-          <span class="status" id="webhookStatus"></span>
-        </div>
-      </div>
-
-      <div class="form-card" id="webhookMessageCard">
-        <h2>📨 Nachrichten-Vorlagen</h2>
-        <p style="color:var(--text-muted);font-size:0.9rem;margin-bottom:1rem;">Lege fest, wie die Benachrichtigungen für Charakterbogen und Wetter in Discord aussehen. Platzhalter werden automatisch ersetzt.</p>
-        <div class="form-grid">
-          <div class="form-group">
-            <label>Was soll gemeldet werden?</label>
-            <select id="webhookType">
-              <option value="wetter">🌦️ Wetter</option>
-              <option value="charakter">📜 Charakterbogen</option>
-            </select>
-          </div>
-          <div class="form-group">
-            <label>Titel</label>
-            <input id="webhookMessageTitle" type="text" placeholder="Chroniken – %wetter%">
-          </div>
-          <div class="form-group full">
-            <label>Text</label>
-            <textarea id="webhookMessageText" rows="5" placeholder="%wetter% ist jetzt bei Chroniken."></textarea>
-            <p class="small" style="color:var(--text-muted);margin-top:.4rem;">Wetter: <code>%wetter%</code>, <code>%wetter_icon%</code>, <code>%wetter_beschreibung%</code>, <code>%naechster_wetterwechsel%</code>, <code>%datum%</code>, <code>%zeit%</code>. Charakter: <code>%charakter%</code>, <code>%steamid%</code>, <code>%spieler%</code>.</p>
-          </div>
-        </div>
-        <div class="form-actions">
-          <button type="button" class="btn" id="btnSaveWebhookMessage">Vorlage speichern</button>
-          <button type="button" class="btn secondary" id="btnTestWebhookMessage">Test an Discord senden</button>
-          <span class="status" id="webhookMessageStatus"></span>
-        </div>
-        <div id="webhookTemplates" style="margin-top:1rem;"></div>
-      </div>
-
-      <div class="form-card" id="savedWebhookCard" style="display:none;">
-        <h2>Gespeicherte Webhooks</h2>
-        <div id="savedWebhookInfo"></div>
-      </div>
-
-      <div class="form-card">
-        <h2>📅 Events & Kalender verwalten</h2>
-        <p style="color:var(--text-muted);font-size:0.9rem;margin-bottom:1rem;">Hier kannst du als Admin Geburtstage, Charakter-Events und Kalender-Feiertage löschen. Ein gelöschter Geburtstag wird automatisch aus Events und Kalender entfernt.</p>
-        <div id="adminEventManager"></div>
-      </div>
-
-      <div class="form-card">
-        <h2>Stammdaten</h2>
-        <p style="color:var(--text-muted);font-size:0.9rem;margin-bottom:1rem;">Völker, Berufe und Götter werden nicht mehr direkt hier angelegt. Öffne die jeweilige Kachel, um die Stammdaten zu verwalten. Neue Einträge erscheinen anschließend automatisch im Charakterbogen.</p>
-        <div class="master-tiles">
-          <a class="master-tile" href="voelker.html"><span class="tile-icon">🦊</span><strong>Völker & Rassen</strong><small>Beschreibung, Stärken, Schwächen und Größen</small></a>
-          <a class="master-tile" href="berufe.html"><span class="tile-icon">⚒️</span><strong>Berufe</strong><small>Hauptberuf oder Nebenberuf anlegen</small></a>
-          <a class="master-tile" href="goetter.html"><span class="tile-icon">✨</span><strong>Götter</strong><small>Götter und ihre Beschreibungen verwalten</small></a>
-          <a class="master-tile" href="wetter.html"><span class="tile-icon">🌦️</span><strong>Wetter</strong><small>Wetterwechsel alle 6 Stunden und Discord-Benachrichtigung</small></a>
-        </div>
-      </div>
-
-      <div class="form-card">
-        <h2 id="formTitle">Neuer Charakterbogen</h2>
-        <form id="charForm">
-          <input type="hidden" id="editId" value="">
-          <div class="form-grid">
-            <div class="form-group">
-              <label>Laufende ID</label>
-              <input type="text" id="charIdDisplay" readonly placeholder="wird automatisch vergeben" style="opacity:0.85;">
-            </div>
-            <div class="form-group">
-              <label>Charaktername *</label>
-              <input type="text" id="charName" required placeholder="z. B. Elara Mondschatten">
-            </div>
-            <div class="form-group">
-              <label>Spieler / OOC-Name</label>
-              <input type="text" id="playerName" placeholder="Name des Spielers">
-            </div>
-            <div class="form-group">
-              <label>Steam-ID</label>
-              <input type="text" id="steamId" placeholder="z. B. 76561198xxxxxxxx">
-            </div>
-            <div class="form-group">
-              <label>Volk / Rasse</label>
-              <select id="race">
-                <option value="">— bitte wählen —</option>
-                <option value="Mensch">Mensch</option>
-                <option value="Elf">Elf</option>
-                <option value="Zwerg">Zwerg</option>
-                <option value="Orc">Orc</option>
-                <option value="Kitsune">Kitsune</option>
-                <option value="Wolf">Wolf</option>
-                <option value="Troll">Troll</option>
-                <option value="Tiefling">Tiefling</option>
-                <option value="Gnom">Gnom</option>
-                <option value="Halbling">Halbling</option>
-                <option value="Minotaurus">Minotaurus</option>
-                <option value="Drachengeborener">Drachengeborener</option>
-                <option value="Dämon">Dämon</option>
-                <option value="Fee">Fee</option>
-                <option value="Halbgigant">Halbgigant</option>
-                <option value="Goblin">Goblin</option>
-                <option value="Wasserwesen">Wasserwesen</option>
-                <option value="Vogelwesen">Vogelwesen</option>
-                <option value="Tierwesen">Tierwesen</option>
-                <option value="Halborc">Halborc</option>
-                <option value="Halbelf">Halbelf</option>
-                <option value="Wargwandler">Wargwandler</option>
-              </select>
-            </div>
-            <div class="form-group">
-              <label>Anzahl Verwarnungen</label>
-              <input type="number" id="warnings" min="0" step="1" value="0">
-            </div>
-            <div class="form-group">
-              <label>Status</label>
-              <select id="status">
-                <option value="aktiv">Aktiv</option>
-                <option value="pausiert">Pausiert</option>
-                <option value="gesperrt">Gesperrt</option>
-                <option value="archiviert">Archiviert</option>
-              </select>
-            </div>
-            <div class="form-group full">
-              <label>Gegen welche Regel verstoßen?</label>
-              <textarea id="violation" placeholder="z. B. Regel 4.2 – Metagaming im Event X …"></textarea>
-            </div>
-            <div class="form-group full">
-              <label>Notizen (nur Admin sichtbar)</label>
-              <textarea id="notes" placeholder="Interne Notizen, Kontext, Absprachen …"></textarea>
-            </div>
-          </div>
-          <div class="form-actions">
-            <button type="submit" class="btn" id="btnSave">Speichern</button>
-            <button type="button" class="btn secondary" id="btnCancel" style="display:none;">Abbrechen</button>
-          </div>
-        </form>
-      </div>
-
-      <div class="form-card">
-        <h2>Registrierte Charakterbögen</h2>
-        <div id="tableWrap">
-          <p class="empty-hint" id="emptyHint">Noch keine Charaktere angelegt.</p>
-          <table class="char-table" id="charTable" style="display:none;">
-            <thead>
-              <tr>
-                <th>ID</th>
-                <th>Charakter</th>
-                <th>Spieler</th>
-                <th>Steam-ID</th>
-                <th>Verwarnungen</th>
-                <th>Regelverstoß</th>
-                <th>Status</th>
-                <th></th>
-              </tr>
-            </thead>
-            <tbody id="charBody"></tbody>
-          </table>
-        </div>
-      </div>
-    </div>
-  </main>
-
-  <footer>
-    <p>© Kiyasha</p>
-  </footer>
-
-  <!-- Login-Panel (unten links) -->
-  <div id="loginPanel" class="login-panel">
-    <div id="loginFormWrap">
-      <div class="login-title">Admin-Login</div>
-      <input type="text" id="loginUser" placeholder="Benutzername" autocomplete="username">
-      <input type="password" id="loginPass" placeholder="Passwort" autocomplete="current-password">
-      <button type="button" class="btn" id="btnLogin" style="width:100%;">Anmelden</button>
-      <div class="login-err" id="loginErr"></div>
-    </div>
-    <div id="loginLoggedIn" style="display:none;">
-      <div class="login-title">Admin aktiv</div>
-      <button type="button" class="btn secondary" id="btnLogoutPanel" style="width:100%;">Abmelden</button>
-    </div>
+  <div id="lockedView" class="locked-msg" style="display:none">
+    <h2>🔒 Nur für Admins</h2>
+    <p>Bitte unten links mit Benutzername und Passwort anmelden, um die Charakterverwaltung zu nutzen.</p>
+    <p style="margin-top:1rem"><a href="index.html" class="btn secondary">Zur Startseite</a></p>
   </div>
 
-  <script>
-    // ===== Admin-Zugangsdaten (hier ändern) =====
-    const ADMIN_USER = "admin";
-    const ADMIN_PASS = "chroniken2026";
-    const AUTH_KEY = "portal_admin_auth";
-    const CHARS_KEY = "portal_char_registry";
-    const NEXT_ID_KEY = "portal_char_next_id";
-    const WEBHOOK_KEY = "chroniken_discord_webhooks";
+  <div id="adminView" style="display:none">
+    <div class="admin-bar">
+      <span class="status-ok">✓ Angemeldet als Admin</span>
+      <span class="status" id="charCount">0 Charaktere</span>
+      <button type="button" class="btn secondary" id="btnLogout" style="margin-left:auto">Abmelden</button>
+    </div>
 
-    function isAdmin() {
-      try { return sessionStorage.getItem(AUTH_KEY) === "1"; } catch { return false; }
-    }
-    function setAdmin(on) {
-      try {
-        if (on) sessionStorage.setItem(AUTH_KEY, "1");
-        else sessionStorage.removeItem(AUTH_KEY);
-      } catch {}
-    }
+    <!-- Charakter-Webhook wurde absichtlich entfernt.
+         Charakter-Benachrichtigungen laufen ausschließlich über den Render-Proxy. -->
+    <div class="form-card">
+      <h2>🌦️ Wetter-Webhook</h2>
+      <p style="color:var(--text-muted);font-size:.9rem;margin-bottom:.9rem">
+        Der Wetter-Webhook kann hier weiterhin hinterlegt werden. Der Charakter-Webhook wird nicht mehr im Browser gespeichert.
+      </p>
+      <div class="form-grid">
+        <div class="form-group">
+          <label>Name des Webhooks</label>
+          <input type="text" id="webhookName" placeholder="z. B. Chroniken Wetter">
+        </div>
+        <div class="form-group full">
+          <label>Discord Webhook-URL für Wetter</label>
+          <input type="password" id="webhookUrl" autocomplete="off" placeholder="Discord Webhook-URL eintragen" style="font-family:monospace;letter-spacing:.08em">
+          <p id="webhookHint" style="color:var(--text-muted);font-size:.82rem;margin-top:.35rem"></p>
+        </div>
+      </div>
+      <div class="form-actions">
+        <button type="button" class="btn" id="btnSaveWebhook">Webhook speichern</button>
+        <button type="button" class="btn secondary" id="btnTestWebhook">Test senden</button>
+        <span class="status" id="webhookStatus"></span>
+      </div>
+    </div>
 
-    function loadChars() {
-      try { return JSON.parse(localStorage.getItem(CHARS_KEY)) || []; }
-      catch { return []; }
-    }
-    function saveChars(list) {
-      localStorage.setItem(CHARS_KEY, JSON.stringify(list));
-    }
-    function nextId() {
-      let n = parseInt(localStorage.getItem(NEXT_ID_KEY) || "1", 10);
-      if (!Number.isFinite(n) || n < 1) n = 1;
-      localStorage.setItem(NEXT_ID_KEY, String(n + 1));
-      return "CH-" + String(n).padStart(4, "0");
-    }
+    <div class="form-card">
+      <h2>📨 Wetter-Nachricht</h2>
+      <p style="color:var(--text-muted);font-size:.9rem;margin-bottom:1rem">Lege fest, wie Wetter-Benachrichtigungen in Discord aussehen. Der Charakterbereich wird ausschließlich über den Render-Proxy behandelt.</p>
+      <div class="form-grid">
+        <div class="form-group">
+          <label>Titel</label>
+          <input id="webhookMessageTitle" type="text" placeholder="🌦️ Wetter in Chroniken">
+        </div>
+        <div class="form-group full">
+          <label>Text</label>
+          <textarea id="webhookMessageText" rows="5" placeholder="%wetter% ist jetzt bei Chroniken."></textarea>
+          <p class="small" style="color:var(--text-muted);margin-top:.4rem">
+            Platzhalter: <code>%wetter%</code>, <code>%wetter_icon%</code>, <code>%wetter_beschreibung%</code>,
+            <code>%naechster_wetterwechsel%</code>, <code>%datum%</code>, <code>%zeit%</code>
+          </p>
+        </div>
+      </div>
+      <div class="form-actions">
+        <button type="button" class="btn" id="btnSaveWebhookMessage">Vorlage speichern</button>
+        <button type="button" class="btn secondary" id="btnTestWebhookMessage">Test an Discord senden</button>
+        <span class="status" id="webhookMessageStatus"></span>
+      </div>
+    </div>
 
-    function getWebhooks() {
-      try {
-        const raw = JSON.parse(localStorage.getItem(WEBHOOK_KEY) || '{}');
-        if (raw && typeof raw === 'object') return raw;
-      } catch {}
-      // Alte Einzel-Webhook-Version automatisch als Charakterbogen-Webhook übernehmen.
-      try {
-        const old = JSON.parse(localStorage.getItem('portal_discord_webhook') || 'null');
-        if (old) {
-          const url = typeof old === 'string' ? old : old.url;
-          if (url) {
-            const migrated = { charakter: { url: String(url), name: String(old.channelName || 'Charakterbogen') }, wetter: null };
-            localStorage.setItem(WEBHOOK_KEY, JSON.stringify(migrated));
-            return migrated;
-          }
-        }
-      } catch {}
-      return {};
-    }
-    function getWebhookData(scope = 'charakter') {
-      const all = getWebhooks();
-      const data = all[scope];
-      return data && data.url ? { url: String(data.url).trim(), name: String(data.name || '').trim() } : { url: '', name: '' };
-    }
-    function getWebhookUrl(scope = 'charakter') { return getWebhookData(scope).url; }
-    function setWebhook(scope, url, name = '') {
-      const all = getWebhooks();
-      if (!(url || '').trim()) delete all[scope];
-      else all[scope] = { url: url.trim(), name: (name || '').trim() };
-      localStorage.setItem(WEBHOOK_KEY, JSON.stringify(all));
-    }
+    <div class="form-card">
+      <h2>📅 Events & Kalender verwalten</h2>
+      <p style="color:var(--text-muted);font-size:.9rem;margin-bottom:1rem">Hier kannst du als Admin Geburtstage, Charakter-Events und Kalender-Feiertage löschen. Ein gelöschter Geburtstag wird automatisch aus Events und Kalender entfernt.</p>
+      <div id="adminEventManager"></div>
+    </div>
 
-    async function fetchWebhookInfo(url) {
-      try {
-        const res = await fetch(url, { method: "GET" });
-        if (!res.ok) return null;
-        const data = await res.json();
-        return { channelName: data.channel_name || data.name || "Discord-Channel", guildName: data.guild_name || "", channelId: data.channel_id || "" };
-      } catch { return null; }
-    }
+    <div class="form-card">
+      <h2>Stammdaten</h2>
+      <p style="color:var(--text-muted);font-size:.9rem;margin-bottom:1rem">Völker, Berufe und Götter werden über die jeweilige Kachel verwaltet.</p>
+      <div class="master-tiles">
+        <a class="master-tile" href="voelker.html"><span class="tile-icon">🦊</span><strong>Völker & Rassen</strong><small>Beschreibung, Stärken, Schwächen und Größen</small></a>
+        <a class="master-tile" href="berufe.html"><span class="tile-icon">⚒️</span><strong>Berufe</strong><small>Hauptberuf oder Nebenberuf anlegen</small></a>
+        <a class="master-tile" href="goetter.html"><span class="tile-icon">✨</span><strong>Götter</strong><small>Götter und ihre Beschreibungen verwalten</small></a>
+        <a class="master-tile" href="wetter.html"><span class="tile-icon">🌦️</span><strong>Wetter</strong><small>Wetterwechsel alle 6 Stunden und Discord-Benachrichtigung</small></a>
+      </div>
+    </div>
 
-    function renderSavedWebhook() {
-      const card = document.getElementById("savedWebhookCard");
-      const info = document.getElementById("savedWebhookInfo");
-      if (!card || !info) return;
-      const all = getWebhooks();
-      const entries = [['charakter','📜','Charakterbogen'], ['wetter','🌦️','Wetter']].filter(([key]) => all[key]?.url);
-      card.style.display = entries.length ? 'block' : 'none';
-      info.innerHTML = entries.map(([key, icon, label]) => {
-        const data = all[key];
-        const masked = data.url.replace(/^(.{25}).*(.{6})$/, "$1••••••$2");
-        return `<div class="card" style="margin:.55rem 0;padding:.9rem;display:flex;align-items:center;gap:.8rem;">
-          <div style="font-size:1.5rem">${icon}</div><div style="min-width:0;flex:1"><strong>${escapeHtml(data.name || label)}</strong><small style="display:block;color:var(--text-muted);margin-top:.2rem;">${escapeHtml(label)} · ${escapeHtml(masked)}</small></div>
-          <button class="btn secondary" type="button" data-wh-edit-scope="${key}">Bearbeiten</button>
-          <button class="btn secondary" type="button" data-wh-test-scope="${key}">Test</button>
-          <button class="btn secondary" type="button" data-wh-delete-scope="${key}" style="border-color:#ef4444;color:#fca5a5;">Löschen</button>
-        </div>`;
-      }).join('');
-      info.querySelectorAll('[data-wh-edit-scope]').forEach(b=>b.addEventListener('click',()=>{
-        const d=getWebhookData(b.dataset.whEditScope); document.getElementById('webhookScope').value=b.dataset.whEditScope; document.getElementById('webhookName').value=d.name; document.getElementById('webhookUrl').value=''; document.getElementById('webhookHint').textContent='Webhook wird bearbeitet. Neue URL eintragen und speichern.';
-      }));
-      info.querySelectorAll('[data-wh-delete-scope]').forEach(b=>b.addEventListener('click',()=>{ if(confirm('Diesen Webhook wirklich löschen?')) { const all=getWebhooks(); delete all[b.dataset.whDeleteScope]; localStorage.setItem(WEBHOOK_KEY,JSON.stringify(all)); renderSavedWebhook(); } }));
-      info.querySelectorAll('[data-wh-test-scope]').forEach(b=>b.addEventListener('click',async()=>{
-        const scope=b.dataset.whTestScope, result=await sendDiscordWebhook({username:'Chroniken',embeds:[{title:'🔔 Webhook-Test',description:scope==='wetter'?'Der Wetter-Webhook funktioniert.':'Der Charakterbogen-Webhook funktioniert.',color:0xa855f7,footer:{text:'Chroniken · Test'},timestamp:new Date().toISOString()}]},scope);
-        document.getElementById('webhookStatus').textContent=result.ok?'✓ Test gesendet':'Webhook konnte nicht gesendet werden';
-      }));
-    }
+    <div class="form-card">
+      <h2 id="formTitle">Neuer Charakterbogen</h2>
+      <form id="charForm">
+        <input type="hidden" id="editId" value="">
+        <div class="form-grid">
+          <div class="form-group"><label>Laufende ID</label><input type="text" id="charIdDisplay" readonly placeholder="wird automatisch vergeben" style="opacity:.85"></div>
+          <div class="form-group"><label>Charaktername *</label><input type="text" id="charName" required placeholder="z. B. Elara Mondschatten"></div>
+          <div class="form-group"><label>Spieler / OOC-Name</label><input type="text" id="playerName" placeholder="Name des Spielers"></div>
+          <div class="form-group"><label>Steam-ID</label><input type="text" id="steamId" placeholder="z. B. 76561198xxxxxxxx"></div>
+          <div class="form-group"><label>Volk / Rasse</label>
+            <select id="race">
+              <option value="">— bitte wählen —</option><option>Mensch</option><option>Elf</option><option>Zwerg</option><option>Orc</option><option>Kitsune</option><option>Wolf</option><option>Troll</option><option>Tiefling</option><option>Gnom</option><option>Halbling</option><option>Minotaurus</option><option>Drachengeborener</option><option>Dämon</option><option>Fee</option><option>Halbgigant</option><option>Goblin</option><option>Wasserwesen</option><option>Vogelwesen</option><option>Tierwesen</option><option>Halborc</option><option>Halbelf</option><option>Wargwandler</option>
+            </select>
+          </div>
+          <div class="form-group"><label>Anzahl Verwarnungen</label><input type="number" id="warnings" min="0" step="1" value="0"></div>
+          <div class="form-group"><label>Status</label><select id="status"><option value="aktiv">Aktiv</option><option value="pausiert">Pausiert</option><option value="gesperrt">Gesperrt</option><option value="archiviert">Archiviert</option></select></div>
+          <div class="form-group full"><label>Gegen welche Regel verstoßen?</label><textarea id="violation" placeholder="z. B. Regel 4.2 – Metagaming im Event X …"></textarea></div>
+          <div class="form-group full"><label>Notizen (nur Admin sichtbar)</label><textarea id="notes" placeholder="Interne Notizen, Kontext, Absprachen …"></textarea></div>
+        </div>
+        <div class="form-actions"><button type="submit" class="btn" id="btnSave">Speichern</button><button type="button" class="btn secondary" id="btnCancel" style="display:none">Abbrechen</button></div>
+      </form>
+    </div>
 
-    async function sendDiscordWebhook(payload, scope = 'charakter') {
-      const url = getWebhookUrl(scope);
-      if (!url || !url.startsWith("http")) return { ok: false, reason: "no_url" };
-      try {
-        const res = await fetch(url, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) });
-        return { ok: res.ok, reason: res.ok ? '' : 'http_' + res.status };
-      } catch (err) { console.warn("Webhook fehlgeschlagen:", err); return { ok: false, reason: "network" }; }
-    }
+    <div class="form-card">
+      <h2>Registrierte Charakterbögen</h2>
+      <div id="tableWrap">
+        <p class="empty-hint" id="emptyHint">Noch keine Charaktere angelegt.</p>
+        <table class="char-table" id="charTable" style="display:none">
+          <thead><tr><th>ID</th><th>Charakter</th><th>Spieler</th><th>Steam-ID</th><th>Verwarnungen</th><th>Regelverstoß</th><th>Status</th><th></th></tr></thead>
+          <tbody id="charBody"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</main>
 
-    function buildCharEmbed(type, char, extra) {
-      // type: created | updated | violation | deleted
-      const colors = {
-        created: 0x22c55e,   // grün
-        updated: 0xa855f7,   // lila
-        violation: 0xe11d48, // rot
-        deleted: 0x6b7280    // grau
-      };
-      const titles = {
-        created: "🆕 Charakter angelegt",
-        updated: "✏️ Charakter bearbeitet",
-        violation: "⚠️ Regelverstoß / Verwarnung",
-        deleted: "🗑️ Charakter gelöscht"
-      };
-      const fields = [
-        { name: "ID", value: char.id || "—", inline: true },
-        { name: "Charakter", value: char.name || "—", inline: true },
-        { name: "Spieler", value: char.player || "—", inline: true },
-        { name: "Steam-ID", value: char.steamId || "—", inline: true },
-        { name: "Volk", value: char.race || "—", inline: true },
-        { name: "Status", value: char.status || "aktiv", inline: true },
-        { name: "Verwarnungen", value: String(char.warnings ?? 0), inline: true }
-      ];
-      if (char.violation) {
-        fields.push({ name: "Regelverstoß", value: char.violation.slice(0, 1000), inline: false });
-      }
-      if (extra && extra.note) {
-        fields.push({ name: "Hinweis", value: String(extra.note).slice(0, 500), inline: false });
-      }
-      // Notizen bewusst nicht ins Discord (intern)
-      return {
-        username: "Chroniken Admin",
-        embeds: [{
-          title: titles[type] || "Charakter-Update",
-          color: colors[type] || 0xa855f7,
-          fields,
-          footer: { text: "Chroniken · Charakterverwaltung" },
-          timestamp: new Date().toISOString()
-        }]
-      };
-    }
+<footer><p>© Kiyasha</p></footer>
 
-    async function notifyCharEvent(type, char, extra) {
-      const result = await sendDiscordWebhook(buildCharEmbed(type, char, extra), "charakter");
-      const st = document.getElementById("webhookStatus");
-      if (!st) return;
-      if (result.reason === "no_url") {
-        st.textContent = "";
-        return;
-      }
-      if (result.ok) {
-        st.textContent = "✓ Channel benachrichtigt";
-        st.style.color = "var(--success)";
-      } else {
-        st.textContent = "Webhook fehlgeschlagen (" + (result.reason || "?") + ")";
-        st.style.color = "#fb7185";
-      }
-      setTimeout(() => { if (st.textContent.indexOf("Channel") >= 0 || st.textContent.indexOf("fehlgeschlagen") >= 0) st.textContent = ""; }, 4000);
-    }
+<div id="loginPanel" class="login-panel">
+  <div id="loginFormWrap">
+    <div class="login-title">Admin-Login</div>
+    <input type="text" id="loginUser" placeholder="Benutzername" autocomplete="username">
+    <input type="password" id="loginPass" placeholder="Passwort" autocomplete="current-password">
+    <button type="button" class="btn" id="btnLogin" style="width:100%">Anmelden</button>
+    <div class="login-err" id="loginErr"></div>
+  </div>
+  <div id="loginLoggedIn" style="display:none">
+    <div class="login-title">Admin aktiv</div>
+    <button type="button" class="btn secondary" id="btnLogoutPanel" style="width:100%">Abmelden</button>
+  </div>
+</div>
 
-    function escapeHtml(s) {
-      return String(s ?? "")
-        .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")
-        .replace(/"/g, "&quot;");
-    }
+<script>
+const ADMIN_USER="admin";
+const ADMIN_PASS="chroniken2026";
+const AUTH_KEY="portal_admin_auth";
+const CHARS_KEY="portal_char_registry";
+const NEXT_ID_KEY="portal_char_next_id";
+const WEBHOOK_KEY="chroniken_discord_webhooks";
+const WEATHER_PROXY_URL="https://chronikenweb-1.onrender.com/wetter";
+const CHARACTER_PROXY_URL="https://chronikenweb-1.onrender.com/charakter";
+const WEBHOOK_TEMPLATES_KEY="chroniken_webhook_templates";
 
-    function updateLoginUI() {
-      const logged = isAdmin();
-      document.getElementById("loginFormWrap").style.display = logged ? "none" : "block";
-      document.getElementById("loginLoggedIn").style.display = logged ? "block" : "none";
-      document.getElementById("lockedView").style.display = logged ? "none" : "block";
-      document.getElementById("adminView").style.display = logged ? "block" : "none";
-      if (logged) {
-        const scope = document.getElementById("webhookScope").value;
-        const d = getWebhookData(scope);
-        document.getElementById("webhookName").value = d.name;
-        document.getElementById("webhookUrl").value = "";
-        const hint = document.getElementById("webhookHint");
-        if (hint) hint.textContent = d.url ? "✓ Webhook vorhanden. URL bleibt ausgeblendet." : "Noch kein Webhook für diesen Bereich hinterlegt.";
-        renderSavedWebhook();
-        renderTable();
-      }
-    }
+function isAdmin(){try{return sessionStorage.getItem(AUTH_KEY)==="1"}catch{return false}}
+function setAdmin(on){try{if(on)sessionStorage.setItem(AUTH_KEY,"1");else sessionStorage.removeItem(AUTH_KEY)}catch{}}
+function loadChars(){try{return JSON.parse(localStorage.getItem(CHARS_KEY))||[]}catch{return[]}}
+function saveChars(list){localStorage.setItem(CHARS_KEY,JSON.stringify(list))}
+function nextId(){let n=parseInt(localStorage.getItem(NEXT_ID_KEY)||"1",10);if(!Number.isFinite(n)||n<1)n=1;localStorage.setItem(NEXT_ID_KEY,String(n+1));return"CH-"+String(n).padStart(4,"0")}
+function escapeHtml(s){return String(s??"").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;")}
 
-    function renderTable() {
-      const list = loadChars().slice().sort((a, b) => (a.id || "").localeCompare(b.id || ""));
-      const tbody = document.getElementById("charBody");
-      const table = document.getElementById("charTable");
-      const empty = document.getElementById("emptyHint");
-      document.getElementById("charCount").textContent = list.length + " Charakter" + (list.length === 1 ? "" : "e");
+function getWebhooks(){
+  try{const raw=JSON.parse(localStorage.getItem(WEBHOOK_KEY)||"{}");return raw&&typeof raw==="object"?raw:{}}catch{return{}}
+}
+function getWeatherWebhook(){
+  const d=getWebhooks().wetter;
+  return d&&d.url?{url:String(d.url).trim(),name:String(d.name||"").trim()}:{url:"",name:""};
+}
+function setWeatherWebhook(url,name=""){
+  const all=getWebhooks();
+  if(!url.trim())delete all.wetter;else all.wetter={url:url.trim(),name:name.trim()};
+  /* Alte Charakter-Webhook-Daten werden bewusst nicht weiter verwendet. */
+  delete all.charakter;
+  localStorage.setItem(WEBHOOK_KEY,JSON.stringify(all));
+}
+async function fetchWebhookInfo(url){
+  try{const r=await fetch(url,{method:"GET"});if(!r.ok)return null;const d=await r.json();return{channelName:d.channel_name||d.name||"Wetter",guildName:d.guild_name||""}}catch{return null}
+}
 
-      if (!list.length) {
-        table.style.display = "none";
-        empty.style.display = "block";
-        tbody.innerHTML = "";
-        return;
-      }
-      empty.style.display = "none";
-      table.style.display = "table";
-      tbody.innerHTML = list.map(c => {
-        const w = Number(c.warnings) || 0;
-        return `<tr>
-          <td class="char-id">${escapeHtml(c.id)}</td>
-          <td><strong>${escapeHtml(c.name)}</strong>${c.race ? `<div class="topic-meta">${escapeHtml(c.race)}</div>` : ""}</td>
-          <td>${escapeHtml(c.player || "—")}</td>
-          <td>${escapeHtml(c.steamId || "—")}</td>
-          <td><span class="warn-badge ${w === 0 ? "zero" : ""}">${w}</span></td>
-          <td><div class="violation-preview" title="${escapeHtml(c.violation || "")}">${escapeHtml(c.violation || "—")}</div></td>
-          <td>${escapeHtml(c.status || "aktiv")}</td>
-          <td class="actions-cell">
-            <button type="button" class="btn secondary" data-edit="${escapeHtml(c.id)}">Bearbeiten</button>
-            <button type="button" class="btn danger" data-del="${escapeHtml(c.id)}">Löschen</button>
-          </td>
-        </tr>`;
-      }).join("");
+async function sendWeatherDiscord(payload){
+  const url=getWeatherWebhook().url;
+  if(!url)return{ok:false,reason:"no_url"};
+  try{
+    const r=await fetch(url,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(payload)});
+    return{ok:r.ok,reason:r.ok?"":"http_"+r.status}
+  }catch(e){console.warn("Wetter-Webhook fehlgeschlagen:",e);return{ok:false,reason:"network"}}
+}
 
-      tbody.querySelectorAll("[data-edit]").forEach(btn => {
-        btn.addEventListener("click", () => startEdit(btn.getAttribute("data-edit")));
-      });
-      tbody.querySelectorAll("[data-del]").forEach(btn => {
-        btn.addEventListener("click", async () => {
-          const id = btn.getAttribute("data-del");
-          if (!confirm("Charakter " + id + " wirklich löschen?")) return;
-          const list = loadChars();
-          const char = list.find(c => c.id === id);
-          if (!char) return;
-          saveChars(list.filter(c => c.id !== id));
-          if (document.getElementById("editId").value === id) resetForm();
-          renderTable();
-          await notifyCharEvent("deleted", char);
-        });
-      });
-    }
-
-    function resetForm() {
-      document.getElementById("charForm").reset();
-      document.getElementById("editId").value = "";
-      document.getElementById("charIdDisplay").value = "";
-      document.getElementById("warnings").value = "0";
-      document.getElementById("formTitle").textContent = "Neuer Charakterbogen";
-      document.getElementById("btnSave").textContent = "Speichern";
-      document.getElementById("btnCancel").style.display = "none";
-    }
-
-    function startEdit(id) {
-      const c = loadChars().find(x => x.id === id);
-      if (!c) return;
-      document.getElementById("editId").value = c.id;
-      document.getElementById("charIdDisplay").value = c.id;
-      document.getElementById("charName").value = c.name || "";
-      document.getElementById("playerName").value = c.player || "";
-      document.getElementById("steamId").value = c.steamId || "";
-      document.getElementById("race").value = c.race || "";
-      document.getElementById("warnings").value = c.warnings ?? 0;
-      document.getElementById("status").value = c.status || "aktiv";
-      document.getElementById("violation").value = c.violation || "";
-      document.getElementById("notes").value = c.notes || "";
-      document.getElementById("formTitle").textContent = "Charakter bearbeiten · " + c.id;
-      document.getElementById("btnSave").textContent = "Aktualisieren";
-      document.getElementById("btnCancel").style.display = "inline-block";
-      document.getElementById("charName").focus();
-    }
-
-    document.getElementById("charForm").addEventListener("submit", async (e) => {
-      e.preventDefault();
-      const name = document.getElementById("charName").value.trim();
-      if (!name) return;
-      const editId = document.getElementById("editId").value;
-      const list = loadChars();
-      const old = editId ? list.find(c => c.id === editId) : null;
-      const payload = {
-        name,
-        player: document.getElementById("playerName").value.trim(),
-        steamId: document.getElementById("steamId").value.trim(),
-        race: document.getElementById("race").value.trim(),
-        warnings: Math.max(0, parseInt(document.getElementById("warnings").value, 10) || 0),
-        status: document.getElementById("status").value,
-        violation: document.getElementById("violation").value.trim(),
-        notes: document.getElementById("notes").value.trim(),
-        updatedAt: new Date().toISOString()
-      };
-
-      let saved;
-      let eventType = "created";
-
-      if (editId) {
-        const idx = list.findIndex(c => c.id === editId);
-        if (idx >= 0) {
-          list[idx] = { ...list[idx], ...payload };
-          saved = list[idx];
-        } else {
-          return;
-        }
-        // Regelverstoß / Verwarnung neu oder erhöht?
-        const violationChanged = (payload.violation || "") !== (old?.violation || "");
-        const warningsUp = payload.warnings > (Number(old?.warnings) || 0);
-        if ((payload.violation && violationChanged) || warningsUp) {
-          eventType = "violation";
-        } else {
-          eventType = "updated";
-        }
-      } else {
-        saved = {
-          id: nextId(),
-          createdAt: new Date().toISOString(),
-          ...payload
-        };
-        list.push(saved);
-        eventType = "created";
-        // Wenn direkt mit Verstoß/Verwarnung angelegt → zusätzlich violation-Hinweis im Embed
-        if (payload.violation || payload.warnings > 0) {
-          // bleibt "created", Embed zeigt Verstoß-Felder mit
-        }
-      }
-
-      saveChars(list);
-      await notifyCharEvent(eventType, saved, {
-        note: eventType === "violation"
-          ? (payload.warnings > (Number(old?.warnings) || 0)
-              ? "Verwarnungen erhöht (" + (old?.warnings ?? 0) + " → " + payload.warnings + ")"
-              : "Regelverstoß aktualisiert")
-          : null
-      });
-      resetForm();
-      renderTable();
+/* Charaktere gehen NICHT mehr direkt zu Discord.
+   Der Browser kennt nur noch den öffentlichen Render-Endpunkt. */
+async function sendCharacterProxy(payload){
+  try{
+    const r=await fetch(CHARACTER_PROXY_URL,{
+      method:"POST",
+      headers:{"Content-Type":"application/json"},
+      body:JSON.stringify(payload)
     });
+    let data={};try{data=await r.json()}catch{}
+    return{ok:r.ok&&data.ok!==false,reason:r.ok?"":"http_"+r.status}
+  }catch(e){console.warn("Charakter-Proxy fehlgeschlagen:",e);return{ok:false,reason:"network"}}
+}
+function buildCharEmbed(type,char,extra){
+  const colors={created:0x22c55e,updated:0xa855f7,violation:0xe11d48,deleted:0x6b7280};
+  const titles={created:"🆕 Charakter angelegt",updated:"✏️ Charakter bearbeitet",violation:"⚠️ Regelverstoß / Verwarnung",deleted:"🗑️ Charakter gelöscht"};
+  const fields=[
+    {name:"ID",value:char.id||"—",inline:true},{name:"Charakter",value:char.name||"—",inline:true},
+    {name:"Spieler",value:char.player||"—",inline:true},{name:"Steam-ID",value:char.steamId||"—",inline:true},
+    {name:"Volk",value:char.race||"—",inline:true},{name:"Status",value:char.status||"aktiv",inline:true},
+    {name:"Verwarnungen",value:String(char.warnings??0),inline:true}
+  ];
+  if(char.violation)fields.push({name:"Regelverstoß",value:String(char.violation).slice(0,1000),inline:false});
+  if(extra&&extra.note)fields.push({name:"Hinweis",value:String(extra.note).slice(0,500),inline:false});
+  return{username:"Chroniken Admin",embeds:[{title:titles[type]||"Charakter-Update",color:colors[type]||0xa855f7,fields,footer:{text:"Chroniken · Charakterverwaltung"},timestamp:new Date().toISOString()}]};
+}
+async function notifyCharEvent(type,char,extra){
+  const result=await sendCharacterProxy(buildCharEmbed(type,char,extra));
+  const st=document.getElementById("webhookStatus");
+  if(!st)return;
+  st.textContent=result.ok?"✓ Charakter über Render gemeldet":"Charakter-Proxy fehlgeschlagen ("+(result.reason||"?")+")";
+  st.style.color=result.ok?"var(--success)":"#fb7185";
+  setTimeout(()=>{st.textContent=""},4000);
+}
 
-    document.getElementById("btnCancel").addEventListener("click", resetForm);
+function updateWebhookUI(){
+  const d=getWeatherWebhook();
+  document.getElementById("webhookName").value=d.name;
+  document.getElementById("webhookUrl").value="";
+  document.getElementById("webhookHint").textContent=d.url?"✓ Wetter-Webhook vorhanden. URL bleibt ausgeblendet.":"Noch kein Wetter-Webhook hinterlegt.";
+}
+document.getElementById("btnSaveWebhook").addEventListener("click",async()=>{
+  const input=document.getElementById("webhookUrl"),name=document.getElementById("webhookName").value.trim(),st=document.getElementById("webhookStatus"),url=input.value.trim();
+  if(!url){st.textContent=getWeatherWebhook().url?"Keine Änderung.":"Bitte eine Webhook-URL eintragen.";return}
+  if(!/^https?:\/\//i.test(url)){st.textContent="Bitte eine gültige Webhook-URL eintragen.";return}
+  st.textContent="Speichere Webhook…";
+  const meta=await fetchWebhookInfo(url);
+  setWeatherWebhook(url,name||meta?.channelName||"Chroniken Wetter");
+  input.value="";st.textContent="✓ Wetter-Webhook gespeichert";updateWebhookUI();
+});
+document.getElementById("btnTestWebhook").addEventListener("click",async()=>{
+  const typed=document.getElementById("webhookUrl").value.trim();
+  if(typed)setWeatherWebhook(typed,document.getElementById("webhookName").value.trim());
+  const r=await sendWeatherDiscord({username:"Chroniken",embeds:[{title:"🔔 Wetter-Webhook-Test",description:"Der Wetter-Webhook funktioniert.",color:0xa855f7,footer:{text:"Chroniken · Wetter-Test"},timestamp:new Date().toISOString()}]});
+  document.getElementById("webhookStatus").textContent=r.ok?"✓ Test gesendet":"Wetter-Webhook konnte nicht gesendet werden";
+});
 
-    const WEBHOOK_TEMPLATES_KEY = "chroniken_webhook_templates";
-    const WEBHOOK_MESSAGES_KEY = "chroniken_webhook_messages";
-    const defaultWebhookTemplates = {
-      wetter: {title:"🌦️ Wetter in Chroniken", text:"%wetter% ist jetzt bei Chroniken.\n%wetter_beschreibung%\n\nNächster Wechsel: %naechster_wetterwechsel%"},
-      charakter: {title:"📜 Neuer Charakter", text:"Ein neuer Charakter wurde in Chroniken angelegt: %charakter%"},
+const defaultWeatherTemplate={title:"🌦️ Wetter in Chroniken",text:"%wetter% ist jetzt bei Chroniken.\n%wetter_beschreibung%\n\nNächster Wechsel: %naechster_wetterwechsel%"};
+function getWeatherTemplate(){try{const all=JSON.parse(localStorage.getItem(WEBHOOK_TEMPLATES_KEY)||"{}");return all.wetter||defaultWeatherTemplate}catch{return defaultWeatherTemplate}}
+function saveWeatherTemplate(title,text){let all={};try{all=JSON.parse(localStorage.getItem(WEBHOOK_TEMPLATES_KEY)||"{}")}catch{}all.wetter={title,text};localStorage.setItem(WEBHOOK_TEMPLATES_KEY,JSON.stringify(all))}
+function replaceWeatherVars(text,extra={}){
+  let weather={};try{weather=JSON.parse(localStorage.getItem("chroniken_weather_state_v1"))||{}}catch{}
+  const nextMs=window.ChronikenWeather?.msNext?window.ChronikenWeather.msNext():0;
+  const next=window.ChronikenWeather?.format?window.ChronikenWeather.format(nextMs):"";
+  const now=new Date();
+  const vars={wetter:weather.name||extra.wetter||"",wetter_icon:weather.icon||extra.wetter_icon||"",wetter_beschreibung:weather.description||extra.wetter_beschreibung||"",naechster_wetterwechsel:next,datum:now.toLocaleDateString("de-DE"),zeit:now.toLocaleTimeString("de-DE"),...extra};
+  return String(text||"").replace(/%([a-zA-Z0-9_]+)%/g,(_,k)=>vars[k]!==undefined?vars[k]:`%${k}%`)
+}
+function renderWeatherTemplate(){const t=getWeatherTemplate();document.getElementById("webhookMessageTitle").value=t.title;document.getElementById("webhookMessageText").value=t.text}
+document.getElementById("btnSaveWebhookMessage").addEventListener("click",()=>{
+  saveWeatherTemplate(document.getElementById("webhookMessageTitle").value.trim(),document.getElementById("webhookMessageText").value.trim());
+  document.getElementById("webhookMessageStatus").textContent="✓ Vorlage gespeichert";
+});
+document.getElementById("btnTestWebhookMessage").addEventListener("click",async()=>{
+  const title=replaceWeatherVars(document.getElementById("webhookMessageTitle").value),text=replaceWeatherVars(document.getElementById("webhookMessageText").value);
+  const r=await sendWeatherDiscord({username:"Chroniken",embeds:[{title,description:text,color:0xa855f7,footer:{text:"Chroniken · Wetter"},timestamp:new Date().toISOString()}]});
+  document.getElementById("webhookMessageStatus").textContent=r.ok?"✓ Discord-Nachricht gesendet":"Wetter-Webhook konnte nicht gesendet werden";
+});
+renderWeatherTemplate();
 
-    };
-    function getWebhookTemplates(){ try { return {...defaultWebhookTemplates,...(JSON.parse(localStorage.getItem(WEBHOOK_TEMPLATES_KEY))||{})}; } catch { return {...defaultWebhookTemplates}; } }
-    function setWebhookTemplate(type,title,text){ const all=getWebhookTemplates(); all[type]={title,text}; localStorage.setItem(WEBHOOK_TEMPLATES_KEY,JSON.stringify(all)); }
-    function replaceWebhookVars(text, extra={}){
-      let weather={};
-      try { weather=JSON.parse(localStorage.getItem('chroniken_weather_state_v1'))||{}; } catch {}
-      const nextMs=window.ChronikenWeather?.msNext ? window.ChronikenWeather.msNext() : 0;
-      const next=window.ChronikenWeather?.format ? window.ChronikenWeather.format(nextMs) : '';
-      const now=new Date();
-      const vars={
-        wetter:weather.name||extra.wetter||'', wetter_icon:weather.icon||extra.wetter_icon||'', wetter_beschreibung:weather.description||extra.wetter_beschreibung||'',
-        naechster_wetterwechsel:next, datum:now.toLocaleDateString('de-DE'), zeit:now.toLocaleTimeString('de-DE'), ...extra
-      };
-      return String(text||'').replace(/%([a-zA-Z0-9_]+)%/g,(_,k)=>vars[k]!==undefined?vars[k]:`%${k}%`);
-    }
-    function renderWebhookTemplate(){
-      const type=document.getElementById('webhookType').value, t=getWebhookTemplates()[type]||defaultWebhookTemplates[type];
-      document.getElementById('webhookMessageTitle').value=t.title; document.getElementById('webhookMessageText').value=t.text;
-    }
-    function renderWebhookTemplateList(){
-      const el=document.getElementById('webhookTemplates'), all=getWebhookTemplates(); el.innerHTML=Object.entries(all).map(([k,v])=>`<div class="card" style="margin:.5rem 0;padding:.8rem;display:flex;justify-content:space-between;gap:1rem;align-items:center"><span><strong>${escapeHtml(v.title)}</strong><br><small>${escapeHtml(k)}</small></span><button class="btn secondary" type="button" data-wh-edit="${k}">Bearbeiten</button></div>`).join('');
-      el.querySelectorAll('[data-wh-edit]').forEach(b=>b.addEventListener('click',()=>{document.getElementById('webhookType').value=b.dataset.whEdit;renderWebhookTemplate();}));
-    }
-    document.getElementById('webhookType').addEventListener('change',renderWebhookTemplate);
-    document.getElementById('btnSaveWebhookMessage').addEventListener('click',()=>{ const type=document.getElementById('webhookType').value; setWebhookTemplate(type,document.getElementById('webhookMessageTitle').value.trim(),document.getElementById('webhookMessageText').value.trim()); document.getElementById('webhookMessageStatus').textContent='✓ Vorlage gespeichert'; renderWebhookTemplateList(); });
-    document.getElementById('btnTestWebhookMessage').addEventListener('click',async()=>{ const type=document.getElementById('webhookType').value,title=replaceWebhookVars(document.getElementById('webhookMessageTitle').value),text=replaceWebhookVars(document.getElementById('webhookMessageText').value); const result=await sendDiscordWebhook({username:'Chroniken',embeds:[{title,description:text,color:0xa855f7,footer:{text:`Chroniken · ${type}`},timestamp:new Date().toISOString()}]}, type); document.getElementById('webhookMessageStatus').textContent=result.ok?'✓ Discord-Nachricht gesendet':'Webhook konnte nicht gesendet werden'; });
-    renderWebhookTemplate(); renderWebhookTemplateList();
+function renderTable(){
+  const list=loadChars().slice().sort((a,b)=>(a.id||"").localeCompare(b.id||"")),tbody=document.getElementById("charBody"),table=document.getElementById("charTable"),empty=document.getElementById("emptyHint");
+  document.getElementById("charCount").textContent=list.length+" Charakter"+(list.length===1?"":"e");
+  if(!list.length){table.style.display="none";empty.style.display="block";tbody.innerHTML="";return}
+  empty.style.display="none";table.style.display="table";
+  tbody.innerHTML=list.map(c=>{
+    const w=Number(c.warnings)||0;
+    return `<tr><td class="char-id">${escapeHtml(c.id)}</td><td><strong>${escapeHtml(c.name)}</strong>${c.race?`<div class="topic-meta">${escapeHtml(c.race)}</div>`:""}</td><td>${escapeHtml(c.player||"—")}</td><td>${escapeHtml(c.steamId||"—")}</td><td><span class="warn-badge ${w===0?"zero":""}">${w}</span></td><td><div class="violation-preview" title="${escapeHtml(c.violation||"")}">${escapeHtml(c.violation||"—")}</div></td><td>${escapeHtml(c.status||"aktiv")}</td><td class="actions-cell"><button type="button" class="btn secondary" data-edit="${escapeHtml(c.id)}">Bearbeiten</button><button type="button" class="btn danger" data-del="${escapeHtml(c.id)}">Löschen</button></td></tr>`
+  }).join("");
+  tbody.querySelectorAll("[data-edit]").forEach(b=>b.addEventListener("click",()=>startEdit(b.dataset.edit)));
+  tbody.querySelectorAll("[data-del]").forEach(b=>b.addEventListener("click",async()=>{
+    const id=b.dataset.del;if(!confirm("Charakter "+id+" wirklich löschen?"))return;
+    const list=loadChars(),char=list.find(c=>c.id===id);if(!char)return;
+    saveChars(list.filter(c=>c.id!==id));if(document.getElementById("editId").value===id)resetForm();renderTable();await notifyCharEvent("deleted",char);
+  }));
+}
+function resetForm(){document.getElementById("charForm").reset();document.getElementById("editId").value="";document.getElementById("charIdDisplay").value="";document.getElementById("warnings").value="0";document.getElementById("formTitle").textContent="Neuer Charakterbogen";document.getElementById("btnSave").textContent="Speichern";document.getElementById("btnCancel").style.display="none"}
+function startEdit(id){
+  const c=loadChars().find(x=>x.id===id);if(!c)return;
+  document.getElementById("editId").value=c.id;document.getElementById("charIdDisplay").value=c.id;document.getElementById("charName").value=c.name||"";
+  document.getElementById("playerName").value=c.player||"";document.getElementById("steamId").value=c.steamId||"";document.getElementById("race").value=c.race||"";
+  document.getElementById("warnings").value=c.warnings??0;document.getElementById("status").value=c.status||"aktiv";document.getElementById("violation").value=c.violation||"";document.getElementById("notes").value=c.notes||"";
+  document.getElementById("formTitle").textContent="Charakter bearbeiten · "+c.id;document.getElementById("btnSave").textContent="Aktualisieren";document.getElementById("btnCancel").style.display="inline-block";document.getElementById("charName").focus()
+}
+document.getElementById("charForm").addEventListener("submit",async e=>{
+  e.preventDefault();const name=document.getElementById("charName").value.trim();if(!name)return;
+  const editId=document.getElementById("editId").value,list=loadChars(),old=editId?list.find(c=>c.id===editId):null;
+  const payload={name,player:document.getElementById("playerName").value.trim(),steamId:document.getElementById("steamId").value.trim(),race:document.getElementById("race").value.trim(),warnings:Math.max(0,parseInt(document.getElementById("warnings").value,10)||0),status:document.getElementById("status").value,violation:document.getElementById("violation").value.trim(),notes:document.getElementById("notes").value.trim(),updatedAt:new Date().toISOString()};
+  let saved,eventType="created";
+  if(editId){
+    const idx=list.findIndex(c=>c.id===editId);if(idx<0)return;list[idx]={...list[idx],...payload};saved=list[idx];
+    const violationChanged=(payload.violation||"")!==(old?.violation||""),warningsUp=payload.warnings>(Number(old?.warnings)||0);
+    eventType=(payload.violation&&violationChanged)||warningsUp?"violation":"updated";
+  }else{saved={id:nextId(),createdAt:new Date().toISOString(),...payload};list.push(saved)}
+  saveChars(list);
+  await notifyCharEvent(eventType,saved,{note:eventType==="violation"?(payload.warnings>(Number(old?.warnings)||0)?"Verwarnungen erhöht ("+(old?.warnings??0)+" → "+payload.warnings+")":"Regelverstoß aktualisiert"):null});
+  resetForm();renderTable();
+});
+document.getElementById("btnCancel").addEventListener("click",resetForm);
 
-    document.getElementById("webhookScope").addEventListener("change", () => {
-      const scope = document.getElementById("webhookScope").value;
-      const d = getWebhookData(scope);
-      document.getElementById("webhookName").value = d.name;
-      document.getElementById("webhookUrl").value = "";
-      document.getElementById("webhookHint").textContent = d.url ? "✓ Webhook vorhanden. Leer lassen, wenn du nichts ändern möchtest." : "Noch kein Webhook für diesen Bereich hinterlegt.";
-    });
-    document.getElementById("btnSaveWebhook").addEventListener("click", async () => {
-      const scope=document.getElementById("webhookScope").value, input=document.getElementById("webhookUrl"), name=document.getElementById("webhookName").value.trim(), st=document.getElementById("webhookStatus");
-      const url=input.value.trim();
-      if(!url){ st.textContent=getWebhookUrl(scope)?"Keine Änderung (Feld leer = behalten)":"Bitte eine Webhook-URL eintragen."; return; }
-      if(!/^https?:\/\//i.test(url)){ st.textContent="Bitte eine gültige Webhook-URL eintragen."; return; }
-      st.textContent="Speichere Webhook…";
-      const meta=await fetchWebhookInfo(url);
-      setWebhook(scope,url,name || meta?.channelName || (scope==='wetter'?'Wetter':'Charakterbogen'));
-      input.value=""; st.textContent="✓ Webhook gespeichert"; document.getElementById("webhookHint").textContent="Webhook gespeichert. Die URL bleibt ausgeblendet."; renderSavedWebhook();
-    });
-    document.getElementById("btnTestWebhook").addEventListener("click", async () => {
-      const scope=document.getElementById("webhookScope").value, typed=document.getElementById("webhookUrl").value.trim();
-      if(typed) setWebhook(scope,typed,document.getElementById("webhookName").value.trim());
-      const result=await sendDiscordWebhook({username:'Chroniken',embeds:[{title:'🔔 Webhook-Test',description:scope==='wetter'?'Der Wetter-Webhook funktioniert.':'Der Charakterbogen-Webhook funktioniert.',color:0xa855f7,footer:{text:'Chroniken · Test'},timestamp:new Date().toISOString()}]},scope);
-      document.getElementById("webhookStatus").textContent=result.ok?'✓ Test gesendet':'Webhook konnte nicht gesendet werden'; renderSavedWebhook();
-    });
-    renderSavedWebhook();
+function adminLoadJSON(key){try{return JSON.parse(localStorage.getItem(key)||"[]")}catch{return[]}}
+function adminSaveJSON(key,value){localStorage.setItem(key,JSON.stringify(value))}
+function renderAdminEventManager(){
+  const box=document.getElementById("adminEventManager");if(!box||!isAdmin()){if(box)box.innerHTML='<p class="small">Bitte zuerst als Admin anmelden.</p>';return}
+  const birthdays=adminLoadJSON("portal_birthdays"),events=adminLoadJSON("portal_events"),disabled=adminLoadJSON("chroniken_disabled_holidays");
+  const months=["Frostmond","Eismond","Tauwind","Blütenmond","Sonnenhain","Glutmond","Erntemond","Goldlaub","Nebelmond","Dunkelmond","Sternenfall","Nachtfrost"];
+  const fixed=[[0,1,"Nacht der ersten Flamme"],[2,15,"Fest der drei Winde"],[3,20,"Blütensegen"],[5,15,"Sonnenwende der Krone"],[6,30,"Danktag der Ernte"],[8,13,"Nacht des Schleiers"],[10,30,"Sternennacht"],[11,15,"Fuchsfeuer"]];
+  let html="";
+  const esc=escapeHtml;
+  birthdays.forEach(b=>html+=`<div class="card" style="margin:.6rem 0;padding:.8rem;display:flex;justify-content:space-between;gap:1rem;align-items:center"><span><strong>🎂 ${esc(b.name)}</strong><br><small>${esc(b.day)}. ${esc(b.monthName||months[b.month]||"Monat")}${b.year?" "+esc(b.year):""}</small></span><button class="btn danger" type="button" data-admin-bday="${esc(b.name)}">Löschen</button></div>`);
+  events.filter(e=>e.eventType!=="Geburtstag").forEach(e=>html+=`<div class="card" style="margin:.6rem 0;padding:.8rem;display:flex;justify-content:space-between;gap:1rem;align-items:center"><span><strong>📅 ${esc(e.title||e.characterName||"Event")}</strong><br><small>${esc(e.date||"")}</small></span><button class="btn danger" type="button" data-admin-event="${esc(e.id)}">Löschen</button></div>`);
+  fixed.forEach((h,i)=>{if(!disabled.includes(i))html+=`<div class="card" style="margin:.6rem 0;padding:.8rem;display:flex;justify-content:space-between;gap:1rem;align-items:center"><span><strong>✨ ${esc(h[2])}</strong><br><small>${h[1]}. ${months[h[0]]}</small></span><button class="btn danger" type="button" data-admin-holiday="${i}">Aus Kalender entfernen</button></div>`});
+  box.innerHTML=html||'<p class="small">Keine löschbaren Einträge vorhanden.</p>';
+  box.querySelectorAll("[data-admin-bday]").forEach(b=>b.addEventListener("click",()=>{const n=b.dataset.adminBday;if(!confirm("Geburtstag von "+n+" wirklich löschen?"))return;adminSaveJSON("portal_birthdays",birthdays.filter(x=>x.name!==n));adminSaveJSON("portal_events",events.filter(x=>!(x.eventType==="Geburtstag"&&x.characterName===n)));renderAdminEventManager()}));
+  box.querySelectorAll("[data-admin-event]").forEach(b=>b.addEventListener("click",()=>{const id=b.dataset.adminEvent;if(!confirm("Dieses Event wirklich löschen?"))return;adminSaveJSON("portal_events",events.filter(x=>x.id!==id));renderAdminEventManager()}));
+  box.querySelectorAll("[data-admin-holiday]").forEach(b=>b.addEventListener("click",()=>{const i=Number(b.dataset.adminHoliday);if(!confirm("Diesen Feiertag aus dem Kalender entfernen?"))return;const d=adminLoadJSON("chroniken_disabled_holidays");if(!d.includes(i))d.push(i);adminSaveJSON("chroniken_disabled_holidays",d);renderAdminEventManager()}));
+}
 
-    function adminLoadJSON(key) {
-      try { return JSON.parse(localStorage.getItem(key) || "[]"); } catch { return []; }
-    }
-    function adminSaveJSON(key, value) { localStorage.setItem(key, JSON.stringify(value)); }
-    function renderAdminEventManager() {
-      const box = document.getElementById("adminEventManager");
-      if (!box || !isAdmin()) { if (box) box.innerHTML = "<p class=\"small\">Bitte zuerst als Admin anmelden.</p>"; return; }
-      const birthdays = adminLoadJSON("portal_birthdays");
-      const events = adminLoadJSON("portal_events");
-      let disabled = adminLoadJSON("chroniken_disabled_holidays");
-      const months = ["Frostmond","Eismond","Tauwind","Blütenmond","Sonnenhain","Glutmond","Erntemond","Goldlaub","Nebelmond","Dunkelmond","Sternenfall","Nachtfrost"];
-      const fixed = [
-        [0,1,"Nacht der ersten Flamme"],[2,15,"Fest der drei Winde"],[3,20,"Blütensegen"],[5,15,"Sonnenwende der Krone"],[6,30,"Danktag der Ernte"],[8,13,"Nacht des Schleiers"],[10,30,"Sternennacht"],[11,15,"Fuchsfeuer"]
-      ];
-      const esc = v => String(v ?? "").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;");
-      let html = "";
-      birthdays.forEach(b => { html += `<div class=\"card\" style=\"margin:.6rem 0;padding:.8rem;display:flex;justify-content:space-between;gap:1rem;align-items:center\"><span><strong>🎂 ${esc(b.name)}</strong><br><small>${esc(b.day)}. ${esc(b.monthName || months[b.month] || "Monat")}${b.year ? " " + esc(b.year) : ""}</small></span><button class=\"btn danger\" type=\"button\" data-admin-bday=\"${esc(b.name)}\">Löschen</button></div>`; });
-      events.filter(e => e.eventType !== "Geburtstag").forEach(e => { html += `<div class=\"card\" style=\"margin:.6rem 0;padding:.8rem;display:flex;justify-content:space-between;gap:1rem;align-items:center\"><span><strong>📅 ${esc(e.title || e.characterName || "Event")}</strong><br><small>${esc(e.date || "")}</small></span><button class=\"btn danger\" type=\"button\" data-admin-event=\"${esc(e.id)}\">Löschen</button></div>`; });
-      fixed.forEach((h,i) => { if (!disabled.includes(i)) html += `<div class=\"card\" style=\"margin:.6rem 0;padding:.8rem;display:flex;justify-content:space-between;gap:1rem;align-items:center\"><span><strong>✨ ${esc(h[2])}</strong><br><small>${h[1]}. ${months[h[0]]}</small></span><button class=\"btn danger\" type=\"button\" data-admin-holiday=\"${i}\">Aus Kalender entfernen</button></div>`; });
-      box.innerHTML = html || "<p class=\"small\">Keine löschbaren Einträge vorhanden.</p>";
-      box.querySelectorAll("[data-admin-bday]").forEach(btn => btn.addEventListener("click", () => { const name=btn.dataset.adminBday; if (!confirm("Geburtstag von " + name + " wirklich löschen?")) return; adminSaveJSON("portal_birthdays", birthdays.filter(b => b.name !== name)); adminSaveJSON("portal_events", events.filter(e => !(e.eventType === "Geburtstag" && e.characterName === name))); renderAdminEventManager(); }));
-      box.querySelectorAll("[data-admin-event]").forEach(btn => btn.addEventListener("click", () => { const id=btn.dataset.adminEvent; if (!confirm("Dieses Event wirklich löschen?")) return; adminSaveJSON("portal_events", events.filter(e => e.id !== id)); renderAdminEventManager(); }));
-      box.querySelectorAll("[data-admin-holiday]").forEach(btn => btn.addEventListener("click", () => { const i=Number(btn.dataset.adminHoliday); if (!confirm("Diesen Feiertag aus dem Kalender entfernen?")) return; if (!disabled.includes(i)) disabled.push(i); adminSaveJSON("chroniken_disabled_holidays", disabled); renderAdminEventManager(); }));
-    }
+function updateLoginUI(){
+  const logged=isAdmin();
+  document.getElementById("loginFormWrap").style.display=logged?"none":"block";document.getElementById("loginLoggedIn").style.display=logged?"block":"none";
+  document.getElementById("lockedView").style.display=logged?"none":"block";document.getElementById("adminView").style.display=logged?"block":"none";
+  if(logged){updateWebhookUI();renderTable();renderAdminEventManager()}
+}
+function doLogin(){
+  const u=document.getElementById("loginUser").value.trim(),p=document.getElementById("loginPass").value,err=document.getElementById("loginErr");
+  if(u===ADMIN_USER&&p===ADMIN_PASS){setAdmin(true);err.textContent="";document.getElementById("loginPass").value="";updateLoginUI()}
+  else err.textContent="Falsche Zugangsdaten."
+}
+function doLogout(){setAdmin(false);updateLoginUI();renderAdminEventManager()}
+document.getElementById("btnLogin").addEventListener("click",doLogin);
+document.getElementById("loginPass").addEventListener("keydown",e=>{if(e.key==="Enter")doLogin()});
+document.getElementById("loginUser").addEventListener("keydown",e=>{if(e.key==="Enter")document.getElementById("loginPass").focus()});
+document.getElementById("btnLogout").addEventListener("click",doLogout);
+document.getElementById("btnLogoutPanel").addEventListener("click",doLogout);
 
-    function doLogin() {
-      const u = document.getElementById("loginUser").value.trim();
-      const p = document.getElementById("loginPass").value;
-      const err = document.getElementById("loginErr");
-      if (u === ADMIN_USER && p === ADMIN_PASS) {
-        setAdmin(true);
-        err.textContent = "";
-        document.getElementById("loginPass").value = "";
-        updateLoginUI();
-      } else {
-        err.textContent = "Falsche Zugangsdaten.";
-      }
-    }
-    function doLogout() {
-      setAdmin(false);
-      updateLoginUI();
-      renderAdminEventManager();
-    }
-
-    document.getElementById("btnLogin").addEventListener("click", doLogin);
-    document.getElementById("loginPass").addEventListener("keydown", e => { if (e.key === "Enter") doLogin(); });
-    document.getElementById("loginUser").addEventListener("keydown", e => { if (e.key === "Enter") document.getElementById("loginPass").focus(); });
-    document.getElementById("btnLogout").addEventListener("click", doLogout);
-    document.getElementById("btnLogoutPanel").addEventListener("click", doLogout);
-
-    updateLoginUI();
-    renderAdminEventManager();
-  
+updateLoginUI();
+renderAdminEventManager();
 </script>
 </body>
 </html>
