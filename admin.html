@@ -177,6 +177,12 @@
       </div>
 
       <div class="form-card">
+        <h2>📅 Events & Kalender verwalten</h2>
+        <p style="color:var(--text-muted);font-size:0.9rem;margin-bottom:1rem;">Hier kannst du als Admin Geburtstage, Charakter-Events und Kalender-Feiertage löschen. Ein gelöschter Geburtstag wird automatisch aus Events und Kalender entfernt.</p>
+        <div id="adminEventManager"></div>
+      </div>
+
+      <div class="form-card">
         <h2>Stammdaten</h2>
         <p style="color:var(--text-muted);font-size:0.9rem;margin-bottom:1rem;">Völker, Berufe und Götter werden nicht mehr direkt hier angelegt. Öffne die jeweilige Kachel, um die Stammdaten zu verwalten. Neue Einträge erscheinen anschließend automatisch im Charakterbogen.</p>
         <div class="master-tiles">
@@ -706,6 +712,31 @@
     });
     renderSavedWebhook();
 
+    function adminLoadJSON(key) {
+      try { return JSON.parse(localStorage.getItem(key) || "[]"); } catch { return []; }
+    }
+    function adminSaveJSON(key, value) { localStorage.setItem(key, JSON.stringify(value)); }
+    function renderAdminEventManager() {
+      const box = document.getElementById("adminEventManager");
+      if (!box || !isAdmin()) { if (box) box.innerHTML = "<p class=\"small\">Bitte zuerst als Admin anmelden.</p>"; return; }
+      const birthdays = adminLoadJSON("portal_birthdays");
+      const events = adminLoadJSON("portal_events");
+      let disabled = adminLoadJSON("chroniken_disabled_holidays");
+      const months = ["Frostmond","Eismond","Tauwind","Blütenmond","Sonnenhain","Glutmond","Erntemond","Goldlaub","Nebelmond","Dunkelmond","Sternenfall","Nachtfrost"];
+      const fixed = [
+        [0,1,"Nacht der ersten Flamme"],[2,15,"Fest der drei Winde"],[3,20,"Blütensegen"],[5,15,"Sonnenwende der Krone"],[6,30,"Danktag der Ernte"],[8,13,"Nacht des Schleiers"],[10,30,"Sternennacht"],[11,15,"Fuchsfeuer"]
+      ];
+      const esc = v => String(v ?? "").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;");
+      let html = "";
+      birthdays.forEach(b => { html += `<div class=\"card\" style=\"margin:.6rem 0;padding:.8rem;display:flex;justify-content:space-between;gap:1rem;align-items:center\"><span><strong>🎂 ${esc(b.name)}</strong><br><small>${esc(b.day)}. ${esc(b.monthName || months[b.month] || "Monat")}${b.year ? " " + esc(b.year) : ""}</small></span><button class=\"btn danger\" type=\"button\" data-admin-bday=\"${esc(b.name)}\">Löschen</button></div>`; });
+      events.filter(e => e.eventType !== "Geburtstag").forEach(e => { html += `<div class=\"card\" style=\"margin:.6rem 0;padding:.8rem;display:flex;justify-content:space-between;gap:1rem;align-items:center\"><span><strong>📅 ${esc(e.title || e.characterName || "Event")}</strong><br><small>${esc(e.date || "")}</small></span><button class=\"btn danger\" type=\"button\" data-admin-event=\"${esc(e.id)}\">Löschen</button></div>`; });
+      fixed.forEach((h,i) => { if (!disabled.includes(i)) html += `<div class=\"card\" style=\"margin:.6rem 0;padding:.8rem;display:flex;justify-content:space-between;gap:1rem;align-items:center\"><span><strong>✨ ${esc(h[2])}</strong><br><small>${h[1]}. ${months[h[0]]}</small></span><button class=\"btn danger\" type=\"button\" data-admin-holiday=\"${i}\">Aus Kalender entfernen</button></div>`; });
+      box.innerHTML = html || "<p class=\"small\">Keine löschbaren Einträge vorhanden.</p>";
+      box.querySelectorAll("[data-admin-bday]").forEach(btn => btn.addEventListener("click", () => { const name=btn.dataset.adminBday; if (!confirm("Geburtstag von " + name + " wirklich löschen?")) return; adminSaveJSON("portal_birthdays", birthdays.filter(b => b.name !== name)); adminSaveJSON("portal_events", events.filter(e => !(e.eventType === "Geburtstag" && e.characterName === name))); renderAdminEventManager(); }));
+      box.querySelectorAll("[data-admin-event]").forEach(btn => btn.addEventListener("click", () => { const id=btn.dataset.adminEvent; if (!confirm("Dieses Event wirklich löschen?")) return; adminSaveJSON("portal_events", events.filter(e => e.id !== id)); renderAdminEventManager(); }));
+      box.querySelectorAll("[data-admin-holiday]").forEach(btn => btn.addEventListener("click", () => { const i=Number(btn.dataset.adminHoliday); if (!confirm("Diesen Feiertag aus dem Kalender entfernen?")) return; if (!disabled.includes(i)) disabled.push(i); adminSaveJSON("chroniken_disabled_holidays", disabled); renderAdminEventManager(); }));
+    }
+
     function doLogin() {
       const u = document.getElementById("loginUser").value.trim();
       const p = document.getElementById("loginPass").value;
@@ -722,6 +753,7 @@
     function doLogout() {
       setAdmin(false);
       updateLoginUI();
+      renderAdminEventManager();
     }
 
     document.getElementById("btnLogin").addEventListener("click", doLogin);
@@ -731,6 +763,7 @@
     document.getElementById("btnLogoutPanel").addEventListener("click", doLogout);
 
     updateLoginUI();
+    renderAdminEventManager();
   
 </script>
 </body>

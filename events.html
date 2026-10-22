@@ -140,6 +140,17 @@
       try { return JSON.parse(localStorage.getItem(STORAGE_KEY)) || []; }
       catch { return []; }
     }
+
+    // Geburtstage sind automatisch mit portal_events verknüpft.
+    // Beim Löschen werden deshalb beide Einträge entfernt.
+    function deleteBirthday(name) {
+      if (!name) return;
+      let birthdays = [];
+      try { birthdays = JSON.parse(localStorage.getItem("portal_birthdays") || "[]"); } catch {}
+      localStorage.setItem("portal_birthdays", JSON.stringify(birthdays.filter(b => b.name !== name)));
+      const events = loadTopics();
+      saveTopics(events.filter(e => !(e.eventType === "Geburtstag" && e.characterName === name)));
+    }
     function saveTopics(topics) {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(topics));
     }
@@ -191,7 +202,12 @@
       document.getElementById("btnEdit").onclick = () => openEditor(t);
       document.getElementById("btnDelete").onclick = () => {
         if (confirm("Event wirklich löschen?")) {
+          const removed = topics.find(x => x.id === id);
           saveTopics(topics.filter(x => x.id !== id));
+          if (removed && removed.eventType === "Geburtstag" && removed.characterName) {
+            deleteBirthday(removed.characterName);
+          }
+          renderBirthdays();
           showList();
         }
       };
@@ -299,35 +315,23 @@
       return { year, month, day, monthName: INGAME_MONTHS_EV[month] };
     }
     function renderBirthdays() {
-      const now = getIngameNow();
-      const nowEl = document.getElementById("ingameNow");
-      if (nowEl) nowEl.textContent = now.day + ". " + now.monthName + " " + now.year;
-      let list = [];
-      try { list = JSON.parse(localStorage.getItem("portal_birthdays") || "[]"); } catch(e) {}
-      const ul = document.getElementById("birthdayList");
-      const empty = document.getElementById("birthdayEmpty");
-      if (!ul) return;
-      ul.innerHTML = "";
-      if (!list.length) {
-        if (empty) empty.style.display = "block";
-        return;
-      }
-      if (empty) empty.style.display = "none";
-      // sort by next occurrence from today
-      list.forEach(b => {
-        let delta = (b.month - now.month) * 30 + (b.day - now.day);
-        if (delta < 0) delta += 360;
-        b._delta = delta;
-        b._today = (b.day === now.day && b.month === now.month);
-      });
-      list.sort((a,b) => a._delta - b._delta);
-      list.forEach(b => {
+      let birthdays = [];
+      try { birthdays = JSON.parse(localStorage.getItem("portal_birthdays") || "[]"); } catch {}
+      birthdayList.innerHTML = "";
+      if (!birthdays.length) { birthdayEmpty.style.display = "block"; return; }
+      birthdayEmpty.style.display = "none";
+      birthdays.sort((a,b) => a.month - b.month || a.day - b.day).forEach(b => {
         const li = document.createElement("li");
-        const mon = b.monthName || INGAME_MONTHS_EV[b.month] || "";
-        const badge = b._today ? ' <span style="color:var(--success);font-size:0.8rem;">● Heute!</span>' : "";
-        const age = now.year - b.year - ((now.month < b.month || (now.month === b.month && now.day < b.day)) ? 1 : 0);
-        li.innerHTML = `<a href="charakterbogen.html"><strong>🎂 ${escapeHtml(b.name)}</strong>${badge}<div class="topic-meta">${b.day}. ${mon} · wird ${age + (b._today?0:0)} / geboren ${b.year} · in ${b._delta} Ingame-Tagen</div></a>`;
-        ul.appendChild(li);
+        li.innerHTML = `<a href="#"><strong>🎂 ${escapeHtml(b.name)}</strong><div class="topic-meta">${b.day}. ${escapeHtml(b.monthName || "Monat")}${b.year ? " " + escapeHtml(b.year) : ""}</div></a>`;
+        li.querySelector("a").addEventListener("click", e => {
+          e.preventDefault();
+          if (!unlocked) return;
+          if (!confirm("Geburtstag von " + b.name + " wirklich löschen?\nDer zugehörige Geburtstag wird auch aus Events und Kalender entfernt.")) return;
+          deleteBirthday(b.name);
+          renderBirthdays();
+          showList();
+        });
+        birthdayList.appendChild(li);
       });
     }
     renderBirthdays();

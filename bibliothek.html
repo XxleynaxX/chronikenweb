@@ -5,6 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Bibliothek – Chroniken</title>
   <link rel="stylesheet" href="style.css">
+  <link rel="stylesheet" href="chroniken-admin.css">
 </head>
 <body>
   <div class="bg-overlay"></div>
@@ -147,11 +148,19 @@
           <a href="#" data-id="${t.id}">
             <strong>${escapeHtml(t.title)}</strong>
             <div class="topic-meta">Zuletzt geändert: ${date}</div>
-          </a>`;
+          </a>
+          ${unlocked ? `<div class="tile-actions" style="margin-top:.6rem;">
+            <button class="btn secondary" data-edit-list="${t.id}">Bearbeiten</button>
+            <button class="btn danger" data-del-list="${t.id}">Löschen</button>
+          </div>` : ""}`;
         li.querySelector("a").addEventListener("click", e => {
           e.preventDefault();
           showTopic(t.id);
         });
+        const eb=li.querySelector("[data-edit-list]");
+        if(eb) eb.onclick=()=>openEditor(t);
+        const db=li.querySelector("[data-del-list]");
+        if(db) db.onclick=()=>{ if(!confirm("Eintrag wirklich löschen?")) return; saveTopics(loadTopics().filter(x=>x.id!==t.id)); showList(); };
         topicList.appendChild(li);
       });
     }

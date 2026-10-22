@@ -3,6 +3,7 @@
 <head>
 <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Chroniken – Kalender</title><link rel="stylesheet" href="style.css">
+<link rel="stylesheet" href="chroniken-admin.css">
 <style>
 .calendar-hero{text-align:center;padding:2rem 0 1rem}.calendar-hero h1{color:var(--purple-bright);font-size:2.5rem}.calendar-hero p{color:var(--text-muted)}
 .calendar-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:1rem;margin:1.5rem 0}.month-card{background:var(--bg-card);border:1px solid var(--border);border-radius:14px;padding:1.2rem;transition:.25s}.month-card:hover,.month-card.current{border-color:var(--purple);box-shadow:0 0 18px rgba(168,85,247,.15)}.month-card h3{color:var(--purple-bright);margin-bottom:.3rem}.month-card small{color:var(--text-muted)}.month-card .holiday{margin-top:.7rem;color:var(--text);font-size:.9rem}.calendar-now{display:grid;grid-template-columns:1.2fr 1fr;gap:1rem}.calendar-now .big-date{font-size:2rem;color:var(--purple-bright);font-weight:700}.calc{font-size:.92rem;color:var(--text-muted);line-height:1.7}.holiday-list{display:grid;grid-template-columns:repeat(2,1fr);gap:.8rem}.holiday-item{background:var(--bg-card);border:1px solid var(--border);border-radius:12px;padding:1rem}.holiday-item strong{color:var(--purple-bright)}
@@ -47,6 +48,24 @@
 </section>
 <section><h2 class="page-title">Die zwölf Monde</h2><div class="calendar-grid" id="months"></div></section>
 <section><h2 class="page-title">Feste und Feiertage</h2><div class="holiday-list" id="holidays"></div></section>
+<section class="admin-panel" id="adminCalendarTools" style="display:none">
+  <div class="admin-form">
+    <h2 id="calendarFormTitle">Neuen Kalendereintrag anlegen</h2>
+    <div class="admin-grid">
+      <div class="admin-field"><label>Name *</label><input id="calendarName" placeholder="z. B. Erntefest"></div>
+      <div class="admin-field"><label>Monat</label><select id="calendarMonth"></select></div>
+      <div class="admin-field"><label>Tag</label><input id="calendarDay" type="number" min="1" max="30" value="1"></div>
+      <div class="admin-field full"><label>Beschreibung</label><textarea id="calendarDesc" placeholder="Beschreibung des Kalendereintrags"></textarea></div>
+    </div>
+    <div class="admin-actions">
+      <button class="btn" id="calendarSave">Speichern</button>
+      <button class="btn secondary" id="calendarCancel" style="display:none">Abbrechen</button>
+      <span class="admin-status" id="calendarStatus"></span>
+    </div>
+  </div>
+  <h2 class="admin-sub-title">Vorhandene Kalendereinträge</h2>
+  <div class="holiday-list" id="adminCalendarList"></div>
+</section>
 </main>
 <footer>
   <p>© Kiyasha</p>
@@ -78,6 +97,14 @@ const holidays = [
   {m:11,d:15,n:'Fuchsfeuer',t:'Ein verspieltes Fest der List, Geschichten und kleiner Streiche.'}
 ];
 
+const CAL_KEY = "chroniken_calendar_entries";
+let calendarEditIndex = null;
+function loadCalendarEntries() {
+  try { return JSON.parse(localStorage.getItem(CAL_KEY) || "[]"); } catch { return []; }
+}
+function saveCalendarEntries(list) { localStorage.setItem(CAL_KEY, JSON.stringify(list)); }
+function activeHolidays() { return [...holidays, ...loadCalendarEntries().map((h,i)=>({...h, custom:true, customIndex:i}))]; }
+
 function getDate() {
   let realDays = Math.floor((Date.now() - start.getTime()) / 86400000);
   if (realDays < 0) realDays = 0;
@@ -88,81 +115,64 @@ function getDate() {
   let day = (dayOfYear % 30) + 1;
   return { year, mi, day, realDays };
 }
-
-function holidayFor(mi, day) {
-  return holidays.find(h => h.m === mi && h.d === day);
-}
-
-function loadBirthdays() {
-  try { return JSON.parse(localStorage.getItem('portal_birthdays')) || []; }
-  catch { return []; }
-}
-function loadCharacterEvents() {
-  try { return JSON.parse(localStorage.getItem('portal_events')) || []; }
-  catch { return []; }
-}
-
+function holidayFor(mi, day) { return activeHolidays().find(h => h.m === mi && h.d === day); }
+function loadBirthdays() { try { return JSON.parse(localStorage.getItem('portal_birthdays')) || []; } catch { return []; } }
+function loadCharacterEvents() { try { return JSON.parse(localStorage.getItem('portal_events')) || []; } catch { return []; } }
 const d = getDate();
 const h = holidayFor(d.mi, d.day);
 const birthdays = loadBirthdays();
 const characterEvents = loadCharacterEvents().filter(e => e.eventType === 'Geburtstag' && Number.isInteger(e.birthdayMonth) && Number.isInteger(e.birthdayDay));
 const todayEvents = characterEvents.filter(e => e.birthdayMonth === d.mi && e.birthdayDay === d.day);
 const todayBirthdays = birthdays.filter(b => b.month === d.mi && b.day === d.day);
-
-// Aktuelles Datum
 document.getElementById('gameDate').textContent = `${d.day}. ${months[d.mi][0]} ${d.year}`;
-
-// Feiertag + Geburtstage heute
 let todayHtml = '';
-if (h) {
-  todayHtml += `✨ <b>${h.n}</b><br>${h.t}`;
-}
+if (h) todayHtml += `✨ <b>${escapeHtml(h.n)}</b><br>${escapeHtml(h.t)}`;
 if (todayBirthdays.length || todayEvents.length) {
   if (todayHtml) todayHtml += '<br><br>';
   const names = todayBirthdays.map(b => b.name).concat(todayEvents.map(e => e.characterName)).filter((v,i,a)=>v && a.indexOf(v)===i);
-  todayHtml += names.map(name => `🎂 <b>Geburtstag von ${name}</b>`).join('<br>');
+  todayHtml += names.map(name => `🎂 <b>Geburtstag von ${escapeHtml(name)}</b>`).join('<br>');
 }
-if (!todayHtml) {
-  todayHtml = 'Heute steht kein großer Feiertag im Kalender.';
-}
+if (!todayHtml) todayHtml = 'Heute steht kein großer Feiertag im Kalender.';
 document.getElementById('holidayNow').innerHTML = todayHtml;
-
-// Monats-Karten mit Feiertagen + Geburtstagen
 document.getElementById('months').innerHTML = months.map((m, i) => {
-  const hs = holidays.filter(h => h.m === i);
+  const hs = activeHolidays().filter(h => h.m === i);
   const bs = birthdays.filter(b => b.month === i);
   const es = characterEvents.filter(e => e.birthdayMonth === i);
   let lines = [];
-  if (hs.length) lines = lines.concat(hs.map(h => `🎉 ${h.d}. Tag: ${h.n}`));
-  if (bs.length) lines = lines.concat(bs.map(b => `🎂 ${b.day}. Tag: Geburtstag von ${b.name}`));
-  if (es.length) lines = lines.concat(es.map(e => `📅 ${e.birthdayDay}. Tag: Event – ${e.characterName}`));
+  if (hs.length) lines = lines.concat(hs.map(h => `🎉 ${h.d}. Tag: ${escapeHtml(h.n)}`));
+  if (bs.length) lines = lines.concat(bs.map(b => `🎂 ${b.day}. Tag: Geburtstag von ${escapeHtml(b.name)}`));
+  if (es.length) lines = lines.concat(es.map(e => `📅 ${e.birthdayDay}. Tag: Event – ${escapeHtml(e.characterName)}`));
   const content = lines.length ? lines.join('<br>') : 'Keine festgelegten Feiertage oder Geburtstage';
   return `<div class="month-card ${i === d.mi ? 'current' : ''}"><h3>${i + 1}. ${m[0]}</h3><small>${m[1]}</small><div class="holiday">${content}</div></div>`;
 }).join('');
-
-// Feste und Feiertage Liste
-document.getElementById('holidays').innerHTML = holidays.map(h =>
-  `<div class="holiday-item"><strong>${h.n}</strong><br>${h.d}. ${months[h.m][0]}<br><span class="calc">${h.t}</span></div>`
-).join('');
-
-// Zusätzliche Sektion für alle Geburtstage (falls vorhanden)
+document.getElementById('holidays').innerHTML = activeHolidays().map(h => `<div class="holiday-item"><strong>${escapeHtml(h.n)}</strong><br>${h.d}. ${months[h.m][0]}<br><span class="calc">${escapeHtml(h.t)}</span></div>`).join('');
 if (birthdays.length || characterEvents.length) {
   const section = document.createElement('section');
-  section.innerHTML = `
-    <h2 class="page-title">Charakter-Events & Geburtstage</h2>
-    <div class="holiday-list">
-      ${birthdays
-        .sort((a, b) => a.month - b.month || a.day - b.day)
-        .map(b => `<div class="holiday-item"><strong>🎂 ${b.name}</strong><br>${b.day}. ${months[b.month][0]}</div>`)
-        .join('')}
-      ${characterEvents
-        .sort((a,b) => a.birthdayMonth - b.birthdayMonth || a.birthdayDay - b.birthdayDay)
-        .map(e => `<div class="holiday-item"><strong>📅 Event: ${e.characterName}</strong><br>${e.birthdayDay}. ${months[e.birthdayMonth][0]}</div>`)
-        .join('')}
-    </div>
-  `;
+  section.innerHTML = `<h2 class="page-title">Charakter-Events & Geburtstage</h2><div class="holiday-list">${birthdays.sort((a,b)=>a.month-b.month||a.day-b.day).map(b=>`<div class="holiday-item"><strong>🎂 ${escapeHtml(b.name)}</strong><br>${b.day}. ${months[b.month][0]}</div>`).join('')}${characterEvents.sort((a,b)=>a.birthdayMonth-b.birthdayMonth||a.birthdayDay-b.birthdayDay).map(e=>`<div class="holiday-item"><strong>📅 Event: ${escapeHtml(e.characterName)}</strong><br>${e.birthdayDay}. ${months[e.birthdayMonth][0]}</div>`).join('')}</div>`;
   document.querySelector('main').appendChild(section);
 }
+function isAdmin() { try { return sessionStorage.getItem('portal_admin_auth') === '1'; } catch { return false; } }
+function renderAdminCalendarTools() {
+  const box=document.getElementById('adminCalendarTools'); if(!box) return;
+  box.style.display=isAdmin()?'block':'none'; if(!isAdmin()) return;
+  document.getElementById('calendarMonth').innerHTML=months.map((m,i)=>`<option value="${i}">${i+1}. ${m[0]}</option>`).join('');
+  const custom=loadCalendarEntries();
+  const rows=[];
+  holidays.forEach((h,i)=>rows.push(`<div class="holiday-item"><strong>✨ ${escapeHtml(h.n)}</strong><br>${h.d}. ${months[h.m][0]}<br><span class="calc">Fester Systemeintrag</span></div>`));
+  custom.forEach((h,i)=>rows.push(`<div class="holiday-item"><strong>📅 ${escapeHtml(h.n)}</strong><br>${h.d}. ${months[h.m][0]}<br><span class="calc">${escapeHtml(h.t||'')}</span><div class="tile-actions"><button class="btn secondary" data-calendar-edit="${i}">Bearbeiten</button><button class="btn danger" data-calendar-del="${i}">Löschen</button></div></div>`));
+  document.getElementById('adminCalendarList').innerHTML=rows.join('');
+  document.querySelectorAll('[data-calendar-edit]').forEach(b=>b.onclick=()=>editCalendarEntry(+b.dataset.calendarEdit));
+  document.querySelectorAll('[data-calendar-del]').forEach(b=>b.onclick=()=>deleteCalendarEntry(+b.dataset.calendarDel));
+}
+function resetCalendarForm(){calendarEditIndex=null;document.getElementById('calendarName').value='';document.getElementById('calendarMonth').value='0';document.getElementById('calendarDay').value='1';document.getElementById('calendarDesc').value='';document.getElementById('calendarFormTitle').textContent='Neuen Kalendereintrag anlegen';document.getElementById('calendarSave').textContent='Speichern';document.getElementById('calendarCancel').style.display='none';}
+function editCalendarEntry(i){const h=loadCalendarEntries()[i];if(!h)return;calendarEditIndex=i;document.getElementById('calendarName').value=h.n||'';document.getElementById('calendarMonth').value=h.m;document.getElementById('calendarDay').value=h.d;document.getElementById('calendarDesc').value=h.t||'';document.getElementById('calendarFormTitle').textContent='Kalendereintrag bearbeiten';document.getElementById('calendarSave').textContent='Änderungen speichern';document.getElementById('calendarCancel').style.display='inline-block';window.scrollTo({top:0,behavior:'smooth'});}
+function saveCalendarEntry(){const name=document.getElementById('calendarName').value.trim();const m=Number(document.getElementById('calendarMonth').value);const day=Number(document.getElementById('calendarDay').value);if(!name||day<1||day>30){document.getElementById('calendarStatus').textContent='Bitte Name und gültigen Tag eingeben.';return;}const list=loadCalendarEntries();const entry={n:name,m,d:day,t:document.getElementById('calendarDesc').value.trim()};if(calendarEditIndex!==null&&list[calendarEditIndex])list[calendarEditIndex]=entry;else list.push(entry);saveCalendarEntries(list);resetCalendarForm();document.getElementById('calendarStatus').textContent='✓ Gespeichert';location.reload();}
+function deleteCalendarEntry(i){if(!confirm('Diesen Kalendereintrag wirklich löschen?'))return;const list=loadCalendarEntries();list.splice(i,1);saveCalendarEntries(list);location.reload();}
+function escapeHtml(str){return String(str??'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
+document.getElementById('calendarSave').onclick=saveCalendarEntry;
+document.getElementById('calendarCancel').onclick=resetCalendarForm;
+renderAdminCalendarTools();
+
 </script>
 </body>
 </html>
