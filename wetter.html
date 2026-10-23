@@ -3,6 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
   <title>Chroniken – Wetter</title>
 
   <link rel="stylesheet" href="style.css">
@@ -96,20 +97,21 @@
     </nav>
   </header>
 
-
   <main class="weather-wrap">
 
     <section class="hero">
       <h1>🌦️ Wetter</h1>
+
       <p class="subtitle">
         Das Wetter der Chroniken wechselt alle sechs Stunden.
       </p>
     </section>
 
-
     <div class="weather-card">
 
-      <div class="weather-icon" id="icon">🌤️</div>
+      <div class="weather-icon" id="icon">
+        🌤️
+      </div>
 
       <h2 class="weather-name" id="name">
         Wetter
@@ -118,7 +120,10 @@
       <p class="weather-desc" id="desc"></p>
 
       <div class="timer">
-        <strong>Nächster Wetterwechsel</strong>
+
+        <strong>
+          Nächster Wetterwechsel
+        </strong>
 
         <div
           id="countdown"
@@ -126,103 +131,14 @@
         >
           00:00:00
         </div>
+
       </div>
 
     </div>
 
-
-    <!-- Admin-Bereich -->
-    <section
-      class="admin-panel"
-      id="adminPanel"
-      style="display:none;"
-    >
-
-      <div class="admin-form">
-
-        <h2
-          id="formTitle"
-          data-testid="wetter-form-title"
-        >
-          Neues Wetter anlegen
-        </h2>
-
-        <div class="admin-grid">
-
-          <div class="admin-field">
-            <label>Symbol / Emoji</label>
-
-            <input
-              id="fIcon"
-              data-testid="wetter-input-icon"
-              placeholder="🌧️"
-            >
-          </div>
-
-
-          <div class="admin-field">
-            <label>Name *</label>
-
-            <input
-              id="fName"
-              data-testid="wetter-input-name"
-              placeholder="Sturm"
-            >
-          </div>
-
-
-          <div class="admin-field full">
-
-            <label>Beschreibung</label>
-
-            <textarea
-              id="fDesc"
-            ></textarea>
-
-          </div>
-
-        </div>
-
-
-        <div class="admin-actions">
-
-          <button
-            class="btn"
-            id="btnSave"
-            data-testid="wetter-save-btn"
-          >
-            Speichern
-          </button>
-
-          <button
-            class="btn secondary"
-            id="btnCancel"
-            data-testid="wetter-cancel-btn"
-            style="display:none;"
-          >
-            Abbrechen
-          </button>
-
-          <span
-            class="admin-status"
-            id="status"
-          ></span>
-
-        </div>
-
-      </div>
-
-
-      <h2 class="admin-sub-title">
-        Vorhandenes Wetter
-      </h2>
-
-    </section>
-
-
     <section style="margin-top:2rem">
 
-      <h2 id="listTitle">
+      <h2>
         🌙 Mögliche Wetterlagen
       </h2>
 
@@ -235,116 +151,60 @@
 
   </main>
 
-
   <footer>
     <p>© Kiyasha</p>
   </footer>
 
-
   <script>
-
-    const KEY = "wetter";
-
-    const esc = ChronikenData.esc;
-
-    let editIndex = null;
 
     const el = id =>
       document.getElementById(id);
 
 
-    function admin() {
-      return ChronikenData.isAdmin();
-    }
-
-
     /*
      * ==========================================================
-     * WETTER AUS wetter.js ANZEIGEN
+     * AKTUELLES WETTER
      * ==========================================================
      *
-     * wetter.html entscheidet NICHT selbst über das Wetter.
-     *
-     * Die Entscheidung kommt ausschließlich aus wetter.js.
+     * Die Wetterauswahl kommt ausschließlich aus wetter.js.
      */
 
-    function draw() {
-
-      if (!window.ChronikenWeather) {
-        console.error(
-          "ChronikenWeather wurde nicht geladen."
-        );
-
-        return;
-      }
-
-
-      const weather =
-        ChronikenWeather.get();
-
+    function draw(weather) {
 
       if (!weather) {
-        return;
+        weather =
+          ChronikenWeather.get();
       }
-
 
       el("icon").textContent =
         weather.icon || "🌦️";
 
-
       el("name").textContent =
         weather.name || "Unbekannt";
 
-
       el("desc").textContent =
         weather.description || "";
-
 
       el("countdown").textContent =
         ChronikenWeather.format(
           ChronikenWeather.msNext()
         );
-
     }
 
 
     /*
      * ==========================================================
-     * DIREKT AUF EINEN WETTERWECHSEL REAGIEREN
+     * WETTERWECHSEL
      * ==========================================================
      *
-     * wetter.js löst beim neuen 6-Stunden-Slot das Event
-     * "chroniken-weather-changed" aus.
+     * wetter.js meldet hier einen neuen 6-Stunden-Slot.
      */
 
     window.addEventListener(
       "chroniken-weather-changed",
-      function(event) {
+      function (event) {
 
-        const weather =
-          event.detail;
-
-        if (!weather) {
-          return;
-        }
-
-
-        el("icon").textContent =
-          weather.icon || "🌦️";
-
-
-        el("name").textContent =
-          weather.name || "Unbekannt";
-
-
-        el("desc").textContent =
-          weather.description || "";
-
-
-        el("countdown").textContent =
-          ChronikenWeather.format(
-            ChronikenWeather.msNext()
-          );
+        draw(event.detail);
 
       }
     );
@@ -352,295 +212,52 @@
 
     /*
      * ==========================================================
-     * ADMIN / WETTERLISTE
+     * WETTERLISTE
      * ==========================================================
+     *
+     * Die Liste kommt ebenfalls aus wetter.js.
+     * Es gibt keine zweite Wetterquelle mehr.
      */
 
-    function render() {
+    function renderWeatherList() {
 
       const list =
-        ChronikenData.load(KEY);
-
-
-      el("adminPanel").style.display =
-        admin() ? "block" : "none";
-
-
-      el("listTitle").textContent =
-        admin()
-          ? ""
-          : "🌙 Mögliche Wetterlagen";
-
+        ChronikenWeather.getWeatherList();
 
       el("tiles").innerHTML =
-        list.map((w, i) => `
+        list.map(function (weather) {
 
-          <div class="wcard">
+          return `
+            <div class="wcard">
 
-            <strong>
-              ${esc(w.icon)}
-              ${esc(w.name)}
-            </strong>
+              <strong>
+                ${escapeHtml(weather.icon)}
+                ${escapeHtml(weather.name)}
+              </strong>
 
-            <p class="small">
-              ${esc(w.description)}
-            </p>
+              <p class="small">
+                ${escapeHtml(weather.description)}
+              </p>
 
-            ${
-              admin()
-                ? `
-                  <div class="tile-actions">
+            </div>
+          `;
 
-                    <button
-                      class="btn secondary"
-                      data-edit="${i}"
-                      data-testid="wetter-edit-${i}"
-                    >
-                      Bearbeiten
-                    </button>
-
-                    <button
-                      class="btn danger"
-                      data-del="${i}"
-                      data-testid="wetter-delete-${i}"
-                    >
-                      Löschen
-                    </button>
-
-                  </div>
-                `
-                : ""
-            }
-
-          </div>
-
-        `).join("");
-
-
-      el("tiles")
-        .querySelectorAll("[data-edit]")
-        .forEach(
-          button =>
-            button.onclick =
-              () =>
-                startEdit(
-                  Number(button.dataset.edit)
-                )
-        );
-
-
-      el("tiles")
-        .querySelectorAll("[data-del]")
-        .forEach(
-          button =>
-            button.onclick =
-              () =>
-                remove(
-                  Number(button.dataset.del)
-                )
-        );
-
+        }).join("");
     }
 
 
-    function resetForm() {
+    /*
+     * HTML-Sonderzeichen absichern.
+     */
+    function escapeHtml(value) {
 
-      editIndex = null;
-
-      el("fIcon").value = "";
-      el("fName").value = "";
-      el("fDesc").value = "";
-
-      el("formTitle").textContent =
-        "Neues Wetter anlegen";
-
-      el("btnSave").textContent =
-        "Speichern";
-
-      el("btnCancel").style.display =
-        "none";
-
-      el("status").textContent =
-        "";
-
+      return String(value || "")
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#039;");
     }
-
-
-    function startEdit(i) {
-
-      const w =
-        ChronikenData.load(KEY)[i];
-
-
-      if (!w) {
-        return;
-      }
-
-
-      editIndex = i;
-
-
-      el("fIcon").value =
-        w.icon || "";
-
-
-      el("fName").value =
-        w.name || "";
-
-
-      el("fDesc").value =
-        w.description || "";
-
-
-      el("formTitle").textContent =
-        "Wetter bearbeiten";
-
-
-      el("btnSave").textContent =
-        "Änderungen speichern";
-
-
-      el("btnCancel").style.display =
-        "inline-block";
-
-
-      window.scrollTo({
-        top: 0,
-        behavior: "smooth"
-      });
-
-    }
-
-
-    function remove(i) {
-
-      if (
-        !confirm(
-          "Diese Wetterlage wirklich löschen?"
-        )
-      ) {
-        return;
-      }
-
-
-      const list =
-        ChronikenData.load(KEY);
-
-
-      list.splice(i, 1);
-
-
-      ChronikenData.save(
-        KEY,
-        list
-      );
-
-
-      if (editIndex === i) {
-        resetForm();
-      }
-
-
-      render();
-
-    }
-
-
-    function save() {
-
-      const name =
-        el("fName")
-          .value
-          .trim();
-
-
-      if (!name) {
-
-        el("status").style.color =
-          "#f87171";
-
-        el("status").textContent =
-          "Bitte einen Namen eingeben.";
-
-        return;
-
-      }
-
-
-      const list =
-        ChronikenData.load(KEY);
-
-
-      const entry = {
-
-        name,
-
-        icon:
-          el("fIcon")
-            .value
-            .trim()
-            || "🌦️",
-
-        description:
-          el("fDesc")
-            .value
-            .trim()
-
-      };
-
-
-      if (
-        editIndex !== null &&
-        list[editIndex]
-      ) {
-
-        list[editIndex] =
-          entry;
-
-      } else {
-
-        list.push(entry);
-
-      }
-
-
-      ChronikenData.save(
-        KEY,
-        list
-      );
-
-
-      resetForm();
-
-
-      el("status").style.color =
-        "#22c55e";
-
-
-      el("status").textContent =
-        "✓ Gespeichert";
-
-
-      render();
-
-
-      setTimeout(
-        () => {
-          el("status").textContent =
-            "";
-        },
-        2500
-      );
-
-    }
-
-
-    el("btnSave").onclick =
-      save;
-
-
-    el("btnCancel").onclick =
-      resetForm;
 
 
     /*
@@ -651,36 +268,26 @@
 
     draw();
 
-    render();
+    renderWeatherList();
 
 
     /*
-     * Nur Anzeige aktualisieren.
-     * Die Wetterauswahl macht ausschließlich wetter.js.
+     * Countdown aktualisieren.
+     *
+     * Die Wetterauswahl selbst wird NICHT
+     * hier vorgenommen.
      */
 
     setInterval(
-      draw,
+      function () {
+
+        el("countdown").textContent =
+          ChronikenWeather.format(
+            ChronikenWeather.msNext()
+          );
+
+      },
       1000
-    );
-
-
-    /*
-     * Falls Wetterdaten im Adminbereich geändert wurden.
-     */
-
-    window.addEventListener(
-      "storage",
-      function(event) {
-
-        if (
-          event.key === KEY ||
-          event.key === null
-        ) {
-          render();
-        }
-
-      }
     );
 
   </script>
