@@ -1,4 +1,3 @@
-```html
 <!DOCTYPE html>
 <html lang="de">
 <head>
@@ -6,2181 +5,472 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Chroniken – Admin · Charakterverwaltung</title>
   <link rel="stylesheet" href="style.css">
-
   <style>
-    .admin-layout{max-width:1100px;margin:0 auto;padding:0 1.5rem 3rem}
-    .admin-bar{display:flex;flex-wrap:wrap;gap:.8rem;align-items:center;margin-bottom:1.5rem;padding:1rem 1.2rem;background:var(--bg-card);border:1px solid var(--border);border-radius:10px}
-    .admin-bar .status-ok{color:var(--success);font-weight:600}
-    .char-table{width:100%;border-collapse:collapse;margin-top:.5rem}
-    .char-table th,.char-table td{text-align:left;padding:.75rem .9rem;border-bottom:1px solid var(--border);vertical-align:top;font-size:.92rem}
-    .char-table th{color:var(--accent-soft);font-weight:600;background:rgba(168,85,247,.06)}
-    .char-table tr:hover td{background:rgba(255,255,255,.02)}
-    .char-id{font-family:ui-monospace,monospace;color:var(--accent-soft);font-weight:700;white-space:nowrap}
-    .warn-badge{display:inline-block;min-width:1.6rem;text-align:center;padding:.15rem .45rem;border-radius:999px;font-size:.8rem;font-weight:700;background:rgba(225,29,72,.15);color:#fb7185;border:1px solid rgba(225,29,72,.35)}
-    .warn-badge.zero{background:rgba(34,197,94,.12);color:#4ade80;border-color:rgba(34,197,94,.3)}
-    .form-card{background:var(--bg-card);border:1px solid var(--border);border-radius:10px;padding:1.4rem 1.5rem;margin-bottom:1.5rem}
-    .form-card h2{color:var(--accent-soft);font-size:1.15rem;margin-bottom:1rem}
-    .form-grid{display:grid;grid-template-columns:1fr 1fr;gap:1rem 1.2rem}
-    .form-grid .full{grid-column:1/-1}
-    .form-group label{display:block;margin-bottom:.35rem;color:var(--text-muted);font-size:.88rem}
-    .form-group input,.form-group textarea,.form-group select{width:100%;padding:.55rem .75rem;border-radius:6px;border:1px solid var(--border);background:var(--bg-input);color:var(--text);font-size:.95rem}
-    .form-group textarea{min-height:90px;resize:vertical}
-    .form-group input:focus,.form-group textarea:focus,.form-group select:focus{outline:none;border-color:var(--accent);box-shadow:0 0 0 2px rgba(168,85,247,.2)}
-    .form-actions{display:flex;flex-wrap:wrap;gap:.6rem;margin-top:1.1rem}
-    .empty-hint{color:var(--text-muted);padding:1.5rem 0;text-align:center}
-    .locked-msg{max-width:480px;margin:4rem auto;text-align:center;background:var(--bg-card);border:1px solid var(--border);border-radius:12px;padding:2rem}
-    .locked-msg h2{color:var(--accent-soft);margin-bottom:.6rem}
-    .violation-preview{font-size:.85rem;color:var(--text-muted);max-width:220px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-    .actions-cell{white-space:nowrap}
-    .actions-cell button{margin-right:.35rem}
-    .master-tiles{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:1rem}
-    .master-tile{display:flex;flex-direction:column;gap:.45rem;padding:1.2rem;border:1px solid var(--border);border-radius:12px;background:rgba(168,85,247,.05);color:var(--text);text-decoration:none;transition:.18s ease}
-    .master-tile:hover{transform:translateY(-2px);border-color:var(--accent);background:rgba(168,85,247,.1)}
-    .master-tile small{color:var(--text-muted);line-height:1.4}
-    .tile-icon{font-size:1.7rem}
-    @media(max-width:700px){
-      .form-grid{grid-template-columns:1fr}
-      .char-table{display:block;overflow-x:auto}
+    .admin-layout { max-width: 1100px; margin: 0 auto; padding: 0 1.5rem 3rem; }
+    .admin-bar {
+      display: flex; flex-wrap: wrap; gap: 0.8rem; align-items: center;
+      margin-bottom: 1.5rem; padding: 1rem 1.2rem;
+      background: var(--bg-card); border: 1px solid var(--border); border-radius: 10px;
+    }
+    .admin-bar .status-ok { color: var(--success); font-weight: 600; }
+    .char-table { width: 100%; border-collapse: collapse; margin-top: 0.5rem; }
+    .char-table th, .char-table td {
+      text-align: left; padding: 0.75rem 0.9rem; border-bottom: 1px solid var(--border);
+      vertical-align: top; font-size: 0.92rem;
+    }
+    .char-table th { color: var(--accent-soft); font-weight: 600; background: rgba(168,85,247,0.06); }
+    .char-table tr:hover td { background: rgba(255,255,255,0.02); }
+    .char-id {
+      font-family: ui-monospace, monospace; color: var(--accent-soft);
+      font-weight: 700; white-space: nowrap;
+    }
+    .warn-badge {
+      display: inline-block; min-width: 1.6rem; text-align: center;
+      padding: 0.15rem 0.45rem; border-radius: 999px; font-size: 0.8rem; font-weight: 700;
+      background: rgba(225,29,72,0.15); color: #fb7185; border: 1px solid rgba(225,29,72,0.35);
+    }
+    .warn-badge.zero { background: rgba(34,197,94,0.12); color: #4ade80; border-color: rgba(34,197,94,0.3); }
+    .form-card {
+      background: var(--bg-card); border: 1px solid var(--border); border-radius: 10px;
+      padding: 1.4rem 1.5rem; margin-bottom: 1.5rem;
+    }
+    .form-card h2 { color: var(--accent-soft); font-size: 1.15rem; margin-bottom: 1rem; }
+    .form-grid {
+      display: grid; grid-template-columns: 1fr 1fr; gap: 1rem 1.2rem;
+    }
+    .form-grid .full { grid-column: 1 / -1; }
+    .form-group label { display: block; margin-bottom: 0.35rem; color: var(--text-muted); font-size: 0.88rem; }
+    .form-group input, .form-group textarea, .form-group select {
+      width: 100%; padding: 0.55rem 0.75rem; border-radius: 6px;
+      border: 1px solid var(--border); background: var(--bg-input); color: var(--text);
+      font-size: 0.95rem;
+    }
+    .form-group textarea { min-height: 90px; resize: vertical; }
+    .form-group input:focus, .form-group textarea:focus, .form-group select:focus {
+      outline: none; border-color: var(--accent); box-shadow: 0 0 0 2px rgba(168,85,247,0.2);
+    }
+    .form-actions { display: flex; flex-wrap: wrap; gap: 0.6rem; margin-top: 1.1rem; }
+    .empty-hint { color: var(--text-muted); padding: 1.5rem 0; text-align: center; }
+    .locked-msg {
+      max-width: 480px; margin: 4rem auto; text-align: center;
+      background: var(--bg-card); border: 1px solid var(--border); border-radius: 12px; padding: 2rem;
+    }
+    .locked-msg h2 { color: var(--accent-soft); margin-bottom: 0.6rem; }
+    .violation-preview {
+      font-size: 0.85rem; color: var(--text-muted); max-width: 220px;
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    }
+    .actions-cell { white-space: nowrap; }
+    .actions-cell button { margin-right: 0.35rem; }
+    .master-tiles { display:grid; grid-template-columns:repeat(auto-fit,minmax(190px,1fr)); gap:1rem; }
+    .master-tile { display:flex; flex-direction:column; gap:.45rem; padding:1.2rem; border:1px solid var(--border); border-radius:12px; background:rgba(168,85,247,.05); color:var(--text); text-decoration:none; transition:.18s ease; }
+    .master-tile:hover { transform:translateY(-2px); border-color:var(--accent); background:rgba(168,85,247,.1); }
+    .master-tile small { color:var(--text-muted); line-height:1.4; }
+    .tile-icon { font-size:1.7rem; }
+    @media (max-width: 700px) {
+      .form-grid { grid-template-columns: 1fr; }
+      .char-table { display: block; overflow-x: auto; }
     }
   </style>
 </head>
-
 <body>
+  <div class="bg-overlay"></div>
+  <header>
+    <div class="logo-wrap">
+      <div class="logo">Chroniken</div>
+    </div>
+    <nav>
+      <a href="index.html">Start</a>
+      <a href="news.html">News</a>
+      <a href="events.html">Events</a>
+      <a href="kalender.html">Kalender</a>
+      <a href="wiki.html">Wiki</a>
+      <a href="bibliothek.html">Bibliothek</a>
+      <a href="berufe.html">Berufe</a>
+      <a href="kreaturen.html">Kreaturen</a>
+      <a href="regeln.html">Regeln</a>
+      <a href="goetter.html">Götter</a>
+      <a href="charakterbogen.html">Charakterbogen</a>
+      <a href="admin.html" class="active" id="navAdmin">Admin</a>
+    </nav>
+  </header>
 
-<div class="bg-overlay"></div>
+  <main class="admin-layout">
+    <h1 class="page-title">Admin · Charakterverwaltung</h1>
+    <p class="page-desc">Charakterbögen anlegen, Verwarnungen und Regelverstöße dokumentieren. Jeder neue Charakter erhält eine laufende ID.</p>
 
-<header>
-  <div class="logo-wrap">
-    <div class="logo">Chroniken</div>
-  </div>
-
-  <nav>
-    <a href="index.html">Start</a>
-    <a href="news.html">News</a>
-    <a href="events.html">Events</a>
-    <a href="kalender.html">Kalender</a>
-    <a href="wiki.html">Wiki</a>
-    <a href="bibliothek.html">Bibliothek</a>
-    <a href="berufe.html">Berufe</a>
-    <a href="kreaturen.html">Kreaturen</a>
-    <a href="regeln.html">Regeln</a>
-    <a href="goetter.html">Götter</a>
-    <a href="charakterbogen.html">Charakterbogen</a>
-    <a href="admin.html" class="active" id="navAdmin">Admin</a>
-  </nav>
-</header>
-
-<main class="admin-layout">
-
-  <h1 class="page-title">Admin · Charakterverwaltung</h1>
-
-  <p class="page-desc">
-    Charakterbögen anlegen, Verwarnungen und Regelverstöße dokumentieren.
-    Jeder neue Charakter erhält eine laufende ID.
-  </p>
-
-  <div id="lockedView" class="locked-msg" style="display:none">
-    <h2>🔒 Nur für Admins</h2>
-    <p>
-      Bitte unten links mit Benutzername und Passwort anmelden,
-      um die Charakterverwaltung zu nutzen.
-    </p>
-
-    <p style="margin-top:1rem">
-      <a href="index.html" class="btn secondary">Zur Startseite</a>
-    </p>
-  </div>
-
-  <div id="adminView" style="display:none">
-
-    <div class="admin-bar">
-      <span class="status-ok">✓ Angemeldet als Admin</span>
-      <span class="status" id="charCount">0 Charaktere</span>
-
-      <button
-        type="button"
-        class="btn secondary"
-        id="btnLogout"
-        style="margin-left:auto">
-        Abmelden
-      </button>
+    <div id="lockedView" class="locked-msg" style="display:none;">
+      <h2>🔒 Nur für Admins</h2>
+      <p>Bitte unten links mit Benutzername und Passwort anmelden, um die Charakterverwaltung zu nutzen.</p>
+      <p style="margin-top:1rem;"><a href="index.html" class="btn secondary">Zur Startseite</a></p>
     </div>
 
-
-    <!-- EVENTS -->
-
-    <div class="form-card">
-
-      <h2>📅 Events & Kalender verwalten</h2>
-
-      <p style="color:var(--text-muted);font-size:.9rem;margin-bottom:1rem">
-        Hier kannst du als Admin Geburtstage, Charakter-Events und
-        Kalender-Feiertage löschen.
-      </p>
-
-      <div id="adminEventManager"></div>
-
-    </div>
-
-
-    <!-- STAMMDATEN -->
-
-    <div class="form-card">
-
-      <h2>Stammdaten</h2>
-
-      <p style="color:var(--text-muted);font-size:.9rem;margin-bottom:1rem">
-        Völker, Berufe und Götter werden über die jeweilige Kachel verwaltet.
-      </p>
-
-      <div class="master-tiles">
-
-        <a class="master-tile" href="voelker.html">
-          <span class="tile-icon">🦊</span>
-          <strong>Völker & Rassen</strong>
-          <small>Beschreibung, Stärken, Schwächen und Größen</small>
-        </a>
-
-        <a class="master-tile" href="berufe.html">
-          <span class="tile-icon">⚒️</span>
-          <strong>Berufe</strong>
-          <small>Hauptberuf oder Nebenberuf anlegen</small>
-        </a>
-
-        <a class="master-tile" href="goetter.html">
-          <span class="tile-icon">✨</span>
-          <strong>Götter</strong>
-          <small>Götter und ihre Beschreibungen verwalten</small>
-        </a>
-
-        <a class="master-tile" href="wetter.html">
-          <span class="tile-icon">🌦️</span>
-          <strong>Wetter</strong>
-          <small>
-            Wetterlagen verwalten (Wechsel alle 6 Stunden)
-          </small>
-        </a>
-
+    <div id="adminView" style="display:none;">
+      <div class="admin-bar">
+        <span class="status-ok">✓ Angemeldet als Admin</span>
+        <span class="status" id="charCount">0 Charaktere</span>
+        <button type="button" class="btn secondary" id="btnLogout" style="margin-left:auto;">Abmelden</button>
       </div>
 
-    </div>
-
-
-    <!-- CHARAKTER FORMULAR -->
-
-    <div class="form-card">
-
-      <h2 id="formTitle">Neuer Charakterbogen</h2>
-
-      <form id="charForm">
-
-        <input
-          type="hidden"
-          id="editId"
-          value="">
-
-        <div class="form-grid">
-
-          <div class="form-group">
-
-            <label>Laufende ID</label>
-
-            <input
-              type="text"
-              id="charIdDisplay"
-              readonly
-              placeholder="wird automatisch vergeben"
-              style="opacity:.85">
-
-          </div>
-
-
-          <div class="form-group">
-
-            <label>Charaktername *</label>
-
-            <input
-              type="text"
-              id="charName"
-              required
-              placeholder="z. B. Elara Mondschatten">
-
-          </div>
-
-
-          <div class="form-group">
-
-            <label>Spieler / OOC-Name</label>
-
-            <input
-              type="text"
-              id="playerName"
-              placeholder="Name des Spielers">
-
-          </div>
-
-
-          <div class="form-group">
-
-            <label>Steam-ID</label>
-
-            <input
-              type="text"
-              id="steamId"
-              placeholder="z. B. 76561198xxxxxxxx">
-
-          </div>
-
-
-          <div class="form-group">
-
-            <label>Volk / Rasse</label>
-
-            <select id="race">
-
-              <option value="">— bitte wählen —</option>
-              <option>Mensch</option>
-              <option>Elf</option>
-              <option>Zwerg</option>
-              <option>Orc</option>
-              <option>Kitsune</option>
-              <option>Wolf</option>
-              <option>Troll</option>
-              <option>Tiefling</option>
-              <option>Gnom</option>
-              <option>Halbling</option>
-              <option>Minotaurus</option>
-              <option>Drachengeborener</option>
-              <option>Dämon</option>
-              <option>Fee</option>
-              <option>Halbgigant</option>
-              <option>Goblin</option>
-              <option>Wasserwesen</option>
-              <option>Vogelwesen</option>
-              <option>Tierwesen</option>
-              <option>Halborc</option>
-              <option>Halbelf</option>
-              <option>Wargwandler</option>
-
-            </select>
-
-          </div>
-
-
-          <div class="form-group">
-
-            <label>Anzahl Verwarnungen</label>
-
-            <input
-              type="number"
-              id="warnings"
-              min="0"
-              step="1"
-              value="0">
-
-          </div>
-
-
-          <div class="form-group">
-
-            <label>Status</label>
-
-            <select id="status">
-
-              <option value="aktiv">Aktiv</option>
-              <option value="pausiert">Pausiert</option>
-              <option value="gesperrt">Gesperrt</option>
-              <option value="archiviert">Archiviert</option>
-
-            </select>
-
-          </div>
-
-
-          <div class="form-group full">
-
-            <label>Gegen welche Regel verstoßen?</label>
-
-            <textarea
-              id="violation"
-              placeholder="z. B. Regel 4.2 – Metagaming im Event X …">
-            </textarea>
-
-          </div>
-
-
-          <div class="form-group full">
-
-            <label>Notizen (nur Admin sichtbar)</label>
-
-            <textarea
-              id="notes"
-              placeholder="Interne Notizen, Kontext, Absprachen …">
-            </textarea>
-
-          </div>
-
-        </div>
-
-
-        <div class="form-actions">
-
-          <button
-            type="submit"
-            class="btn"
-            id="btnSave">
-            Speichern
-          </button>
-
-          <button
-            type="button"
-            class="btn secondary"
-            id="btnCancel"
-            style="display:none">
-            Abbrechen
-          </button>
-
-        </div>
-
-      </form>
-
-    </div>
-
-
-    <!-- CHARAKTER LISTE -->
-
-    <div class="form-card">
-
-      <h2>Registrierte Charakterbögen</h2>
-
-      <div id="tableWrap">
-
-        <p
-          class="empty-hint"
-          id="emptyHint">
-          Noch keine Charaktere angelegt.
-        </p>
-
-        <table
-          class="char-table"
-          id="charTable"
-          style="display:none">
-
-          <thead>
-
-            <tr>
-              <th>ID</th>
-              <th>Charakter</th>
-              <th>Spieler</th>
-              <th>Steam-ID</th>
-              <th>Verwarnungen</th>
-              <th>Regelverstoß</th>
-              <th>Status</th>
-              <th></th>
-            </tr>
-
-          </thead>
-
-          <tbody id="charBody"></tbody>
-
-        </table>
-
+      <div class="form-card">
+        <h2>📅 Events & Kalender verwalten</h2>
+        <p style="color:var(--text-muted);font-size:0.9rem;margin-bottom:1rem;">Hier kannst du als Admin Geburtstage, Charakter-Events und Kalender-Feiertage löschen. Ein gelöschter Geburtstag wird automatisch aus Events und Kalender entfernt.</p>
+        <div id="adminEventManager"></div>
       </div>
 
-    </div>
-
-  </div>
-
-</main>
-
-
-<footer>
-  <p>© Kiyasha</p>
-</footer>
-
-
-<!-- LOGIN -->
-
-<div id="loginPanel" class="login-panel">
-
-  <div id="loginFormWrap">
-
-    <div class="login-title">Admin-Login</div>
-
-    <input
-      type="text"
-      id="loginUser"
-      placeholder="Benutzername"
-      autocomplete="username">
-
-    <input
-      type="password"
-      id="loginPass"
-      placeholder="Passwort"
-      autocomplete="current-password">
-
-    <button
-      type="button"
-      class="btn"
-      id="btnLogin"
-      style="width:100%">
-      Anmelden
-    </button>
-
-    <div
-      class="login-err"
-      id="loginErr">
-    </div>
-
-  </div>
-
-
-  <div id="loginLoggedIn" style="display:none">
-
-    <div class="login-title">Admin aktiv</div>
-
-    <button
-      type="button"
-      class="btn secondary"
-      id="btnLogoutPanel"
-      style="width:100%">
-      Abmelden
-    </button>
-
-  </div>
-
-</div>
-
-
-<script>
-
-const ADMIN_USER="admin";
-const ADMIN_PASS="chroniken2026";
-
-const AUTH_KEY="portal_admin_auth";
-const CHARS_KEY="portal_char_registry";
-const NEXT_ID_KEY="portal_char_next_id";
-
-const WEBHOOK_KEY="chroniken_discord_webhooks";
-
-const CHARACTER_PROXY_URL=
-  "https://chronikenweb-1.onrender.com/charakter";
-
-const WEBHOOK_TEMPLATES_KEY=
-  "chroniken_webhook_templates";
-
-/*
- * Neue Charaktere, die aus dem Charakterbogen
- * in der Charakterverwaltung auftauchen, werden
- * hier als bereits gemeldet gespeichert.
- */
-const REPORTED_CHARS_KEY=
-  "chroniken_discord_reported_characters";
-
-
-function isAdmin(){
-
-  try{
-    return sessionStorage.getItem(AUTH_KEY)==="1";
-  }catch{
-    return false;
-  }
-
-}
-
-
-function setAdmin(on){
-
-  try{
-
-    if(on)
-      sessionStorage.setItem(AUTH_KEY,"1");
-    else
-      sessionStorage.removeItem(AUTH_KEY);
-
-  }catch{}
-
-}
-
-
-function loadChars(){
-
-  try{
-    return JSON.parse(
-      localStorage.getItem(CHARS_KEY)
-    ) || [];
-
-  }catch{
-    return [];
-  }
-
-}
-
-
-function saveChars(list){
-
-  localStorage.setItem(
-    CHARS_KEY,
-    JSON.stringify(list)
-  );
-
-}
-
-
-function nextId(){
-
-  let n=parseInt(
-    localStorage.getItem(NEXT_ID_KEY)||"1",
-    10
-  );
-
-  if(!Number.isFinite(n)||n<1)
-    n=1;
-
-  localStorage.setItem(
-    NEXT_ID_KEY,
-    String(n+1)
-  );
-
-  return "CH-"+String(n).padStart(4,"0");
-
-}
-
-
-function escapeHtml(s){
-
-  return String(s??"")
-    .replace(/&/g,"&amp;")
-    .replace(/</g,"&lt;")
-    .replace(/>/g,"&gt;")
-    .replace(/"/g,"&quot;");
-
-}
-
-
-/* =========================================================
-   GEMELDE CHARAKTERE
-   ========================================================= */
-
-function getReportedCharacterIds(){
-
-  try{
-
-    const data=JSON.parse(
-      localStorage.getItem(REPORTED_CHARS_KEY)||"[]"
-    );
-
-    return Array.isArray(data)?data:[];
-
-  }catch{
-
-    return [];
-
-  }
-
-}
-
-
-function markCharacterReported(id){
-
-  if(!id)
-    return;
-
-  const reported=
-    getReportedCharacterIds();
-
-  if(!reported.includes(id)){
-
-    reported.push(id);
-
-    localStorage.setItem(
-      REPORTED_CHARS_KEY,
-      JSON.stringify(reported)
-    );
-
-  }
-
-}
-
-
-/* =========================================================
-   WEBHOOKS (nur noch Hilfsfunktion, Charakter läuft über Proxy)
-   ========================================================= */
-
-function getWebhooks(){
-
-  try{
-
-    const raw=JSON.parse(
-      localStorage.getItem(WEBHOOK_KEY)||"{}"
-    );
-
-    return raw&&typeof raw==="object"
-      ?raw
-      :{};
-
-  }catch{
-
-    return {};
-
-  }
-
-}
-
-
-/* =========================================================
-   CHARAKTER RENDER PROXY
-   ========================================================= */
-
-async function sendCharacterProxy(payload){
-
-  try{
-
-    const r=await fetch(
-      CHARACTER_PROXY_URL,
-      {
-        method:"POST",
-
-        headers:{
-          "Content-Type":
-            "application/json"
-        },
-
-        body:JSON.stringify(payload)
-      }
-    );
-
-    let data={};
-
-    try{
-      data=await r.json();
-    }catch{}
-
-    return{
-      ok:
-        r.ok &&
-        data.ok!==false,
-
-      reason:
-        r.ok
-          ?""
-          :"http_"+r.status
-    };
-
-  }catch(e){
-
-    console.warn(
-      "Charakter-Proxy fehlgeschlagen:",
-      e
-    );
-
-    return{
-      ok:false,
-      reason:"network"
-    };
-
-  }
-
-}
-
-
-/* =========================================================
-   CHARAKTER DISCORD EMBED
-   ========================================================= */
-
-function buildCharEmbed(
-  type,
-  char,
-  extra
-){
-
-  const colors={
-    created:0x22c55e,
-    updated:0xa855f7,
-    violation:0xe11d48,
-    deleted:0x6b7280
-  };
-
-  const titles={
-    created:"🆕 Neuer Charakterbogen",
-    updated:"✏️ Charakter bearbeitet",
-    violation:"⚠️ Regelverstoß / Verwarnung",
-    deleted:"🗑️ Charakter gelöscht"
-  };
-
-  const fields=[
-
-    {
-      name:"ID",
-      value:char.id||"—",
-      inline:true
-    },
-
-    {
-      name:"Charakter",
-      value:char.name||"—",
-      inline:true
-    },
-
-    {
-      name:"Spieler",
-      value:char.player||"—",
-      inline:true
-    },
-
-    {
-      name:"Steam-ID",
-      value:char.steamId||"—",
-      inline:true
-    },
-
-    {
-      name:"Volk",
-      value:char.race||"—",
-      inline:true
-    },
-
-    {
-      name:"Status",
-      value:char.status||"aktiv",
-      inline:true
-    },
-
-    {
-      name:"Verwarnungen",
-      value:String(char.warnings??0),
-      inline:true
-    }
-
-  ];
-
-
-  if(char.violation){
-
-    fields.push({
-      name:"Regelverstoß",
-      value:
-        String(char.violation)
-        .slice(0,1000),
-      inline:false
-    });
-
-  }
-
-
-  if(extra&&extra.note){
-
-    fields.push({
-      name:"Hinweis",
-      value:
-        String(extra.note)
-        .slice(0,500),
-      inline:false
-    });
-
-  }
-
-
-  return{
-
-    username:"Chroniken Admin",
-
-    embeds:[{
-
-      title:
-        titles[type]||
-        "Charakter-Update",
-
-      color:
-        colors[type]||
-        0xa855f7,
-
-      fields,
-
-      footer:{
-        text:
-          "Chroniken · Charakterverwaltung"
-      },
-
-      timestamp:
-        new Date().toISOString()
-
-    }]
-
-  };
-
-}
-
-
-/* =========================================================
-   CHARAKTER MELDUNG
-   ========================================================= */
-
-async function notifyCharEvent(
-  type,
-  char,
-  extra
-){
-
-  const result=
-    await sendCharacterProxy(
-      buildCharEmbed(
-        type,
-        char,
-        extra
-      )
-    );
-
-
-  const st=
-    document.getElementById(
-      "webhookStatus"
-    );
-
-  if(!st)
-    return result;
-
-
-  st.textContent=
-    result.ok
-      ?"✓ Charakter über Render gemeldet"
-      :"Charakter-Proxy fehlgeschlagen ("+
-        (result.reason||"?")+
-        ")";
-
-
-  st.style.color=
-    result.ok
-      ?"var(--success)"
-      :"#fb7185";
-
-
-  setTimeout(()=>{
-    st.textContent="";
-  },4000);
-
-
-  return result;
-
-}
-
-
-/* =========================================================
-   NEUE CHARAKTERE AUTOMATISCH ERKENNEN
-   ========================================================= */
-
-async function checkNewCharacterNotifications(){
-
-  if(!isAdmin())
-    return;
-
-
-  const chars=loadChars();
-
-  if(!Array.isArray(chars)||!chars.length)
-    return;
-
-
-  const reported=
-    getReportedCharacterIds();
-
-
-  for(const char of chars){
-
-    if(!char||!char.id)
-      continue;
-
-
-    /*
-     * Charakter wurde bereits gemeldet.
-     */
-    if(reported.includes(char.id))
-      continue;
-
-
-    /*
-     * Neuer Charakter wurde in der
-     * Charakterverwaltung gefunden.
-     */
-    const result=
-      await sendCharacterProxy(
-        buildCharEmbed(
-          "created",
-          char,
-          {
-            note:
-              "Neuer Charakterbogen wurde in der Charakterverwaltung eingetragen."
-          }
-        )
-      );
-
-
-    if(result.ok){
-
-      markCharacterReported(
-        char.id
-      );
-
-      console.log(
-        "Neuer Charakter an Discord gemeldet:",
-        char.id,
-        char.name
-      );
-
-    }else{
-
-      console.warn(
-        "Charakter konnte noch nicht gemeldet werden:",
-        char.id,
-        result.reason
-      );
-
-    }
-
-  }
-
-}
-
-
-/* =========================================================
-   CHARAKTER TABELLE
-   ========================================================= */
-
-function renderTable(){
-
-  const list=
-    loadChars()
-      .slice()
-      .sort(
-        (a,b)=>
-          (a.id||"")
-            .localeCompare(
-              b.id||""
-            )
-      );
-
-
-  const tbody=
-    document.getElementById(
-      "charBody"
-    );
-
-  const table=
-    document.getElementById(
-      "charTable"
-    );
-
-  const empty=
-    document.getElementById(
-      "emptyHint"
-    );
-
-
-  document
-    .getElementById(
-      "charCount"
-    )
-    .textContent=
-      list.length+
-      " Charakter"+
-      (list.length===1
-        ?""
-        :"e");
-
-
-  if(!list.length){
-
-    table.style.display="none";
-    empty.style.display="block";
-    tbody.innerHTML="";
-
-    return;
-
-  }
-
-
-  empty.style.display="none";
-  table.style.display="table";
-
-
-  tbody.innerHTML=
-    list.map(c=>{
-
-      const w=
-        Number(c.warnings)||0;
-
-
-      return `
-
-        <tr>
-
-          <td class="char-id">
-            ${escapeHtml(c.id)}
-          </td>
-
-          <td>
-
-            <strong>
-              ${escapeHtml(c.name)}
-            </strong>
-
-            ${
-              c.race
-                ?`<div class="topic-meta">
-                    ${escapeHtml(c.race)}
-                  </div>`
-                :""
-            }
-
-          </td>
-
-          <td>
-            ${escapeHtml(c.player||"—")}
-          </td>
-
-          <td>
-            ${escapeHtml(c.steamId||"—")}
-          </td>
-
-          <td>
-
-            <span
-              class="warn-badge ${w===0?"zero":""}">
-              ${w}
-            </span>
-
-          </td>
-
-          <td>
-
-            <div
-              class="violation-preview"
-              title="${escapeHtml(c.violation||"")}">
-
-              ${escapeHtml(
-                c.violation||"—"
-              )}
-
+      <div class="form-card">
+        <h2>Stammdaten</h2>
+        <p style="color:var(--text-muted);font-size:0.9rem;margin-bottom:1rem;">Völker, Berufe und Götter werden nicht mehr direkt hier angelegt. Öffne die jeweilige Kachel, um die Stammdaten zu verwalten. Neue Einträge erscheinen anschließend automatisch im Charakterbogen.</p>
+        <div class="master-tiles">
+          <a class="master-tile" href="voelker.html"><span class="tile-icon">🦊</span><strong>Völker & Rassen</strong><small>Beschreibung, Stärken, Schwächen und Größen</small></a>
+          <a class="master-tile" href="berufe.html"><span class="tile-icon">⚒️</span><strong>Berufe</strong><small>Hauptberuf oder Nebenberuf anlegen</small></a>
+          <a class="master-tile" href="goetter.html"><span class="tile-icon">✨</span><strong>Götter</strong><small>Götter und ihre Beschreibungen verwalten</small></a>
+          <a class="master-tile" href="wetter.html"><span class="tile-icon">🌦️</span><strong>Wetter</strong><small>Wetterwechsel alle 6 Stunden</small></a>
+        </div>
+      </div>
+
+      <div class="form-card">
+        <h2 id="formTitle">Neuer Charakterbogen</h2>
+        <form id="charForm">
+          <input type="hidden" id="editId" value="">
+          <div class="form-grid">
+            <div class="form-group">
+              <label>Laufende ID</label>
+              <input type="text" id="charIdDisplay" readonly placeholder="wird automatisch vergeben" style="opacity:0.85;">
             </div>
-
-          </td>
-
-          <td>
-            ${escapeHtml(
-              c.status||"aktiv"
-            )}
-          </td>
-
-          <td class="actions-cell">
-
-            <button
-              type="button"
-              class="btn secondary"
-              data-edit="${escapeHtml(c.id)}">
-
-              Bearbeiten
-
-            </button>
-
-            <button
-              type="button"
-              class="btn danger"
-              data-del="${escapeHtml(c.id)}">
-
-              Löschen
-
-            </button>
-
-          </td>
-
-        </tr>
-
-      `;
-
-    }).join("");
-
-
-  tbody
-    .querySelectorAll(
-      "[data-edit]"
-    )
-    .forEach(
-      b=>
-        b.addEventListener(
-          "click",
-          ()=>
-            startEdit(
-              b.dataset.edit
-            )
-        )
-    );
-
-
-  tbody
-    .querySelectorAll(
-      "[data-del]"
-    )
-    .forEach(
-      b=>
-        b.addEventListener(
-          "click",
-          async()=>{
-
-            const id=
-              b.dataset.del;
-
-
-            if(
-              !confirm(
-                "Charakter "+
-                id+
-                " wirklich löschen?"
-              )
-            )
-              return;
-
-
-            const list=
-              loadChars();
-
-
-            const char=
-              list.find(
-                c=>c.id===id
-              );
-
-
-            if(!char)
-              return;
-
-
-            saveChars(
-              list.filter(
-                c=>c.id!==id
-              )
-            );
-
-
-            if(
-              document
-                .getElementById(
-                  "editId"
-                )
-                .value===id
-            ){
-
-              resetForm();
-
-            }
-
-
-            renderTable();
-
-
-            await notifyCharEvent(
-              "deleted",
-              char
-            );
-
-
-            /*
-             * Gelöschte Charaktere müssen
-             * nicht erneut gemeldet werden.
-             */
-            markCharacterReported(id);
-
-          }
-        )
-    );
-
-
-  /*
-   * Hier wird geprüft, ob seit dem
-   * letzten Check ein neuer Charakter
-   * in der Verwaltung aufgetaucht ist.
-   */
-  checkNewCharacterNotifications();
-
-}
-
-
-/* =========================================================
-   FORMULAR
-   ========================================================= */
-
-function resetForm(){
-
-  document
-    .getElementById("charForm")
-    .reset();
-
-  document
-    .getElementById("editId")
-    .value="";
-
-  document
-    .getElementById("charIdDisplay")
-    .value="";
-
-  document
-    .getElementById("warnings")
-    .value="0";
-
-  document
-    .getElementById("formTitle")
-    .textContent=
-      "Neuer Charakterbogen";
-
-  document
-    .getElementById("btnSave")
-    .textContent=
-      "Speichern";
-
-  document
-    .getElementById("btnCancel")
-    .style.display=
-      "none";
-
-}
-
-
-function startEdit(id){
-
-  const c=
-    loadChars()
-      .find(
-        x=>x.id===id
-      );
-
-
-  if(!c)
-    return;
-
-
-  document
-    .getElementById("editId")
-    .value=c.id;
-
-
-  document
-    .getElementById("charIdDisplay")
-    .value=c.id;
-
-
-  document
-    .getElementById("charName")
-    .value=c.name||"";
-
-
-  document
-    .getElementById("playerName")
-    .value=c.player||"";
-
-
-  document
-    .getElementById("steamId")
-    .value=c.steamId||"";
-
-
-  document
-    .getElementById("race")
-    .value=c.race||"";
-
-
-  document
-    .getElementById("warnings")
-    .value=c.warnings??0;
-
-
-  document
-    .getElementById("status")
-    .value=c.status||"aktiv";
-
-
-  document
-    .getElementById("violation")
-    .value=c.violation||"";
-
-
-  document
-    .getElementById("notes")
-    .value=c.notes||"";
-
-
-  document
-    .getElementById("formTitle")
-    .textContent=
-      "Charakter bearbeiten · "+
-      c.id;
-
-
-  document
-    .getElementById("btnSave")
-    .textContent=
-      "Aktualisieren";
-
-
-  document
-    .getElementById("btnCancel")
-    .style.display=
-      "inline-block";
-
-
-  document
-    .getElementById("charName")
-    .focus();
-
-}
-
-
-/* =========================================================
-   CHARAKTER SPEICHERN
-   ========================================================= */
-
-document
-  .getElementById("charForm")
-  .addEventListener(
-    "submit",
-    async e=>{
-
-      e.preventDefault();
-
-
-      const name=
-        document
-          .getElementById("charName")
-          .value
-          .trim();
-
-
-      if(!name)
+            <div class="form-group">
+              <label>Charaktername *</label>
+              <input type="text" id="charName" required placeholder="z. B. Elara Mondschatten">
+            </div>
+            <div class="form-group">
+              <label>Spieler / OOC-Name</label>
+              <input type="text" id="playerName" placeholder="Name des Spielers">
+            </div>
+            <div class="form-group">
+              <label>Steam-ID</label>
+              <input type="text" id="steamId" placeholder="z. B. 76561198xxxxxxxx">
+            </div>
+            <div class="form-group">
+              <label>Volk / Rasse</label>
+              <select id="race">
+                <option value="">— bitte wählen —</option>
+                <option value="Mensch">Mensch</option>
+                <option value="Elf">Elf</option>
+                <option value="Zwerg">Zwerg</option>
+                <option value="Orc">Orc</option>
+                <option value="Kitsune">Kitsune</option>
+                <option value="Wolf">Wolf</option>
+                <option value="Troll">Troll</option>
+                <option value="Tiefling">Tiefling</option>
+                <option value="Gnom">Gnom</option>
+                <option value="Halbling">Halbling</option>
+                <option value="Minotaurus">Minotaurus</option>
+                <option value="Drachengeborener">Drachengeborener</option>
+                <option value="Dämon">Dämon</option>
+                <option value="Fee">Fee</option>
+                <option value="Halbgigant">Halbgigant</option>
+                <option value="Goblin">Goblin</option>
+                <option value="Wasserwesen">Wasserwesen</option>
+                <option value="Vogelwesen">Vogelwesen</option>
+                <option value="Tierwesen">Tierwesen</option>
+                <option value="Halborc">Halborc</option>
+                <option value="Halbelf">Halbelf</option>
+                <option value="Wargwandler">Wargwandler</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label>Anzahl Verwarnungen</label>
+              <input type="number" id="warnings" min="0" step="1" value="0">
+            </div>
+            <div class="form-group">
+              <label>Status</label>
+              <select id="status">
+                <option value="aktiv">Aktiv</option>
+                <option value="pausiert">Pausiert</option>
+                <option value="gesperrt">Gesperrt</option>
+                <option value="archiviert">Archiviert</option>
+              </select>
+            </div>
+            <div class="form-group full">
+              <label>Gegen welche Regel verstoßen?</label>
+              <textarea id="violation" placeholder="z. B. Regel 4.2 – Metagaming im Event X …"></textarea>
+            </div>
+            <div class="form-group full">
+              <label>Notizen (nur Admin sichtbar)</label>
+              <textarea id="notes" placeholder="Interne Notizen, Kontext, Absprachen …"></textarea>
+            </div>
+          </div>
+          <div class="form-actions">
+            <button type="submit" class="btn" id="btnSave">Speichern</button>
+            <button type="button" class="btn secondary" id="btnCancel" style="display:none;">Abbrechen</button>
+          </div>
+        </form>
+      </div>
+
+      <div class="form-card">
+        <h2>Registrierte Charakterbögen</h2>
+        <div id="tableWrap">
+          <p class="empty-hint" id="emptyHint">Noch keine Charaktere angelegt.</p>
+          <table class="char-table" id="charTable" style="display:none;">
+            <thead>
+              <tr>
+                <th>ID</th>
+                <th>Charakter</th>
+                <th>Spieler</th>
+                <th>Steam-ID</th>
+                <th>Verwarnungen</th>
+                <th>Regelverstoß</th>
+                <th>Status</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody id="charBody"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <footer>
+    <p>© Kiyasha</p>
+  </footer>
+
+  <!-- Login-Panel (unten links) -->
+  <div id="loginPanel" class="login-panel">
+    <div id="loginFormWrap">
+      <div class="login-title">Admin-Login</div>
+      <input type="text" id="loginUser" placeholder="Benutzername" autocomplete="username">
+      <input type="password" id="loginPass" placeholder="Passwort" autocomplete="current-password">
+      <button type="button" class="btn" id="btnLogin" style="width:100%;">Anmelden</button>
+      <div class="login-err" id="loginErr"></div>
+    </div>
+    <div id="loginLoggedIn" style="display:none;">
+      <div class="login-title">Admin aktiv</div>
+      <button type="button" class="btn secondary" id="btnLogoutPanel" style="width:100%;">Abmelden</button>
+    </div>
+  </div>
+
+  <script>
+    // ===== Admin-Zugangsdaten (hier ändern) =====
+    const ADMIN_USER = "admin";
+    const ADMIN_PASS = "chroniken2026";
+    const AUTH_KEY = "portal_admin_auth";
+    const CHARS_KEY = "portal_char_registry";
+    const NEXT_ID_KEY = "portal_char_next_id";
+
+    function isAdmin() {
+      try { return sessionStorage.getItem(AUTH_KEY) === "1"; } catch { return false; }
+    }
+    function setAdmin(on) {
+      try {
+        if (on) sessionStorage.setItem(AUTH_KEY, "1");
+        else sessionStorage.removeItem(AUTH_KEY);
+      } catch {}
+    }
+
+    function loadChars() {
+      try { return JSON.parse(localStorage.getItem(CHARS_KEY)) || []; }
+      catch { return []; }
+    }
+    function saveChars(list) {
+      localStorage.setItem(CHARS_KEY, JSON.stringify(list));
+    }
+    function nextId() {
+      let n = parseInt(localStorage.getItem(NEXT_ID_KEY) || "1", 10);
+      if (!Number.isFinite(n) || n < 1) n = 1;
+      localStorage.setItem(NEXT_ID_KEY, String(n + 1));
+      return "CH-" + String(n).padStart(4, "0");
+    }
+
+    function escapeHtml(s) {
+      return String(s ?? "")
+        .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;");
+    }
+
+    function updateLoginUI() {
+      const logged = isAdmin();
+      document.getElementById("loginFormWrap").style.display = logged ? "none" : "block";
+      document.getElementById("loginLoggedIn").style.display = logged ? "block" : "none";
+      document.getElementById("lockedView").style.display = logged ? "none" : "block";
+      document.getElementById("adminView").style.display = logged ? "block" : "none";
+      if (logged) {
+        renderTable();
+      }
+    }
+
+    function renderTable() {
+      const list = loadChars().slice().sort((a, b) => (a.id || "").localeCompare(b.id || ""));
+      const tbody = document.getElementById("charBody");
+      const table = document.getElementById("charTable");
+      const empty = document.getElementById("emptyHint");
+      document.getElementById("charCount").textContent = list.length + " Charakter" + (list.length === 1 ? "" : "e");
+
+      if (!list.length) {
+        table.style.display = "none";
+        empty.style.display = "block";
+        tbody.innerHTML = "";
         return;
+      }
+      empty.style.display = "none";
+      table.style.display = "table";
+      tbody.innerHTML = list.map(c => {
+        const w = Number(c.warnings) || 0;
+        return `<tr>
+          <td class="char-id">${escapeHtml(c.id)}</td>
+          <td><strong>${escapeHtml(c.name)}</strong>${c.race ? `<div class="topic-meta">${escapeHtml(c.race)}</div>` : ""}</td>
+          <td>${escapeHtml(c.player || "—")}</td>
+          <td>${escapeHtml(c.steamId || "—")}</td>
+          <td><span class="warn-badge ${w === 0 ? "zero" : ""}">${w}</span></td>
+          <td><div class="violation-preview" title="${escapeHtml(c.violation || "")}">${escapeHtml(c.violation || "—")}</div></td>
+          <td>${escapeHtml(c.status || "aktiv")}</td>
+          <td class="actions-cell">
+            <button type="button" class="btn secondary" data-edit="${escapeHtml(c.id)}">Bearbeiten</button>
+            <button type="button" class="btn danger" data-del="${escapeHtml(c.id)}">Löschen</button>
+          </td>
+        </tr>`;
+      }).join("");
 
+      tbody.querySelectorAll("[data-edit]").forEach(btn => {
+        btn.addEventListener("click", () => startEdit(btn.getAttribute("data-edit")));
+      });
+      tbody.querySelectorAll("[data-del]").forEach(btn => {
+        btn.addEventListener("click", async () => {
+          const id = btn.getAttribute("data-del");
+          if (!confirm("Charakter " + id + " wirklich löschen?")) return;
+          const list = loadChars();
+          const char = list.find(c => c.id === id);
+          if (!char) return;
+          saveChars(list.filter(c => c.id !== id));
+          if (document.getElementById("editId").value === id) resetForm();
+          renderTable();
+        });
+      });
+    }
 
-      const editId=
-        document
-          .getElementById("editId")
-          .value;
+    function resetForm() {
+      document.getElementById("charForm").reset();
+      document.getElementById("editId").value = "";
+      document.getElementById("charIdDisplay").value = "";
+      document.getElementById("warnings").value = "0";
+      document.getElementById("formTitle").textContent = "Neuer Charakterbogen";
+      document.getElementById("btnSave").textContent = "Speichern";
+      document.getElementById("btnCancel").style.display = "none";
+    }
 
+    function startEdit(id) {
+      const c = loadChars().find(x => x.id === id);
+      if (!c) return;
+      document.getElementById("editId").value = c.id;
+      document.getElementById("charIdDisplay").value = c.id;
+      document.getElementById("charName").value = c.name || "";
+      document.getElementById("playerName").value = c.player || "";
+      document.getElementById("steamId").value = c.steamId || "";
+      document.getElementById("race").value = c.race || "";
+      document.getElementById("warnings").value = c.warnings ?? 0;
+      document.getElementById("status").value = c.status || "aktiv";
+      document.getElementById("violation").value = c.violation || "";
+      document.getElementById("notes").value = c.notes || "";
+      document.getElementById("formTitle").textContent = "Charakter bearbeiten · " + c.id;
+      document.getElementById("btnSave").textContent = "Aktualisieren";
+      document.getElementById("btnCancel").style.display = "inline-block";
+      document.getElementById("charName").focus();
+    }
 
-      const list=
-        loadChars();
-
-
-      const old=
-        editId
-          ?list.find(
-              c=>c.id===editId
-            )
-          :null;
-
-
-      const payload={
-
+    document.getElementById("charForm").addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const name = document.getElementById("charName").value.trim();
+      if (!name) return;
+      const editId = document.getElementById("editId").value;
+      const list = loadChars();
+      const old = editId ? list.find(c => c.id === editId) : null;
+      const payload = {
         name,
-
-        player:
-          document
-            .getElementById(
-              "playerName"
-            )
-            .value
-            .trim(),
-
-        steamId:
-          document
-            .getElementById(
-              "steamId"
-            )
-            .value
-            .trim(),
-
-        race:
-          document
-            .getElementById(
-              "race"
-            )
-            .value
-            .trim(),
-
-        warnings:
-          Math.max(
-            0,
-            parseInt(
-              document
-                .getElementById(
-                  "warnings"
-                )
-                .value,
-              10
-            )||0
-          ),
-
-        status:
-          document
-            .getElementById(
-              "status"
-            )
-            .value,
-
-        violation:
-          document
-            .getElementById(
-              "violation"
-            )
-            .value
-            .trim(),
-
-        notes:
-          document
-            .getElementById(
-              "notes"
-            )
-            .value
-            .trim(),
-
-        updatedAt:
-          new Date().toISOString()
-
+        player: document.getElementById("playerName").value.trim(),
+        steamId: document.getElementById("steamId").value.trim(),
+        race: document.getElementById("race").value.trim(),
+        warnings: Math.max(0, parseInt(document.getElementById("warnings").value, 10) || 0),
+        status: document.getElementById("status").value,
+        violation: document.getElementById("violation").value.trim(),
+        notes: document.getElementById("notes").value.trim(),
+        updatedAt: new Date().toISOString()
       };
 
-
-      let saved;
-
-      let eventType=
-        "created";
-
-
-      if(editId){
-
-        const idx=
-          list.findIndex(
-            c=>c.id===editId
-          );
-
-
-        if(idx<0)
+      if (editId) {
+        const idx = list.findIndex(c => c.id === editId);
+        if (idx >= 0) {
+          list[idx] = { ...list[idx], ...payload };
+        } else {
           return;
-
-
-        list[idx]={
-          ...list[idx],
+        }
+      } else {
+        list.push({
+          id: nextId(),
+          createdAt: new Date().toISOString(),
           ...payload
-        };
-
-
-        saved=list[idx];
-
-
-        const violationChanged=
-          (payload.violation||"")!==
-          (old?.violation||"");
-
-
-        const warningsUp=
-          payload.warnings>
-          (Number(old?.warnings)||0);
-
-
-        eventType=
-          (payload.violation&&
-           violationChanged)||
-          warningsUp
-            ?"violation"
-            :"updated";
-
-      }else{
-
-        saved={
-
-          id:nextId(),
-
-          createdAt:
-            new Date().toISOString(),
-
-          ...payload
-
-        };
-
-
-        list.push(saved);
-
+        });
       }
-
 
       saveChars(list);
-
-
-      const result=
-        await notifyCharEvent(
-          eventType,
-          saved,
-          {
-            note:
-              eventType==="violation"
-                ?(
-                  payload.warnings>
-                  (Number(old?.warnings)||0)
-
-                  ?(
-                    "Verwarnungen erhöht ("+
-                    (old?.warnings??0)+
-                    " → "+
-                    payload.warnings+
-                    ")"
-                  )
-                  :"Regelverstoß aktualisiert"
-                )
-                :null
-          }
-        );
-
-
-      /*
-       * Manuell gespeicherte Charaktere
-       * wurden bereits gemeldet.
-       *
-       * Dadurch verhindert der automatische
-       * Prüfer eine zweite Discord-Nachricht.
-       */
-      if(result.ok){
-
-        markCharacterReported(
-          saved.id
-        );
-
-      }
-
-
       resetForm();
-
       renderTable();
+    });
 
+    document.getElementById("btnCancel").addEventListener("click", resetForm);
+
+    function adminLoadJSON(key) {
+      try { return JSON.parse(localStorage.getItem(key) || "[]"); } catch { return []; }
     }
-  );
-
-
-document
-  .getElementById("btnCancel")
-  .addEventListener(
-    "click",
-    resetForm
-  );
-
-
-/* =========================================================
-   EVENTS / KALENDER
-   ========================================================= */
-
-function adminLoadJSON(key){
-
-  try{
-
-    return JSON.parse(
-      localStorage.getItem(key)||"[]"
-    );
-
-  }catch{
-
-    return [];
-
-  }
-
-}
-
-
-function adminSaveJSON(
-  key,
-  value
-){
-
-  localStorage.setItem(
-    key,
-    JSON.stringify(value)
-  );
-
-}
-
-
-function renderAdminEventManager(){
-
-  const box=
-    document.getElementById(
-      "adminEventManager"
-    );
-
-
-  if(
-    !box||
-    !isAdmin()
-  ){
-
-    if(box)
-      box.innerHTML=
-        '<p class="small">Bitte zuerst als Admin anmelden.</p>';
-
-    return;
-
-  }
-
-
-  const birthdays=
-    adminLoadJSON(
-      "portal_birthdays"
-    );
-
-
-  const events=
-    adminLoadJSON(
-      "portal_events"
-    );
-
-
-  const disabled=
-    adminLoadJSON(
-      "chroniken_disabled_holidays"
-    );
-
-
-  const months=[
-
-    "Frostmond",
-    "Eismond",
-    "Tauwind",
-    "Blütenmond",
-    "Sonnenhain",
-    "Glutmond",
-    "Erntemond",
-    "Goldlaub",
-    "Nebelmond",
-    "Dunkelmond",
-    "Sternenfall",
-    "Nachtfrost"
-
-  ];
-
-
-  const fixed=[
-
-    [0,1,"Nacht der ersten Flamme"],
-    [2,15,"Fest der drei Winde"],
-    [3,20,"Blütensegen"],
-    [5,15,"Sonnenwende der Krone"],
-    [6,30,"Danktag der Ernte"],
-    [8,13,"Nacht des Schleiers"],
-    [10,30,"Sternennacht"],
-    [11,15,"Fuchsfeuer"]
-
-  ];
-
-
-  let html="";
-
-  const esc=escapeHtml;
-
-
-  birthdays.forEach(
-    b=>
-      html+=`
-
-        <div
-          class="card"
-          style="
-            margin:.6rem 0;
-            padding:.8rem;
-            display:flex;
-            justify-content:space-between;
-            gap:1rem;
-            align-items:center">
-
-          <span>
-
-            <strong>
-              🎂 ${esc(b.name)}
-            </strong>
-
-            <br>
-
-            <small>
-              ${esc(b.day)}.
-              ${esc(
-                b.monthName||
-                months[b.month]||
-                "Monat"
-              )}
-
-              ${b.year
-                ?" "+esc(b.year)
-                :""}
-
-            </small>
-
-          </span>
-
-          <button
-            class="btn danger"
-            type="button"
-            data-admin-bday="${esc(b.name)}">
-
-            Löschen
-
-          </button>
-
-        </div>
-
-      `
-  );
-
-
-  events
-    .filter(
-      e=>e.eventType!=="Geburtstag"
-    )
-    .forEach(
-      e=>
-        html+=`
-
-          <div
-            class="card"
-            style="
-              margin:.6rem 0;
-              padding:.8rem;
-              display:flex;
-              justify-content:space-between;
-              gap:1rem;
-              align-items:center">
-
-            <span>
-
-              <strong>
-                📅
-                ${esc(
-                  e.title||
-                  e.characterName||
-                  "Event"
-                )}
-              </strong>
-
-              <br>
-
-              <small>
-                ${esc(e.date||"")}
-              </small>
-
-            </span>
-
-            <button
-              class="btn danger"
-              type="button"
-              data-admin-event="${esc(e.id)}">
-
-              Löschen
-
-            </button>
-
-          </div>
-
-        `
-    );
-
-
-  fixed.forEach(
-    (h,i)=>{
-
-      if(!disabled.includes(i)){
-
-        html+=`
-
-          <div
-            class="card"
-            style="
-              margin:.6rem 0;
-              padding:.8rem;
-              display:flex;
-              justify-content:space-between;
-              gap:1rem;
-              align-items:center">
-
-            <span>
-
-              <strong>
-                ✨ ${esc(h[2])}
-              </strong>
-
-              <br>
-
-              <small>
-                ${h[1]}.
-                ${months[h[0]]}
-              </small>
-
-            </span>
-
-            <button
-              class="btn danger"
-              type="button"
-              data-admin-holiday="${i}">
-
-              Aus Kalender entfernen
-
-            </button>
-
-          </div>
-
-        `;
-
+    function adminSaveJSON(key, value) { localStorage.setItem(key, JSON.stringify(value)); }
+    function renderAdminEventManager() {
+      const box = document.getElementById("adminEventManager");
+      if (!box || !isAdmin()) { if (box) box.innerHTML = "<p class=\"small\">Bitte zuerst als Admin anmelden.</p>"; return; }
+      const birthdays = adminLoadJSON("portal_birthdays");
+      const events = adminLoadJSON("portal_events");
+      let disabled = adminLoadJSON("chroniken_disabled_holidays");
+      const months = ["Frostmond","Eismond","Tauwind","Blütenmond","Sonnenhain","Glutmond","Erntemond","Goldlaub","Nebelmond","Dunkelmond","Sternenfall","Nachtfrost"];
+      const fixed = [
+        [0,1,"Nacht der ersten Flamme"],[2,15,"Fest der drei Winde"],[3,20,"Blütensegen"],[5,15,"Sonnenwende der Krone"],[6,30,"Danktag der Ernte"],[8,13,"Nacht des Schleiers"],[10,30,"Sternennacht"],[11,15,"Fuchsfeuer"]
+      ];
+      const esc = v => String(v ?? "").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;");
+      let html = "";
+      birthdays.forEach(b => { html += `<div class=\"card\" style=\"margin:.6rem 0;padding:.8rem;display:flex;justify-content:space-between;gap:1rem;align-items:center\"><span><strong>🎂 ${esc(b.name)}</strong><br><small>${esc(b.day)}. ${esc(b.monthName || months[b.month] || "Monat")}${b.year ? " " + esc(b.year) : ""}</small></span><button class=\"btn danger\" type=\"button\" data-admin-bday=\"${esc(b.name)}\">Löschen</button></div>`; });
+      events.filter(e => e.eventType !== "Geburtstag").forEach(e => { html += `<div class=\"card\" style=\"margin:.6rem 0;padding:.8rem;display:flex;justify-content:space-between;gap:1rem;align-items:center\"><span><strong>📅 ${esc(e.title || e.characterName || "Event")}</strong><br><small>${esc(e.date || "")}</small></span><button class=\"btn danger\" type=\"button\" data-admin-event=\"${esc(e.id)}\">Löschen</button></div>`; });
+      fixed.forEach((h,i) => { if (!disabled.includes(i)) html += `<div class=\"card\" style=\"margin:.6rem 0;padding:.8rem;display:flex;justify-content:space-between;gap:1rem;align-items:center\"><span><strong>✨ ${esc(h[2])}</strong><br><small>${h[1]}. ${months[h[0]]}</small></span><button class=\"btn danger\" type=\"button\" data-admin-holiday=\"${i}\">Aus Kalender entfernen</button></div>`; });
+      box.innerHTML = html || "<p class=\"small\">Keine löschbaren Einträge vorhanden.</p>";
+      box.querySelectorAll("[data-admin-bday]").forEach(btn => btn.addEventListener("click", () => { const name=btn.dataset.adminBday; if (!confirm("Geburtstag von " + name + " wirklich löschen?")) return; adminSaveJSON("portal_birthdays", birthdays.filter(b => b.name !== name)); adminSaveJSON("portal_events", events.filter(e => !(e.eventType === "Geburtstag" && e.characterName === name))); renderAdminEventManager(); }));
+      box.querySelectorAll("[data-admin-event]").forEach(btn => btn.addEventListener("click", () => { const id=btn.dataset.adminEvent; if (!confirm("Dieses Event wirklich löschen?")) return; adminSaveJSON("portal_events", events.filter(e => e.id !== id)); renderAdminEventManager(); }));
+      box.querySelectorAll("[data-admin-holiday]").forEach(btn => btn.addEventListener("click", () => { const i=Number(btn.dataset.adminHoliday); if (!confirm("Diesen Feiertag aus dem Kalender entfernen?")) return; if (!disabled.includes(i)) disabled.push(i); adminSaveJSON("chroniken_disabled_holidays", disabled); renderAdminEventManager(); }));
+    }
+
+    function doLogin() {
+      const u = document.getElementById("loginUser").value.trim();
+      const p = document.getElementById("loginPass").value;
+      const err = document.getElementById("loginErr");
+      if (u === ADMIN_USER && p === ADMIN_PASS) {
+        setAdmin(true);
+        err.textContent = "";
+        document.getElementById("loginPass").value = "";
+        updateLoginUI();
+      } else {
+        err.textContent = "Falsche Zugangsdaten.";
       }
-
     }
-  );
-
-
-  box.innerHTML=
-    html||
-    '<p class="small">Keine löschbaren Einträge vorhanden.</p>';
-
-
-  box
-    .querySelectorAll(
-      "[data-admin-bday]"
-    )
-    .forEach(
-      b=>
-        b.addEventListener(
-          "click",
-          ()=>{
-
-            const n=
-              b.dataset.adminBday;
-
-
-            if(
-              !confirm(
-                "Geburtstag von "+
-                n+
-                " wirklich löschen?"
-              )
-            )
-              return;
-
-
-            adminSaveJSON(
-              "portal_birthdays",
-              birthdays.filter(
-                x=>x.name!==n
-              )
-            );
-
-
-            adminSaveJSON(
-              "portal_events",
-              events.filter(
-                x=>!(
-                  x.eventType==="Geburtstag"&&
-                  x.characterName===n
-                )
-              )
-            );
-
-
-            renderAdminEventManager();
-
-          }
-        )
-    );
-
-
-  box
-    .querySelectorAll(
-      "[data-admin-event]"
-    )
-    .forEach(
-      b=>
-        b.addEventListener(
-          "click",
-          ()=>{
-
-            const id=
-              b.dataset.adminEvent;
-
-
-            if(
-              !confirm(
-                "Dieses Event wirklich löschen?"
-              )
-            )
-              return;
-
-
-            adminSaveJSON(
-              "portal_events",
-              events.filter(
-                x=>x.id!==id
-              )
-            );
-
-
-            renderAdminEventManager();
-
-          }
-        )
-    );
-
-
-  box
-    .querySelectorAll(
-      "[data-admin-holiday]"
-    )
-    .forEach(
-      b=>
-        b.addEventListener(
-          "click",
-          ()=>{
-
-            const i=
-              Number(
-                b.dataset.adminHoliday
-              );
-
-
-            if(
-              !confirm(
-                "Diesen Feiertag aus dem Kalender entfernen?"
-              )
-            )
-              return;
-
-
-            const d=
-              adminLoadJSON(
-                "chroniken_disabled_holidays"
-              );
-
-
-            if(!d.includes(i))
-              d.push(i);
-
-
-            adminSaveJSON(
-              "chroniken_disabled_holidays",
-              d
-            );
-
-
-            renderAdminEventManager();
-
-          }
-        )
-    );
-
-}
-
-
-/* =========================================================
-   LOGIN
-   ========================================================= */
-
-function updateLoginUI(){
-
-  const logged=
-    isAdmin();
-
-
-  document
-    .getElementById(
-      "loginFormWrap"
-    )
-    .style.display=
-      logged
-        ?"none"
-        :"block";
-
-
-  document
-    .getElementById(
-      "loginLoggedIn"
-    )
-    .style.display=
-      logged
-        ?"block"
-        :"none";
-
-
-  document
-    .getElementById(
-      "lockedView"
-    )
-    .style.display=
-      logged
-        ?"none"
-        :"block";
-
-
-  document
-    .getElementById(
-      "adminView"
-    )
-    .style.display=
-      logged
-        ?"block"
-        :"none";
-
-
-  if(logged){
-
-    renderTable();
-
-    renderAdminEventManager();
-
-  }
-
-}
-
-
-function doLogin(){
-
-  const u=
-    document
-      .getElementById(
-        "loginUser"
-      )
-      .value
-      .trim();
-
-
-  const p=
-    document
-      .getElementById(
-        "loginPass"
-      )
-      .value;
-
-
-  const err=
-    document
-      .getElementById(
-        "loginErr"
-      );
-
-
-  if(
-    u===ADMIN_USER&&
-    p===ADMIN_PASS
-  ){
-
-    setAdmin(true);
-
-    err.textContent="";
-
-    document
-      .getElementById(
-        "loginPass"
-      )
-      .value="";
-
+    function doLogout() {
+      setAdmin(false);
+      updateLoginUI();
+      renderAdminEventManager();
+    }
+
+    document.getElementById("btnLogin").addEventListener("click", doLogin);
+    document.getElementById("loginPass").addEventListener("keydown", e => { if (e.key === "Enter") doLogin(); });
+    document.getElementById("loginUser").addEventListener("keydown", e => { if (e.key === "Enter") document.getElementById("loginPass").focus(); });
+    document.getElementById("btnLogout").addEventListener("click", doLogout);
+    document.getElementById("btnLogoutPanel").addEventListener("click", doLogout);
 
     updateLoginUI();
-
-  }else{
-
-    err.textContent=
-      "Falsche Zugangsdaten.";
-
-  }
-
-}
-
-
-function doLogout(){
-
-  setAdmin(false);
-
-  updateLoginUI();
-
-  renderAdminEventManager();
-
-}
-
-
-document
-  .getElementById("btnLogin")
-  .addEventListener(
-    "click",
-    doLogin
-  );
-
-
-document
-  .getElementById("loginPass")
-  .addEventListener(
-    "keydown",
-    e=>{
-
-      if(e.key==="Enter")
-        doLogin();
-
-    }
-  );
-
-
-document
-  .getElementById("loginUser")
-  .addEventListener(
-    "keydown",
-    e=>{
-
-      if(e.key==="Enter")
-        document
-          .getElementById(
-            "loginPass"
-          )
-          .focus();
-
-    }
-  );
-
-
-document
-  .getElementById("btnLogout")
-  .addEventListener(
-    "click",
-    doLogout
-  );
-
-
-document
-  .getElementById("btnLogoutPanel")
-  .addEventListener(
-    "click",
-    doLogout
-  );
-
-
-/* =========================================================
-   START
-   ========================================================= */
-
-updateLoginUI();
-
-renderAdminEventManager();
-
-
-/*
- * Alle 5 Sekunden prüfen, ob ein neuer
- * Charakterbogen in der Verwaltung
- * angekommen ist.
- */
-setInterval(
-  ()=>{
-    if(isAdmin()){
-      checkNewCharacterNotifications();
-    }
-  },
-  5000
-);
-
+    renderAdminEventManager();
+  
 </script>
-
 </body>
 </html>
-```

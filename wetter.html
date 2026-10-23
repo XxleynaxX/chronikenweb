@@ -4,101 +4,25 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Chroniken – Wetter</title>
-
   <link rel="stylesheet" href="style.css">
   <link rel="stylesheet" href="chroniken-admin.css">
-
-  <!-- wetter.js bestimmt das aktuelle Wetter zentral und zufällig.
-       Website und Discord verwenden dieselbe Zufallsauswahl. -->
   <script src="chroniken-data.js"></script>
   <script src="wetter.js"></script>
-
   <style>
-    .weather-wrap {
-      max-width: 900px;
-      margin: 0 auto;
-      padding: 2rem 1.5rem 4rem;
-    }
-
-    .weather-card {
-      background: var(--bg-card);
-      border: 1px solid var(--border);
-      border-radius: 18px;
-      padding: 2.5rem 2rem;
-      text-align: center;
-    }
-
-    .weather-icon {
-      font-size: 5rem;
-      line-height: 1;
-      margin-bottom: .8rem;
-    }
-
-    .weather-name {
-      font-size: 2rem;
-      color: var(--accent-soft);
-      margin: .5rem 0;
-    }
-
-    .weather-desc {
-      color: var(--text-muted);
-      font-size: 1.05rem;
-      min-height: 1.5em;
-    }
-
-    .timer {
-      margin-top: 1.5rem;
-      padding: 1rem;
-      border: 1px solid var(--border);
-      border-radius: 12px;
-      background: rgba(168, 85, 247, .06);
-    }
-
-    .timer-value {
-      font-size: 1.6rem;
-      margin-top: .4rem;
-      font-variant-numeric: tabular-nums;
-    }
-
-    .weather-info {
-      display: flex;
-      justify-content: center;
-      gap: 1rem;
-      flex-wrap: wrap;
-      margin-top: 1rem;
-      color: var(--text-muted);
-      font-size: .9rem;
-    }
-
-    .history {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-      gap: .8rem;
-      margin-top: 1.2rem;
-    }
-
-    .wcard {
-      padding: 1rem;
-      border: 1px solid var(--border);
-      border-radius: 12px;
-      background: rgba(255, 255, 255, .02);
-    }
-
-    .small {
-      color: var(--text-muted);
-      font-size: .85rem;
-    }
+    .weather-wrap{max-width:900px;margin:0 auto;padding:2rem 1.5rem 4rem}
+    .weather-card{background:var(--bg-card);border:1px solid var(--border);border-radius:18px;padding:2rem;text-align:center}
+    .weather-icon{font-size:5rem}.weather-name{font-size:2rem;color:var(--accent-soft);margin:.5rem 0}
+    .weather-desc{color:var(--text-muted);font-size:1.05rem}
+    .timer{margin-top:1.4rem;padding:1rem;border:1px solid var(--border);border-radius:12px;background:rgba(168,85,247,.06)}
+    .history{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:.8rem;margin-top:1.2rem}
+    .history div.wcard{padding:1rem;border:1px solid var(--border);border-radius:12px;background:rgba(255,255,255,.02)}
+    .small{color:var(--text-muted);font-size:.85rem}
   </style>
 </head>
-
 <body>
   <div class="bg-overlay"></div>
-
   <header>
-    <div class="logo-wrap">
-      <div class="logo">Chroniken</div>
-    </div>
-
+    <div class="logo-wrap"><div class="logo">Chroniken</div></div>
     <nav>
       <a href="index.html">Start</a>
       <a href="news.html">News</a>
@@ -117,303 +41,120 @@
   </header>
 
   <main class="weather-wrap">
-    <section class="hero">
-      <h1>🌦️ Wetter der Chroniken</h1>
-      <p class="subtitle">
-        Das Wetter wird alle sechs Stunden zufällig neu bestimmt und bleibt mit Discord synchron.
-      </p>
-    </section>
+    <section class="hero"><h1>🌦️ Wetter</h1><p class="subtitle">Das Wetter der Chroniken wechselt alle sechs Stunden.</p></section>
+    <div class="weather-card">
+      <div class="weather-icon" id="icon">🌤️</div>
+      <h2 class="weather-name" id="name">Wetter</h2>
+      <p class="weather-desc" id="desc"></p>
+      <div class="timer"><strong>Nächster Wetterwechsel</strong><div id="countdown" style="font-size:1.6rem;margin-top:.4rem">00:00:00</div></div>
+    </div>
 
-    <!-- Aktuelles Wetter -->
-    <section class="weather-card" aria-live="polite">
-      <div class="weather-icon" id="icon">🌦️</div>
-      <h2 class="weather-name" id="name">Wetter wird geladen …</h2>
-      <p class="weather-desc" id="desc">Die aktuelle Wetterlage wird ermittelt.</p>
-
-      <div class="timer">
-        <strong>Nächster Wetterwechsel</strong>
-        <div class="timer-value" id="countdown">00:00:00</div>
-      </div>
-
-      <div class="weather-info">
-        <span id="slotInfo">Wetter-Slot wird geladen …</span>
-      </div>
-    </section>
-
-    <!-- Admin -->
+    <!-- Admin-Bereich: nur sichtbar nach Anmeldung über index.html -->
     <section class="admin-panel" id="adminPanel" style="display:none;">
       <div class="admin-form">
         <h2 id="formTitle" data-testid="wetter-form-title">Neues Wetter anlegen</h2>
-
         <div class="admin-grid">
-          <div class="admin-field">
-            <label for="fIcon">Symbol / Emoji</label>
-            <input id="fIcon" data-testid="wetter-input-icon" placeholder="🌧️">
-          </div>
-
-          <div class="admin-field">
-            <label for="fName">Name *</label>
-            <input id="fName" data-testid="wetter-input-name" placeholder="Sturm">
-          </div>
-
-          <div class="admin-field full">
-            <label for="fDesc">Beschreibung</label>
-            <textarea id="fDesc" data-testid="wetter-input-desc"></textarea>
-          </div>
+          <div class="admin-field"><label>Symbol / Emoji</label><input id="fIcon" data-testid="wetter-input-icon" placeholder="🌧️"></div>
+          <div class="admin-field"><label>Name *</label><input id="fName" data-testid="wetter-input-name" placeholder="Sturm"></div>
+          <div class="admin-field full"><label>Beschreibung</label><textarea id="fDesc" data-testid="wetter-input-desc"></textarea></div>
         </div>
-
         <div class="admin-actions">
           <button class="btn" id="btnSave" data-testid="wetter-save-btn">Speichern</button>
-          <button class="btn secondary" id="btnCancel" data-testid="wetter-cancel-btn" style="display:none;">
-            Abbrechen
-          </button>
-          <button class="btn secondary" id="btnExportJson" data-testid="wetter-export-btn">
-            JSON für Discord
-          </button>
+          <button class="btn secondary" id="btnCancel" data-testid="wetter-cancel-btn" style="display:none;">Abbrechen</button>
           <span class="admin-status" id="status"></span>
         </div>
-
-        <p class="small" style="margin-top:.6rem;">
-          Die Wetterliste wird von <code>wetter.js</code> verwendet. Änderungen werden lokal gespeichert.
-          Für Discord kann die erzeugte <code>wetter-data.json</code> anschließend ins Repository übernommen werden.
-        </p>
       </div>
+      <h2 class="admin-sub-title">Vorhandenes Wetter</h2>
     </section>
 
-    <!-- Alle möglichen Wetterlagen -->
-    <section style="margin-top:2rem;">
+    <section style="margin-top:2rem">
       <h2 id="listTitle">🌙 Mögliche Wetterlagen</h2>
       <div class="history" id="tiles"></div>
     </section>
   </main>
 
-  <footer>
-    <p>© Kiyasha</p>
-  </footer>
+  <footer><p>© Kiyasha</p></footer>
 
   <script>
     const KEY = "wetter";
     const esc = ChronikenData.esc;
     let editIndex = null;
+    const el = id => document.getElementById(id);
+    function admin() { return ChronikenData.isAdmin(); }
 
-    const el = (id) => document.getElementById(id);
-
-    function isAdmin() {
-      return ChronikenData.isAdmin();
-    }
-
-    /*
-     * ZENTRALE SYNCHRONISATION
-     *
-     * wetter.js entscheidet anhand eines zufälligen Seeds pro
-     * 6-Stunden-Slot, welches Wetter gerade aktiv ist.
-     * Dadurch bleibt die Auswahl mit Discord synchron.
-     */
     function draw() {
-      if (!window.ChronikenWeather) return;
-
-      const weather = ChronikenWeather.get();
-
-      el("icon").textContent = weather.icon;
-      el("name").textContent = weather.name;
-      el("desc").textContent = weather.description;
-      el("countdown").textContent = ChronikenWeather.format(
-        ChronikenWeather.msNext()
-      );
-
-      const changed = new Date(weather.changedAt);
-
-      el("slotInfo").textContent =
-        "Aktiver Wetter-Slot seit " +
-        changed.toLocaleString("de-DE");
+      const x = ChronikenWeather.get();
+      el("icon").textContent = x.icon;
+      el("name").textContent = x.name;
+      el("desc").textContent = x.description;
+      el("countdown").textContent = ChronikenWeather.format(ChronikenWeather.msNext());
     }
 
     function render() {
       const list = ChronikenData.load(KEY);
-
-      el("adminPanel").style.display = isAdmin() ? "block" : "none";
-      el("listTitle").style.display = list.length ? "block" : "none";
-
+      el("adminPanel").style.display = admin() ? "block" : "none";
+      el("listTitle").textContent = admin() ? "" : "🌙 Mögliche Wetterlagen";
       el("tiles").innerHTML = list.map((w, i) => `
         <div class="wcard">
-          <strong>${esc(w.icon || "🌦️")} ${esc(w.name || "Unbekannt")}</strong>
-          <p class="small">${esc(w.description || "")}</p>
-
-          ${isAdmin() ? `
-            <div class="tile-actions">
-              <button class="btn secondary"
-                      data-edit="${i}"
-                      data-testid="wetter-edit-${i}">
-                Bearbeiten
-              </button>
-
-              <button class="btn danger"
-                      data-del="${i}"
-                      data-testid="wetter-delete-${i}">
-                Löschen
-              </button>
-            </div>
-          ` : ""}
-        </div>
-      `).join("");
-
-      el("tiles")
-        .querySelectorAll("[data-edit]")
-        .forEach((button) => {
-          button.onclick = () => startEdit(Number(button.dataset.edit));
-        });
-
-      el("tiles")
-        .querySelectorAll("[data-del]")
-        .forEach((button) => {
-          button.onclick = () => remove(Number(button.dataset.del));
-        });
+          <strong>${esc(w.icon)} ${esc(w.name)}</strong>
+          <p class="small">${esc(w.description)}</p>
+          ${admin() ? `<div class="tile-actions">
+            <button class="btn secondary" data-edit="${i}" data-testid="wetter-edit-${i}">Bearbeiten</button>
+            <button class="btn danger" data-del="${i}" data-testid="wetter-delete-${i}">Löschen</button>
+          </div>` : ""}
+        </div>`).join("");
+      el("tiles").querySelectorAll("[data-edit]").forEach(b => b.onclick = () => startEdit(+b.dataset.edit));
+      el("tiles").querySelectorAll("[data-del]").forEach(b => b.onclick = () => remove(+b.dataset.del));
     }
 
     function resetForm() {
       editIndex = null;
-
-      el("fIcon").value = "";
-      el("fName").value = "";
-      el("fDesc").value = "";
-
+      el("fIcon").value = ""; el("fName").value = ""; el("fDesc").value = "";
       el("formTitle").textContent = "Neues Wetter anlegen";
       el("btnSave").textContent = "Speichern";
       el("btnCancel").style.display = "none";
       el("status").textContent = "";
     }
 
-    function startEdit(index) {
-      const list = ChronikenData.load(KEY);
-      const weather = list[index];
-
-      if (!weather) return;
-
-      editIndex = index;
-
-      el("fIcon").value = weather.icon || "";
-      el("fName").value = weather.name || "";
-      el("fDesc").value = weather.description || "";
-
+    function startEdit(i) {
+      const w = ChronikenData.load(KEY)[i];
+      if (!w) return;
+      editIndex = i;
+      el("fIcon").value = w.icon || ""; el("fName").value = w.name || ""; el("fDesc").value = w.description || "";
       el("formTitle").textContent = "Wetter bearbeiten";
       el("btnSave").textContent = "Änderungen speichern";
       el("btnCancel").style.display = "inline-block";
-
-      window.scrollTo({
-        top: 0,
-        behavior: "smooth"
-      });
+      window.scrollTo({ top: 0, behavior: "smooth" });
     }
 
-    function remove(index) {
+    function remove(i) {
       if (!confirm("Diese Wetterlage wirklich löschen?")) return;
-
       const list = ChronikenData.load(KEY);
-      list.splice(index, 1);
-
+      list.splice(i, 1);
       ChronikenData.save(KEY, list);
-
-      if (editIndex === index) {
-        resetForm();
-      }
-
+      if (editIndex === i) resetForm();
       render();
-      draw();
     }
 
     function save() {
       const name = el("fName").value.trim();
-
-      if (!name) {
-        el("status").style.color = "#f87171";
-        el("status").textContent = "Bitte einen Namen eingeben.";
-        return;
-      }
-
+      if (!name) { el("status").style.color = "#f87171"; el("status").textContent = "Bitte einen Namen eingeben."; return; }
       const list = ChronikenData.load(KEY);
-
-      const entry = {
-        name,
-        icon: el("fIcon").value.trim() || "🌦️",
-        description: el("fDesc").value.trim()
-      };
-
-      if (editIndex !== null && list[editIndex]) {
-        list[editIndex] = entry;
-      } else {
-        list.push(entry);
-      }
-
+      const entry = { name, icon: el("fIcon").value.trim() || "🌦️", description: el("fDesc").value.trim() };
+      if (editIndex !== null && list[editIndex]) list[editIndex] = entry; else list.push(entry);
       ChronikenData.save(KEY, list);
-
       resetForm();
-
       el("status").style.color = "#22c55e";
       el("status").textContent = "✓ Gespeichert";
-
       render();
-      draw();
-
-      setTimeout(() => {
-        el("status").textContent = "";
-      }, 2500);
-    }
-
-    function exportJson() {
-      const list = ChronikenData.load(KEY);
-
-      const blob = new Blob(
-        [JSON.stringify({ wetter: list }, null, 2)],
-        { type: "application/json" }
-      );
-
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement("a");
-
-      a.href = url;
-      a.download = "wetter-data.json";
-      a.click();
-
-      URL.revokeObjectURL(url);
-
-      el("status").style.color = "#22c55e";
-      el("status").textContent =
-        "✓ wetter-data.json heruntergeladen";
-
-      setTimeout(() => {
-        el("status").textContent = "";
-      }, 4000);
+      setTimeout(() => { el("status").textContent = ""; }, 2500);
     }
 
     el("btnSave").onclick = save;
     el("btnCancel").onclick = resetForm;
-    el("btnExportJson").onclick = exportJson;
-
-    async function initWeather() {
-      /*
-       * Erst die gemeinsame Wetterquelle laden.
-       * Danach wird ausschließlich ChronikenWeather.get()
-       * verwendet. Dadurch bleibt das Wetter mit wetter.js
-       * und Discord/GitHub Actions synchron.
-       */
-      if (window.ChronikenWeather?.loadWeatherData) {
-        await ChronikenWeather.loadWeatherData();
-      }
-
-      draw();
-      render();
-    }
-
-    initWeather();
-
-    // Countdown und Anzeige regelmäßig aktualisieren.
+    draw(); render();
     setInterval(draw, 1000);
-
-    // Admin-Änderungen aus anderen Tabs übernehmen.
-    window.addEventListener("storage", () => {
-      render();
-      draw();
-    });
+    window.addEventListener("storage", render);
   </script>
 </body>
 </html>
