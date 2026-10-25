@@ -11,6 +11,7 @@
       display: flex; flex-wrap: wrap; gap: 0.8rem; align-items: center;
       margin-bottom: 1.5rem; padding: 1rem 1.2rem;
       background: var(--bg-card); border: 1px solid var(--border); border-radius: 10px;
+      backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px);
     }
     .admin-bar .status-ok { color: var(--success); font-weight: 600; }
     .char-table { width: 100%; border-collapse: collapse; margin-top: 0.5rem; }
@@ -31,8 +32,9 @@
     }
     .warn-badge.zero { background: rgba(34,197,94,0.12); color: #4ade80; border-color: rgba(34,197,94,0.3); }
     .form-card {
-      background: var(--bg-card); border: 1px solid var(--border); border-radius: 10px;
+      background: var(--bg-card); border: 1px solid var(--border); border-radius: 12px;
       padding: 1.4rem 1.5rem; margin-bottom: 1.5rem;
+      backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px);
     }
     .form-card h2 { color: var(--accent-soft); font-size: 1.15rem; margin-bottom: 1rem; }
     .form-grid {
@@ -54,6 +56,7 @@
     .locked-msg {
       max-width: 480px; margin: 4rem auto; text-align: center;
       background: var(--bg-card); border: 1px solid var(--border); border-radius: 12px; padding: 2rem;
+      backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px);
     }
     .locked-msg h2 { color: var(--accent-soft); margin-bottom: 0.6rem; }
     .violation-preview {
@@ -63,8 +66,8 @@
     .actions-cell { white-space: nowrap; }
     .actions-cell button { margin-right: 0.35rem; }
     .master-tiles { display:grid; grid-template-columns:repeat(auto-fit,minmax(190px,1fr)); gap:1rem; }
-    .master-tile { display:flex; flex-direction:column; gap:.45rem; padding:1.2rem; border:1px solid var(--border); border-radius:12px; background:rgba(168,85,247,.05); color:var(--text); text-decoration:none; transition:.18s ease; }
-    .master-tile:hover { transform:translateY(-2px); border-color:var(--accent); background:rgba(168,85,247,.1); }
+    .master-tile { display:flex; flex-direction:column; gap:.45rem; padding:1.2rem; border:1px solid var(--border); border-radius:12px; background:rgba(168,85,247,.14); color:var(--text); text-decoration:none; transition:.18s ease; backdrop-filter:blur(10px); -webkit-backdrop-filter:blur(10px); }
+    .master-tile:hover { transform:translateY(-2px); border-color:var(--accent); background:rgba(168,85,247,.22); }
     .master-tile small { color:var(--text-muted); line-height:1.4; }
     .tile-icon { font-size:1.7rem; }
     @media (max-width: 700px) {

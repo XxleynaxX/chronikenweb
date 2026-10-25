@@ -9,8 +9,8 @@
   <style>
     .wrap { max-width: 1200px; margin: auto; padding: 2rem 1.5rem; }
     .tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(340px, 1fr)); gap: 1.2rem; }
-    .tile { background: var(--bg-card); border: 1px solid var(--border); border-radius: 12px; padding: 1.4rem; transition: border-color 0.2s, box-shadow 0.2s; position: relative; }
-    .tile:hover { border-color: var(--accent-dim); box-shadow: 0 0 16px rgba(168, 85, 247, 0.15); }
+    .tile { background: var(--bg-card); border: 1px solid var(--border); border-radius: 12px; padding: 1.4rem; transition: border-color 0.2s, box-shadow 0.2s, background 0.2s; position: relative; backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); }
+    .tile:hover { border-color: var(--accent-soft); background: var(--bg-hover); box-shadow: 0 0 20px rgba(168, 85, 247, 0.22); }
     .tile h3 { margin: 0 0 0.5rem; color: var(--accent-soft); font-size: 1.3rem; }
     .muted { color: var(--text-muted); font-size: 0.92rem; line-height: 1.5; margin-bottom: 0.8rem; }
     .detail-box { margin-top: 0.6rem; font-size: 0.9rem; background: rgba(255,255,255,0.02); padding: 0.5rem 0.7rem; border-radius: 8px; border-left: 3px solid var(--accent); }

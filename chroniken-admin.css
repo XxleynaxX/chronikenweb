@@ -5,7 +5,9 @@
   border: 1px solid var(--accent-dim, rgba(168,85,247,.35));
   border-radius: 14px;
   padding: 1.5rem;
-  box-shadow: 0 0 24px rgba(168, 85, 247, 0.1);
+  box-shadow: 0 0 24px rgba(168, 85, 247, 0.15);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
 }
 .admin-form h2 { margin: 0 0 1rem; color: var(--accent-soft); font-size: 1.3rem; }
 .admin-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 1rem; }

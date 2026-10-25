@@ -11,8 +11,8 @@ body {
     margin: 0;
     font-family: Arial, sans-serif;
     background:
-      repeating-linear-gradient(-45deg, transparent, transparent 2px, rgba(255,255,255,0.015) 2px, rgba(255,255,255,0.015) 4px),
-      radial-gradient(ellipse at 50% 0%, #1a1a22 0%, #0e0e10 55%);
+      linear-gradient(180deg, rgba(12, 6, 24, 0.55) 0%, rgba(8, 4, 18, 0.62) 40%, rgba(6, 3, 14, 0.72) 100%),
+      url('Mondlicht_uber_dem_Sakura-Tal.webp') center center / cover no-repeat fixed;
     color: #e4e4e8;
     min-height: 100vh;
 }
@@ -32,12 +32,14 @@ button, select, input, textarea { font-family: inherit; }
 .page.active { display: block; }
 
 .card {
-    background: #1a1a1f;
-    border: 1px solid #2a2a32;
-    border-radius: 8px;
+    background: rgba(168, 85, 247, 0.14);
+    border: 1px solid rgba(192, 132, 252, 0.28);
+    border-radius: 12px;
     padding: 25px;
     margin-bottom: 20px;
     box-shadow: 0 10px 35px rgba(0,0,0,0.35);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
 }
 .card h2 { margin-top: 0; color: #c084fc; }
 .card h3 { color: #e4cfff; }
@@ -135,14 +137,16 @@ textarea { min-height: 120px; resize: vertical; }
     align-items: center;
 }
 .modal-content {
-    background: #1a1a1f;
+    background: rgba(30, 18, 48, 0.92);
     border: 2px solid #a855f7;
-    border-radius: 8px;
+    border-radius: 12px;
     width: min(650px, 90%);
     max-height: 85vh;
     display: flex;
     flex-direction: column;
     box-shadow: 0 15px 45px rgba(0,0,0,0.6);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
 }
 .modal-header {
     padding: 20px;
@@ -395,7 +399,7 @@ textarea { min-height: 120px; resize: vertical; }
     <section id="characterPage" class="page active">
 
         <!-- SPEICHERN / LADEN -->
-        <div class="card" style="background: #1a1a1f; display: flex; flex-wrap: wrap; gap: 10px; justify-content: space-between; align-items: center;">
+        <div class="card" style="display: flex; flex-wrap: wrap; gap: 10px; justify-content: space-between; align-items: center;">
             <div style="display: flex; gap: 10px; flex-wrap: wrap;">
                 <button type="button" class="secondary-button" style="width: auto; padding: 10px 15px; font-size: 14px;" onclick="saveToLocalStorage()">💾 Entwurf speichern</button>
                 <button type="button" class="secondary-button" style="width: auto; padding: 10px 15px; font-size: 14px;" onclick="exportJSON()">📤 Als JSON exportieren</button>

@@ -37,9 +37,11 @@
       border: 1px solid var(--border);
       border-radius: 12px;
       padding: 1rem 1.2rem;
-      transition: border-color 0.2s;
+      transition: border-color 0.2s, background 0.2s;
+      backdrop-filter: blur(10px);
+      -webkit-backdrop-filter: blur(10px);
     }
-    .news-item:hover { border-color: var(--purple); }
+    .news-item:hover { border-color: var(--purple); background: var(--bg-hover); }
     .news-item h3 { color: var(--purple-bright); font-size: 1.05rem; margin-bottom: 0.25rem; }
     .news-item .meta { font-size: 0.8rem; color: var(--text-muted); margin-bottom: 0.4rem; }
     .news-item p {
@@ -141,7 +143,19 @@
 </head>
 <body>
   <div class="bg-overlay"></div>
-    <header>
+  <div class="leaves-container" id="leavesContainer" aria-hidden="true"></div>
+
+  <!-- Ambient Nature Sound Panel (Wind + Laub + Uhu + Lautstärke) -->
+  <div class="ambient-panel" id="ambientPanel">
+    <button class="ambient-toggle" id="ambientToggle" title="Naturklänge an/aus">🦉</button>
+    <div class="ambient-volume-wrap">
+      <span>🔊</span>
+      <input type="range" class="ambient-volume" id="ambientVolume" min="0" max="100" value="15" title="Lautstärke">
+      <span class="ambient-vol-label" id="ambientVolLabel">12%</span>
+    </div>
+  </div>
+
+  <header>
     <div class="logo-wrap">
       <div class="logo">Chroniken</div>
     </div>
@@ -532,6 +546,109 @@
       setInterval(foxIdleSay, 16000);
       // erster Vampir-Auftritt nach 12–20 Sekunden
       setTimeout(showVamp, 12000 + Math.random() * 8000);
+    })();
+
+    /* ===== FALLENDE BLÄTTER + NATUR-AMBIENTE (Wind + Uhu) ===== */
+    (function() {
+      // --- Blätter ---
+      const container = document.getElementById("leavesContainer");
+      if (container) {
+        const leafCount = 18;
+        for (let i = 0; i < leafCount; i++) {
+          const leaf = document.createElement("div");
+          const variants = ["", " variant-2", " variant-3", " variant-4"];
+          leaf.className = "leaf" + variants[i % 4];
+          leaf.style.left = Math.random() * 100 + "%";
+          leaf.style.animationDuration = (9 + Math.random() * 12) + "s";
+          leaf.style.animationDelay = (Math.random() * 12) + "s";
+          leaf.style.opacity = 0.45 + Math.random() * 0.4;
+          container.appendChild(leaf);
+        }
+      }
+
+      // --- Natur + Fantasy-Ambient + Uhu + Lautstärke-Regler ---
+      const panel = document.getElementById("ambientPanel");
+      const toggleBtn = document.getElementById("ambientToggle");
+      const volSlider = document.getElementById("ambientVolume");
+      const volLabel = document.getElementById("ambientVolLabel");
+      let isPlaying = false;
+      let owlTimer = null;
+
+      // Natur-Ambient (Nachtwald)
+      const ambient = new Audio("sounds/night-forest.mp3");
+      ambient.loop = true;
+      ambient.preload = "auto";
+
+      // Leise Fantasy-Melodie darüber
+      const fantasy = new Audio("sounds/fantasy-ambient.mp3");
+      fantasy.loop = true;
+      fantasy.preload = "auto";
+
+      // Echter Uhu-Ruf
+      const owl = new Audio("sounds/owl-hoot.mp3");
+      owl.preload = "auto";
+
+      // Lautstärke: Slider steuert alles (Fantasy deutlich leiser)
+      function applyVolume() {
+        const v = (parseInt(volSlider.value, 10) || 0) / 100;
+        ambient.volume = v * 0.85;          // Natur
+        fantasy.volume = v * 0.28;          // Fantasy-Melodie sehr dezent
+        owl.volume = Math.min(1, v * 1.15); // Uhu etwas präsenter
+        if (volLabel) volLabel.textContent = volSlider.value + "%";
+      }
+      applyVolume();
+
+      function scheduleNextOwl() {
+        if (!isPlaying) return;
+        const delay = 22000 + Math.random() * 23000;
+        owlTimer = setTimeout(() => {
+          if (!isPlaying) return;
+          owl.currentTime = 0;
+          owl.play().catch(() => {});
+          scheduleNextOwl();
+        }, delay);
+      }
+
+      function startAmbient() {
+        if (isPlaying) return;
+        applyVolume();
+        ambient.currentTime = 0;
+        fantasy.currentTime = 0;
+        Promise.all([
+          ambient.play().catch(() => {}),
+          fantasy.play().catch(() => {})
+        ]).then(() => {
+          isPlaying = true;
+          if (panel) panel.classList.add("playing");
+          setTimeout(() => {
+            if (isPlaying) {
+              owl.currentTime = 0;
+              owl.play().catch(() => {});
+            }
+          }, 6000 + Math.random() * 6000);
+          scheduleNextOwl();
+        });
+      }
+
+      function stopAmbient() {
+        isPlaying = false;
+        if (owlTimer) { clearTimeout(owlTimer); owlTimer = null; }
+        ambient.pause();
+        fantasy.pause();
+        owl.pause();
+        if (panel) panel.classList.remove("playing");
+      }
+
+      if (toggleBtn) {
+        toggleBtn.addEventListener("click", () => {
+          if (isPlaying) stopAmbient();
+          else startAmbient();
+        });
+      }
+
+      if (volSlider) {
+        volSlider.addEventListener("input", applyVolume);
+      }
     })();
   </script>
 </body>

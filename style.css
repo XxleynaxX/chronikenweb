@@ -1,17 +1,17 @@
 /* ===== Chroniken – Forum / RP Look ===== */
 :root {
   --bg: #0e0e10;
-  --bg-panel: #16161a;
-  --bg-card: #1a1a1f;
-  --bg-hover: #222228;
-  --bg-input: #121216;
+  --bg-panel: rgba(22, 16, 32, 0.55);
+  --bg-card: rgba(168, 85, 247, 0.14);
+  --bg-hover: rgba(192, 132, 252, 0.22);
+  --bg-input: rgba(18, 12, 28, 0.7);
   --accent: #a855f7;
   --accent-dim: #7c3aed;
   --accent-soft: #c084fc;
   --text: #e4e4e8;
-  --text-muted: #9a9aa3;
-  --border: #2a2a32;
-  --border-light: #3a3a45;
+  --text-muted: #b8b0c8;
+  --border: rgba(192, 132, 252, 0.28);
+  --border-light: rgba(192, 132, 252, 0.4);
   --danger: #e11d48;
   --success: #22c55e;
   /* legacy aliases so old pages still work */
@@ -29,30 +29,35 @@
 
 body {
   font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
-  background:
-    repeating-linear-gradient(
-      -45deg,
-      transparent,
-      transparent 2px,
-      rgba(255,255,255,0.015) 2px,
-      rgba(255,255,255,0.015) 4px
-    ),
-    radial-gradient(ellipse at 50% 0%, #1a1a22 0%, var(--bg) 55%);
+  background: #0a0612;
   color: var(--text);
   min-height: 100vh;
   display: flex;
   flex-direction: column;
   line-height: 1.6;
+  position: relative;
 }
 
+/* Vollflächiges Mondlicht-Hintergrundbild auf allen Seiten */
 .bg-overlay {
-  display: none;
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  background:
+    linear-gradient(
+      180deg,
+      rgba(12, 6, 24, 0.55) 0%,
+      rgba(8, 4, 18, 0.62) 40%,
+      rgba(6, 3, 14, 0.72) 100%
+    ),
+    url('Mondlicht_uber_dem_Sakura-Tal.webp') center center / cover no-repeat fixed;
 }
 
 /* ===== HEADER – Logo zentriert wie Forum ===== */
 header,
 .site-header {
-  background: linear-gradient(180deg, #121216 0%, #0e0e12 100%);
+  background: linear-gradient(180deg, rgba(14, 8, 24, 0.82) 0%, rgba(10, 6, 18, 0.88) 100%);
   border-bottom: 1px solid var(--border);
   padding: 0;
   display: flex;
@@ -61,6 +66,8 @@ header,
   position: sticky;
   top: 0;
   z-index: 100;
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
 }
 
 .logo-wrap {
@@ -69,7 +76,7 @@ header,
   padding: 1.6rem 1rem 1.1rem;
   border-bottom: 1px solid var(--border);
   background:
-    radial-gradient(ellipse at 50% 0%, rgba(168, 85, 247, 0.08) 0%, transparent 60%);
+    radial-gradient(ellipse at 50% 0%, rgba(168, 85, 247, 0.12) 0%, transparent 60%);
 }
 
 .logo {
@@ -99,8 +106,8 @@ nav {
   flex-wrap: wrap;
   justify-content: center;
   width: 100%;
-  background: #141418;
-  border-bottom: 2px solid #6d3ba8;
+  background: rgba(16, 10, 28, 0.75);
+  border-bottom: 2px solid rgba(109, 59, 168, 0.7);
 }
 
 nav a {
@@ -163,19 +170,22 @@ main {
 .gate {
   background: var(--bg-card);
   border: 1px solid var(--border);
-  border-radius: 8px;
+  border-radius: 12px;
   padding: 1.5rem 1.2rem;
   text-decoration: none;
   color: inherit;
   transition: all 0.25s;
   display: block;
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.25);
 }
 
 .gate:hover {
-  border-color: var(--accent-dim);
+  border-color: var(--accent-soft);
   background: var(--bg-hover);
   transform: translateY(-2px);
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
+  box-shadow: 0 8px 28px rgba(168, 85, 247, 0.25);
 }
 
 .gate-icon {
@@ -211,18 +221,39 @@ main {
   margin-bottom: 1.5rem;
 }
 
-/* Cards */
+/* Cards – lila, leicht transparent */
 .card {
   background: var(--bg-card);
   border: 1px solid var(--border);
-  border-radius: 8px;
+  border-radius: 12px;
   padding: 1.4rem;
   margin-bottom: 1.2rem;
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.25);
 }
 
 .card h3 {
   color: var(--accent-soft);
   margin-bottom: 0.5rem;
+}
+
+/* Gemeinsame Kachel-Klasse für alle Seiten */
+.tile {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 1.3rem;
+  transition: border-color 0.2s, box-shadow 0.2s, background 0.2s;
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  box-shadow: 0 4px 18px rgba(0, 0, 0, 0.22);
+}
+
+.tile:hover {
+  border-color: var(--accent-soft);
+  background: var(--bg-hover);
+  box-shadow: 0 0 20px rgba(168, 85, 247, 0.22);
 }
 
 /* Controls */
@@ -284,13 +315,16 @@ main {
 .topic-list li {
   background: var(--bg-card);
   border: 1px solid var(--border);
-  border-radius: 6px;
+  border-radius: 10px;
   margin-bottom: 0.6rem;
-  transition: border-color 0.2s;
+  transition: border-color 0.2s, background 0.2s;
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
 }
 
 .topic-list li:hover {
-  border-color: var(--accent-dim);
+  border-color: var(--accent-soft);
+  background: var(--bg-hover);
 }
 
 .topic-list a {
@@ -414,14 +448,18 @@ textarea {
 .god-card {
   background: var(--bg-card);
   border: 1px solid var(--border);
-  border-radius: 8px;
+  border-radius: 12px;
   padding: 1.2rem;
-  transition: border-color 0.2s, box-shadow 0.2s;
+  transition: border-color 0.2s, box-shadow 0.2s, background 0.2s;
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  box-shadow: 0 4px 18px rgba(0, 0, 0, 0.22);
 }
 
 .god-card:hover {
-  border-color: var(--accent-dim);
-  box-shadow: 0 0 16px rgba(168, 85, 247, 0.1);
+  border-color: var(--accent-soft);
+  background: var(--bg-hover);
+  box-shadow: 0 0 20px rgba(168, 85, 247, 0.22);
 }
 
 .god-card h3 {
@@ -516,12 +554,14 @@ footer {
   top: 16px;
   left: 16px;
   width: 220px;
-  background: var(--bg-card);
+  background: rgba(168, 85, 247, 0.18);
   border: 1px solid var(--border);
   border-radius: 12px;
   padding: 0.9rem 1rem;
   box-shadow: 0 8px 28px rgba(0, 0, 0, 0.45);
   pointer-events: auto;
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
 }
 .login-panel .login-title {
   font-size: 0.82rem;
@@ -568,4 +608,184 @@ footer {
     width: calc(100% - 32px);
     max-width: 260px;
   }
+}
+
+/* ===== FALLENDE BLÄTTER (Laubfallen) ===== */
+.leaves-container {
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  overflow: hidden;
+}
+
+.leaf {
+  position: absolute;
+  top: -40px;
+  width: 18px;
+  height: 18px;
+  background: linear-gradient(135deg, #c084fc 0%, #7c3aed 40%, #a855f7 70%, #5b21b6 100%);
+  border-radius: 0 80% 0 80%;
+  opacity: 0.75;
+  animation: fall linear infinite;
+  transform-origin: center;
+  box-shadow: 0 0 6px rgba(168, 85, 247, 0.35);
+}
+
+.leaf::before {
+  content: "";
+  position: absolute;
+  inset: 2px;
+  border-radius: inherit;
+  background: linear-gradient(45deg, transparent 40%, rgba(255,255,255,0.22) 50%, transparent 60%);
+}
+
+.leaf.variant-2 {
+  background: linear-gradient(135deg, #f59e0b 0%, #d97706 40%, #b45309 100%);
+  width: 15px;
+  height: 15px;
+  border-radius: 0 70% 0 70%;
+  box-shadow: 0 0 5px rgba(245, 158, 11, 0.3);
+}
+
+.leaf.variant-3 {
+  background: linear-gradient(135deg, #f87171 0%, #ef4444 40%, #b91c1c 100%);
+  width: 20px;
+  height: 16px;
+  border-radius: 40% 0 40% 0;
+  box-shadow: 0 0 5px rgba(239, 68, 68, 0.25);
+}
+
+.leaf.variant-4 {
+  background: linear-gradient(135deg, #a3e635 0%, #65a30d 50%, #3f6212 100%);
+  width: 16px;
+  height: 14px;
+  border-radius: 30% 70% 30% 70%;
+}
+
+@keyframes fall {
+  0% {
+    transform: translateY(0) rotate(0deg) translateX(0) scale(1);
+    opacity: 0;
+  }
+  8% {
+    opacity: 0.85;
+  }
+  25% {
+    transform: translateY(25vh) rotate(180deg) translateX(25px) scale(0.95);
+  }
+  50% {
+    transform: translateY(55vh) rotate(400deg) translateX(-15px) scale(1.05);
+  }
+  75% {
+    transform: translateY(80vh) rotate(580deg) translateX(30px) scale(0.9);
+  }
+  100% {
+    transform: translateY(110vh) rotate(780deg) translateX(10px) scale(0.8);
+    opacity: 0;
+  }
+}
+
+/* Ambient Sound Control Panel */
+.ambient-panel {
+  position: fixed;
+  bottom: 18px;
+  left: 18px;
+  z-index: 600;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 12px 8px 8px;
+  border-radius: 28px;
+  border: 1px solid var(--border);
+  background: rgba(14, 8, 24, 0.88);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  box-shadow: 0 4px 18px rgba(124, 58, 237, 0.3);
+  transition: border-color 0.2s, box-shadow 0.2s;
+  user-select: none;
+}
+
+.ambient-panel.playing {
+  border-color: rgba(34, 197, 94, 0.55);
+  box-shadow: 0 0 16px rgba(34, 197, 94, 0.25);
+}
+
+.ambient-toggle {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  border: 1px solid var(--border);
+  background: rgba(168, 85, 247, 0.12);
+  color: var(--purple-bright);
+  font-size: 1.2rem;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: transform 0.2s, background 0.2s, border-color 0.2s;
+  flex-shrink: 0;
+}
+
+.ambient-toggle:hover {
+  transform: scale(1.08);
+  background: rgba(168, 85, 247, 0.25);
+  border-color: var(--purple-bright);
+}
+
+.ambient-panel.playing .ambient-toggle {
+  border-color: #22c55e;
+  background: rgba(34, 197, 94, 0.15);
+}
+
+.ambient-volume-wrap {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+}
+
+.ambient-volume-wrap span {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  white-space: nowrap;
+}
+
+.ambient-volume {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 90px;
+  height: 5px;
+  border-radius: 3px;
+  background: rgba(192, 132, 252, 0.25);
+  outline: none;
+  cursor: pointer;
+}
+
+.ambient-volume::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: var(--purple-bright);
+  border: 1px solid rgba(255,255,255,0.3);
+  cursor: pointer;
+  box-shadow: 0 0 6px rgba(168, 85, 247, 0.5);
+}
+
+.ambient-volume::-moz-range-thumb {
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: var(--purple-bright);
+  border: 1px solid rgba(255,255,255,0.3);
+  cursor: pointer;
+}
+
+.ambient-vol-label {
+  font-size: 0.72rem;
+  color: var(--text-muted);
+  min-width: 28px;
+  text-align: right;
 }
