@@ -128,8 +128,41 @@
           <a class="master-tile" href="voelker.html"><span class="tile-icon">🦊</span><strong>Völker & Rassen</strong><small>Beschreibung, Stärken, Schwächen und Größen</small></a>
           <a class="master-tile" href="berufe.html"><span class="tile-icon">⚒️</span><strong>Berufe</strong><small>Hauptberuf oder Nebenberuf anlegen</small></a>
           <a class="master-tile" href="goetter.html"><span class="tile-icon">✨</span><strong>Götter</strong><small>Götter und ihre Beschreibungen verwalten</small></a>
-          <a class="master-tile" href="wetter.html"><span class="tile-icon">🌦️</span><strong>Wetter</strong><small>Wetterwechsel alle 6 Stunden</small></a>
         </div>
+      </div>
+
+      <div class="form-card" id="weatherConfigCard">
+        <h2>🌦️ Wetter-Konfiguration</h2>
+        <p style="color:var(--text-muted);font-size:0.9rem;margin-bottom:1rem;">
+          Wetterlagen und Chancen. Die Auswahl ist gewichtet (höhere Chance = kommt öfter).
+          Der Wechsel läuft automatisch im Hintergrund; eine öffentliche Wetter-Seite gibt es nicht mehr.
+          Discord-Benachrichtigungen laufen über den chroniken-discord-proxy (kein Webhook im Admin nötig).
+        </p>
+
+        <div class="form-grid" style="margin-bottom:1.2rem;">
+          <div class="form-group">
+            <label>Intervall (Stunden bis nächster Wechsel)</label>
+            <input type="number" id="wxInterval" min="1" max="168" step="1" value="6">
+          </div>
+          <div class="form-group">
+            <label>Nächster Wechsel (live)</label>
+            <input type="text" id="wxNextChange" readonly style="opacity:0.9;">
+          </div>
+          <div class="form-group">
+            <label>Aktuelles Wetter</label>
+            <input type="text" id="wxCurrent" readonly style="opacity:0.9;">
+          </div>
+        </div>
+
+        <h3 style="color:var(--accent-soft);font-size:1rem;margin:0.5rem 0 0.8rem;">Wetterlagen &amp; Chancen</h3>
+        <div id="wxList" style="display:flex;flex-direction:column;gap:0.7rem;margin-bottom:1rem;"></div>
+
+        <div class="form-actions">
+          <button type="button" class="btn" id="wxAddBtn">+ Neue Wetterlage</button>
+          <button type="button" class="btn secondary" id="wxResetBtn">Standard wiederherstellen</button>
+          <button type="button" class="btn" id="wxSaveBtn" style="margin-left:auto;">💾 Wetter speichern</button>
+        </div>
+        <p id="wxSaveStatus" style="margin-top:0.6rem;font-size:0.88rem;color:var(--success);display:none;">✓ Gespeichert</p>
       </div>
 
       <div class="form-card">
@@ -253,6 +286,7 @@
     </div>
   </div>
 
+  <script src="wetter.js"></script>
   <script>
     // ===== Admin-Zugangsdaten (hier ändern) =====
     const ADMIN_USER = "admin";
@@ -473,6 +507,125 @@
 
     updateLoginUI();
     renderAdminEventManager();
+
+    // ===== Wetter-Konfiguration =====
+    (function weatherAdmin() {
+      if (!window.ChronikenWeather) return;
+
+      let rows = [];
+
+      function totalWeight() {
+        return rows.reduce(function (s, r) { return s + (Number(r.weight) || 0); }, 0);
+      }
+
+      function chancePct(w) {
+        const t = totalWeight();
+        if (t <= 0) return "0%";
+        return ((100 * (Number(w) || 0) / t).toFixed(1)) + "%";
+      }
+
+      function renderRows() {
+        const box = document.getElementById("wxList");
+        if (!box) return;
+        const esc = function (v) {
+          return String(v ?? "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+        };
+        box.innerHTML = rows.map(function (r, i) {
+          return (
+            '<div class="wx-row" data-i="' + i + '" style="display:grid;grid-template-columns:52px 1fr 1.4fr 90px 70px 40px;gap:0.5rem;align-items:center;">' +
+              '<input type="text" data-f="icon" value="' + esc(r.icon) + '" maxlength="4" title="Icon" style="text-align:center;font-size:1.2rem;">' +
+              '<input type="text" data-f="name" value="' + esc(r.name) + '" placeholder="Name">' +
+              '<input type="text" data-f="description" value="' + esc(r.description) + '" placeholder="Beschreibung">' +
+              '<input type="number" data-f="weight" value="' + esc(r.weight) + '" min="0" step="1" title="Chance-Gewicht">' +
+              '<span style="color:var(--text-muted);font-size:0.85rem;text-align:right;" class="wx-pct">' + chancePct(r.weight) + '</span>' +
+              '<button type="button" class="btn danger" data-del="' + i + '" style="padding:0.35rem 0.5rem;" title="Löschen">✕</button>' +
+            '</div>'
+          );
+        }).join("");
+
+        box.querySelectorAll(".wx-row").forEach(function (row) {
+          const i = Number(row.dataset.i);
+          row.querySelectorAll("input").forEach(function (inp) {
+            inp.addEventListener("input", function () {
+              const f = inp.dataset.f;
+              if (f === "weight") rows[i].weight = Math.max(0, Number(inp.value) || 0);
+              else rows[i][f] = inp.value;
+              // Prozente aktualisieren
+              box.querySelectorAll(".wx-row").forEach(function (rr) {
+                const ii = Number(rr.dataset.i);
+                const pct = rr.querySelector(".wx-pct");
+                if (pct) pct.textContent = chancePct(rows[ii].weight);
+              });
+            });
+          });
+          const del = row.querySelector("[data-del]");
+          if (del) del.addEventListener("click", function () {
+            rows.splice(i, 1);
+            renderRows();
+          });
+        });
+      }
+
+      function loadIntoForm() {
+        const cfg = ChronikenWeather.loadConfig();
+        document.getElementById("wxInterval").value = cfg.intervalHours;
+        rows = (cfg.weather || []).map(function (w) {
+          return { name: w.name, icon: w.icon, description: w.description, weight: w.weight };
+        });
+        if (!rows.length) {
+          rows = ChronikenWeather.DEFAULT_CONFIG.weather.map(function (w) {
+            return Object.assign({}, w);
+          });
+        }
+        renderRows();
+        refreshLive();
+      }
+
+      function refreshLive() {
+        try {
+          const state = ChronikenWeather.get();
+          const next = ChronikenWeather.nextChangeTime();
+          const cur = document.getElementById("wxCurrent");
+          const nxt = document.getElementById("wxNextChange");
+          if (cur) cur.value = (state.icon || "") + " " + (state.name || "") + "  ·  in " + ChronikenWeather.format(ChronikenWeather.msNext());
+          if (nxt) nxt.value = next.toLocaleString("de-DE", { dateStyle: "short", timeStyle: "medium" });
+        } catch (e) {}
+      }
+
+      document.getElementById("wxAddBtn").addEventListener("click", function () {
+        rows.push({ name: "Neue Lage", icon: "🌤️", description: "", weight: 5 });
+        renderRows();
+      });
+
+      document.getElementById("wxResetBtn").addEventListener("click", function () {
+        if (!confirm("Wetterliste und Einstellungen auf Standard zurücksetzen?")) return;
+        ChronikenWeather.saveConfig(ChronikenWeather.DEFAULT_CONFIG);
+        loadIntoForm();
+        const st = document.getElementById("wxSaveStatus");
+        st.style.display = "block";
+        st.textContent = "✓ Standard wiederhergestellt";
+        setTimeout(function () { st.style.display = "none"; }, 2500);
+      });
+
+      document.getElementById("wxSaveBtn").addEventListener("click", function () {
+        const prev = ChronikenWeather.loadConfig();
+        const cfg = {
+          intervalHours: Math.max(1, Number(document.getElementById("wxInterval").value) || 6),
+          discordEnabled: !!prev.discordEnabled,
+          discordWebhook: prev.discordWebhook || "",
+          weather: rows
+        };
+        ChronikenWeather.saveConfig(cfg);
+        const st = document.getElementById("wxSaveStatus");
+        st.style.display = "block";
+        st.textContent = "✓ Wetter gespeichert";
+        setTimeout(function () { st.style.display = "none"; }, 2500);
+        refreshLive();
+      });
+
+      loadIntoForm();
+      setInterval(refreshLive, 1000);
+    })();
   
 </script>
 </body>

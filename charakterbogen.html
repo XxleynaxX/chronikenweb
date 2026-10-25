@@ -4,15 +4,13 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Chroniken – Charakterbogen</title>
+<link rel="stylesheet" href="style.css">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 <style>
 * { box-sizing: border-box; }
 body {
     margin: 0;
-    font-family: Arial, sans-serif;
-    background:
-      linear-gradient(180deg, rgba(12, 6, 24, 0.55) 0%, rgba(8, 4, 18, 0.62) 40%, rgba(6, 3, 14, 0.72) 100%),
-      url('Mondlicht_uber_dem_Sakura-Tal.webp') center center / cover no-repeat fixed;
+    font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
     color: #e4e4e8;
     min-height: 100vh;
 }
@@ -367,31 +365,28 @@ textarea { min-height: 120px; resize: vertical; }
 </style>
 </head>
 <body>
-<!-- CHRONIKEN NAV -->
-<header style="background:linear-gradient(180deg,#121216 0%,#0e0e12 100%);border-bottom:1px solid #2a2a32;position:sticky;top:0;z-index:100;">
-  <div style="width:100%;text-align:center;padding:1.5rem 1rem 1rem;border-bottom:1px solid #2a2a32;background:radial-gradient(ellipse at 50% 0%,rgba(168,85,247,0.08) 0%,transparent 60%);">
-    <a href="index.html" style="color:#c084fc;text-decoration:none;font-weight:700;letter-spacing:0.35em;font-size:1.7rem;text-transform:uppercase;text-shadow:0 0 20px rgba(168,85,247,0.35);">✦ Chroniken ✦</a>
-  </div>
-  <nav style="display:flex;flex-wrap:wrap;justify-content:center;background:#141418;border-bottom:2px solid #6d3ba8;">
-    <a href="index.html" style="color:#9a9aa3;text-decoration:none;font-size:0.88rem;padding:0.7rem 1rem;border-right:1px solid #2a2a32;">Start</a>
-    <a href="news.html" style="color:#9a9aa3;text-decoration:none;font-size:0.88rem;padding:0.7rem 1rem;border-right:1px solid #2a2a32;">News</a>
-    <a href="events.html" style="color:#9a9aa3;text-decoration:none;font-size:0.88rem;padding:0.7rem 1rem;border-right:1px solid #2a2a32;">Events</a>
-    <a href="kalender.html" style="color:#9a9aa3;text-decoration:none;font-size:0.88rem;padding:0.7rem 1rem;border-right:1px solid #2a2a32;">Kalender</a>
-    <a href="wiki.html" style="color:#9a9aa3;text-decoration:none;font-size:0.88rem;padding:0.7rem 1rem;border-right:1px solid #2a2a32;">Wiki</a>
-    <a href="bibliothek.html" style="color:#9a9aa3;text-decoration:none;font-size:0.88rem;padding:0.7rem 1rem;border-right:1px solid #2a2a32;">Bibliothek</a>
-    <a href="berufe.html" style="color:#9a9aa3;text-decoration:none;font-size:0.88rem;padding:0.7rem 1rem;border-right:1px solid #2a2a32;">Berufe</a>
-    <a href="kreaturen.html" style="color:#9a9aa3;text-decoration:none;font-size:0.88rem;padding:0.7rem 1rem;border-right:1px solid #2a2a32;">Kreaturen</a>
-    <a href="regeln.html" style="color:#9a9aa3;text-decoration:none;font-size:0.88rem;padding:0.7rem 1rem;border-right:1px solid #2a2a32;">Regeln</a>
-    <a href="goetter.html" style="color:#9a9aa3;text-decoration:none;font-size:0.88rem;padding:0.7rem 1rem;border-right:1px solid #2a2a32;">Götter</a>
-    <a href="charakterbogen.html" style="color:#fff;text-decoration:none;font-size:0.88rem;padding:0.7rem 1rem;border-right:1px solid #2a2a32;background:rgba(168,85,247,0.12);box-shadow:inset 0 -2px 0 #a855f7;">Charakterbogen</a>
-  </nav>
-</header>
+  <div class="bg-overlay"></div>
 
-<div class="header">
-    <h1>Charakterbogen</h1>
-    <p>Digitaler Charakterbogen · Vollversion</p>
-</div>
+  <header>
+    <div class="logo-wrap">
+      <div class="logo">Chroniken</div>
+    </div>
+    <nav>
+      <a href="index.html">Start</a>
+      <a href="news.html">News</a>
+      <a href="events.html">Events</a>
+      <a href="kalender.html">Kalender</a>
+      <a href="wiki.html">Wiki</a>
+      <a href="bibliothek.html">Bibliothek</a>
+      <a href="berufe.html">Berufe</a>
+      <a href="kreaturen.html">Kreaturen</a>
+      <a href="regeln.html">Regeln</a>
+      <a href="goetter.html">Götter</a>
+      <a href="charakterbogen.html" class="active">Charakterbogen</a>
+    </nav>
+  </header>
 
+  <h1 class="page-title" style="text-align:center;">Charakterbogen</h1>
 
 <div class="container">
 
@@ -1763,9 +1758,60 @@ function createCharacterEvent(data) {
     localStorage.setItem(key, JSON.stringify(events));
 }
 
+/* Discord-Proxy: Webhook-URL liegt nur serverseitig (CHAR_WEBHOOK). Frontend braucht kein Admin-Webhook. */
+const DISCORD_PROXY_URL = (typeof window.CHRONIKEN_DISCORD_PROXY === "string" && window.CHRONIKEN_DISCORD_PROXY)
+  ? window.CHRONIKEN_DISCORD_PROXY.replace(/\/$/, "") + "/charakter"
+  : "/charakter"; // gleicher Origin, falls Proxy davor liegt – sonst window.CHRONIKEN_DISCORD_PROXY setzen
+
+function buildDiscordPayload(data) {
+  const name = data.name || "Unbekannt";
+  const player = data.discordName || data.player || "-";
+  const race = data.race || "-";
+  const sub = (data.subraces && data.subraces.length) ? " (" + data.subraces.join(", ") + ")" : "";
+  const jobs = [data.mainJob, data.subJob].filter(Boolean).join(" / ") || "-";
+  const fields = [
+    { name: "Spieler (Discord)", value: player, inline: true },
+    { name: "Volk", value: race + sub, inline: true },
+    { name: "Geschlecht / Alter", value: (data.gender || "-") + " · " + (data.age || "-"), inline: true },
+    { name: "Größe", value: data.size || "-", inline: true },
+    { name: "Berufe", value: jobs, inline: true },
+    { name: "Gott", value: data.god || "-", inline: true }
+  ];
+  if (data.steamId) fields.push({ name: "Steam-ID", value: String(data.steamId), inline: true });
+  return {
+    content: "📜 **Neuer Charakterbogen** von **" + player + "**",
+    embeds: [{
+      title: name,
+      color: 0xa855f7,
+      fields: fields,
+      footer: { text: "Chroniken · Charakterbogen" },
+      timestamp: new Date().toISOString()
+    }]
+  };
+}
+
+async function sendCharacterToDiscordProxy(data) {
+  try {
+    const payload = buildDiscordPayload(data);
+    const res = await fetch(DISCORD_PROXY_URL, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload)
+    });
+    if (!res.ok) {
+      console.warn("Discord-Proxy Antwort nicht OK:", res.status);
+      return false;
+    }
+    return true;
+  } catch (e) {
+    console.warn("Discord-Proxy nicht erreichbar:", e);
+    return false;
+  }
+}
+
 function createPNG(name) {
     const card = document.getElementById("characterCard");
-    html2canvas(card, { scale: 2, backgroundColor: null }).then(canvas => {
+    html2canvas(card, { scale: 2, backgroundColor: null }).then(async canvas => {
         lastCanvas = canvas;
         const link = document.createElement("a");
         const safeName = name ? name.replace(/[^a-z0-9äöüÄÖÜß_-]/gi, "_") : "Charakter";
@@ -1775,6 +1821,8 @@ function createPNG(name) {
         registerCharacterInManagement(data);
         registerBirthdayForEvents(data);
         createCharacterEvent(data);
+        // Alles über den Proxy – kein Webhook im Admin nötig
+        await sendCharacterToDiscordProxy(data);
         link.click();
         document.getElementById("success").style.display = "block";
         document.getElementById("success").scrollIntoView({ behavior: "smooth" });
