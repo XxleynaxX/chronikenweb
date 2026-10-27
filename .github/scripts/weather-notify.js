@@ -21,10 +21,10 @@ const CONFIG = require(path.join(__dirname, "..", "..", "weather-config.js"));
 const INTERVAL_HOURS = Math.max(1, Number(CONFIG.intervalHours) || 6);
 const SLOT_MS = INTERVAL_HOURS * 60 * 60 * 1000;
 
+/** Fenster nach Slot-Start, in dem gemeldet wird (Workflow = alle 15 Min) */
 /**
- * Fenster nach Slot-Start, in dem gemeldet wird.
- * GitHub Actions-Cron ist oft mehrere Minuten verspätet – deshalb
- * deutlich größer als das 15-Min-Intervall (sonst wird nie gepostet).
+ * GitHub Actions-Cron ist oft verspätet – größeres Fenster.
+ * Doppelposts werden über Slot-Marker vermieden, wenn Cache aktiv ist.
  */
 const NOTIFY_WINDOW_MS = 45 * 60 * 1000;
 
@@ -119,27 +119,6 @@ function replaceVars(text, weather) {
   });
 }
 
-const fs = require("fs");
-const SLOT_MARKER = path.join(__dirname, ".last-weather-slot");
-
-function readLastSlot() {
-  try {
-    const raw = fs.readFileSync(SLOT_MARKER, "utf8").trim();
-    const n = Number(raw);
-    return Number.isFinite(n) ? n : null;
-  } catch {
-    return null;
-  }
-}
-
-function writeLastSlot(s) {
-  try {
-    fs.writeFileSync(SLOT_MARKER, String(s), "utf8");
-  } catch (e) {
-    console.warn("Slot-Marker konnte nicht geschrieben werden:", e.message);
-  }
-}
-
 async function main() {
   const into = msIntoSlot();
   const weather = getWeatherState();
@@ -149,15 +128,6 @@ async function main() {
     console.log(
       `⏭ Kein Slot-Wechsel (noch ${format(msNext())} bis Timer 0). ` +
         `Aktuell: ${weather.icon} ${weather.name} (Slot ${weather.slot}). Skip.`
-    );
-    process.exit(0);
-  }
-
-  // Doppelpost vermeiden (Cache + Marker über Workflow-Läufe)
-  const last = readLastSlot();
-  if (last !== null && last === weather.slot) {
-    console.log(
-      `⏭ Slot ${weather.slot} wurde bereits gemeldet (${weather.icon} ${weather.name}). Skip.`
     );
     process.exit(0);
   }
@@ -201,8 +171,6 @@ async function main() {
     console.error("Discord Fehler:", response.status, body);
     process.exit(1);
   }
-
-  writeLastSlot(weather.slot);
 
   console.log(
     `✅ Slot-Wechsel gemeldet: ${weather.icon} ${weather.name} ` +
