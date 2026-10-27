@@ -122,9 +122,10 @@ function replaceVars(text, weather) {
 async function main() {
   const into = msIntoSlot();
   const weather = getWeatherState();
+  const force = process.env.FORCE_NOTIFY === "1" || process.env.FORCE_NOTIFY === "true";
 
-  // Nur am Slot-Anfang melden (Timer ≈ 0)
-  if (into > NOTIFY_WINDOW_MS) {
+  // Nur am Slot-Anfang melden (Timer ≈ 0) – außer FORCE_NOTIFY (manueller Workflow)
+  if (!force && into > NOTIFY_WINDOW_MS) {
     console.log(
       `⏭ Kein Slot-Wechsel (noch ${format(msNext())} bis Timer 0). ` +
         `Aktuell: ${weather.icon} ${weather.name} (Slot ${weather.slot}). Skip.`
