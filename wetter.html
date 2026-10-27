@@ -160,101 +160,9 @@
   </footer>
 
   <script>
+    const el = id => document.getElementById(id);
 
-    const el = id =>
-      document.getElementById(id);
-
-
-    /*
-     * ==========================================================
-     * AKTUELLES WETTER
-     * ==========================================================
-     *
-     * Die Wetterauswahl kommt ausschließlich aus wetter.js.
-     */
-
-    function draw(weather) {
-
-      if (!weather) {
-        weather =
-          ChronikenWeather.get();
-      }
-
-      el("icon").textContent =
-        weather.icon || "🌦️";
-
-      el("name").textContent =
-        weather.name || "Unbekannt";
-
-      el("desc").textContent =
-        weather.description || "";
-
-      el("countdown").textContent =
-        ChronikenWeather.format(
-          ChronikenWeather.msNext()
-        );
-    }
-
-
-    /*
-     * ==========================================================
-     * WETTERWECHSEL
-     * ==========================================================
-     *
-     * wetter.js meldet hier einen neuen 6-Stunden-Slot.
-     */
-
-    window.addEventListener(
-      "chroniken-weather-changed",
-      function (event) {
-
-        draw(event.detail);
-
-      }
-    );
-
-
-    /*
-     * ==========================================================
-     * WETTERLISTE
-     * ==========================================================
-     *
-     * Die Liste kommt ebenfalls aus wetter.js.
-     * Es gibt keine zweite Wetterquelle mehr.
-     */
-
-    function renderWeatherList() {
-
-      const list =
-        ChronikenWeather.getWeatherList();
-
-      el("tiles").innerHTML =
-        list.map(function (weather) {
-
-          return `
-            <div class="wcard">
-
-              <strong>
-                ${escapeHtml(weather.icon)}
-                ${escapeHtml(weather.name)}
-              </strong>
-
-              <p class="small">
-                ${escapeHtml(weather.description)}
-              </p>
-
-            </div>
-          `;
-
-        }).join("");
-    }
-
-
-    /*
-     * HTML-Sonderzeichen absichern.
-     */
     function escapeHtml(value) {
-
       return String(value || "")
         .replace(/&/g, "&amp;")
         .replace(/</g, "&lt;")
@@ -263,37 +171,45 @@
         .replace(/'/g, "&#039;");
     }
 
+    function draw(weather) {
+      if (!window.ChronikenWeather) {
+        el("name").textContent = "Wetter-Skript fehlt";
+        el("desc").textContent = "wetter.js oder weather-config.js konnte nicht geladen werden.";
+        el("countdown").textContent = "--:--:--";
+        return;
+      }
+      if (!weather) weather = ChronikenWeather.get();
+      el("icon").textContent = weather.icon || "🌦️";
+      el("name").textContent = (weather.name || "Unbekannt") + (weather.forced ? " [Admin]" : "");
+      el("desc").textContent = weather.description || "";
+      el("countdown").textContent = ChronikenWeather.format(ChronikenWeather.msNext());
+    }
 
-    /*
-     * ==========================================================
-     * START
-     * ==========================================================
-     */
+    window.addEventListener("chroniken-weather-changed", function (event) {
+      draw(event.detail);
+    });
+
+    function renderWeatherList() {
+      if (!window.ChronikenWeather) {
+        el("tiles").innerHTML = "<p class=\"small\">Keine Wetterliste – wetter.js fehlt.</p>";
+        return;
+      }
+      const list = ChronikenWeather.getWeatherList() || [];
+      el("tiles").innerHTML = list.map(function (weather) {
+        return (
+          '<div class="wcard"><strong>' +
+          escapeHtml(weather.icon) + " " + escapeHtml(weather.name) +
+          '</strong><p class="small">' + escapeHtml(weather.description) + "</p></div>"
+        );
+      }).join("");
+    }
 
     draw();
-
     renderWeatherList();
-
-
-    /*
-     * Countdown aktualisieren.
-     *
-     * Die Wetterauswahl selbst wird NICHT
-     * hier vorgenommen.
-     */
-
-    setInterval(
-      function () {
-
-        el("countdown").textContent =
-          ChronikenWeather.format(
-            ChronikenWeather.msNext()
-          );
-
-      },
-      1000
-    );
-
+    setInterval(function () {
+      if (!window.ChronikenWeather) return;
+      el("countdown").textContent = ChronikenWeather.format(ChronikenWeather.msNext());
+    }, 1000);
   </script>
 
 </body>
