@@ -8,17 +8,11 @@
  * Discord (GitHub Action) sieht nur weather-config.js.
  * Nach Admin-Änderungen: im Admin „Für Repo exportieren“
  * und Inhalt in weather-config.js einfügen + deployen.
- *
- * Admin-Override (Skip / Erzwingen / Timer-Reset):
- *   localStorage-Key chroniken_weather_override_v1
- *   { mode: "force"|"skip", weather?: {...}, until: ms, startedAt: ms }
- *   Gilt nur im Browser, nicht für Discord.
  */
 (function () {
   "use strict";
 
   const STORAGE_KEY = "chroniken_weather_config_v2";
-  const OVERRIDE_KEY = "chroniken_weather_override_v1";
 
   function getFileConfig() {
     const raw =
@@ -72,6 +66,19 @@
     } catch (e) {
       console.warn("[ChronikenWeather] localStorage speichern fehlgeschlagen:", e);
     }
+    // Nach Config-Änderung: aktuelles Wetter neu berechnen und Event feuern,
+    // damit offene Seiten (wetter.html, Admin-Liveanzeige) sofort reagieren.
+    try {
+      const state = getWeatherState(currentSlot(clean), clean);
+      lastSlot = state.slot;
+      if (typeof window !== "undefined" && typeof window.dispatchEvent === "function") {
+        window.dispatchEvent(
+          new CustomEvent("chroniken-weather-changed", { detail: state })
+        );
+      }
+    } catch (e) {
+      console.warn("[ChronikenWeather] Event nach saveConfig fehlgeschlagen:", e);
+    }
     return clean;
   }
 
@@ -79,7 +86,17 @@
     try {
       localStorage.removeItem(STORAGE_KEY);
     } catch (e) {}
-    return getFileConfig();
+    const cfg = getFileConfig();
+    try {
+      const state = getWeatherState(currentSlot(cfg), cfg);
+      lastSlot = state.slot;
+      if (typeof window !== "undefined" && typeof window.dispatchEvent === "function") {
+        window.dispatchEvent(
+          new CustomEvent("chroniken-weather-changed", { detail: state })
+        );
+      }
+    } catch (e) {}
+    return cfg;
   }
 
   /** Erzeugt den Inhalt für weather-config.js (zum Kopieren ins Repo) */
@@ -151,117 +168,6 @@
     return list[list.length - 1];
   }
 
-  /* ========== Override (Admin: Skip / Force / Timer-Reset) ========== */
-
-  function loadOverride() {
-    try {
-      const raw = localStorage.getItem(OVERRIDE_KEY);
-      if (!raw) return null;
-      const o = JSON.parse(raw);
-      if (!o || typeof o.until !== "number") return null;
-      if (Date.now() >= o.until) {
-        clearOverride();
-        return null;
-      }
-      return o;
-    } catch (e) {
-      return null;
-    }
-  }
-
-  function saveOverride(o) {
-    try {
-      if (!o) {
-        localStorage.removeItem(OVERRIDE_KEY);
-        return null;
-      }
-      localStorage.setItem(OVERRIDE_KEY, JSON.stringify(o));
-      return o;
-    } catch (e) {
-      console.warn("[ChronikenWeather] Override speichern fehlgeschlagen:", e);
-      return null;
-    }
-  }
-
-  function clearOverride() {
-    try {
-      localStorage.removeItem(OVERRIDE_KEY);
-    } catch (e) {}
-  }
-
-  /**
-   * Erzwingt ein bestimmtes Wetter für die angegebene Dauer (ms).
-   * durationMs weglassen → volles aktuelles Intervall.
-   */
-  function forceWeather(weatherObj, durationMs) {
-    const cfg = loadConfig();
-    const ms = slotMs(cfg);
-    const until = Date.now() + (durationMs != null ? Math.max(1000, durationMs) : ms);
-    const o = {
-      mode: "force",
-      weather: {
-        name: String(weatherObj.name || "Unbekannt"),
-        icon: String(weatherObj.icon || "🌤️"),
-        description: String(weatherObj.description || ""),
-        weight: Number(weatherObj.weight) || 0
-      },
-      startedAt: Date.now(),
-      until: until
-    };
-    saveOverride(o);
-    emitChanged();
-    return o;
-  }
-
-  /**
-   * Skip: wählt sofort ein neues (gewichtetes) Wetter und startet den Timer neu.
-   * Optional: seedOffset, damit es sich vom aktuellen Slot unterscheidet.
-   */
-  function skipWeather() {
-    const cfg = loadConfig();
-    const list = cfg.weather && cfg.weather.length ? cfg.weather : getFileConfig().weather;
-    const seed = Date.now() ^ (currentSlot(cfg) * 7919);
-    const w = pickWeighted(seed, list);
-    const ms = slotMs(cfg);
-    const o = {
-      mode: "skip",
-      weather: {
-        name: w.name,
-        icon: w.icon,
-        description: w.description,
-        weight: w.weight
-      },
-      startedAt: Date.now(),
-      until: Date.now() + ms
-    };
-    saveOverride(o);
-    emitChanged();
-    return o;
-  }
-
-  /**
-   * Timer-Reset: behält das aktuelle Wetter, setzt aber die Restzeit auf ein volles Intervall.
-   */
-  function resetTimer() {
-    const cfg = loadConfig();
-    const state = get(); // aktuelles (ggf. Override)
-    const ms = slotMs(cfg);
-    const o = {
-      mode: "force",
-      weather: {
-        name: state.name,
-        icon: state.icon,
-        description: state.description,
-        weight: state.weight
-      },
-      startedAt: Date.now(),
-      until: Date.now() + ms
-    };
-    saveOverride(o);
-    emitChanged();
-    return o;
-  }
-
   function getWeatherState(s, cfg) {
     cfg = cfg || loadConfig();
     const list = cfg.weather && cfg.weather.length ? cfg.weather : getFileConfig().weather;
@@ -274,36 +180,16 @@
       description: w.description,
       weight: w.weight,
       changedAt: new Date(s * ms).toISOString(),
-      intervalHours: cfg.intervalHours,
-      forced: false
+      intervalHours: cfg.intervalHours
     };
   }
 
   function get() {
     const cfg = loadConfig();
-    const ov = loadOverride();
-    if (ov && ov.weather) {
-      return {
-        slot: -1,
-        name: ov.weather.name,
-        icon: ov.weather.icon,
-        description: ov.weather.description,
-        weight: ov.weather.weight || 0,
-        changedAt: new Date(ov.startedAt || Date.now()).toISOString(),
-        intervalHours: cfg.intervalHours,
-        forced: true,
-        overrideMode: ov.mode,
-        until: ov.until
-      };
-    }
     return getWeatherState(currentSlot(cfg), cfg);
   }
 
   function msNext() {
-    const ov = loadOverride();
-    if (ov && typeof ov.until === "number") {
-      return Math.max(0, ov.until - Date.now());
-    }
     const cfg = loadConfig();
     const ms = slotMs(cfg);
     return ms - (Date.now() % ms);
@@ -325,43 +211,23 @@
     return new Date(Date.now() + msNext());
   }
 
-  function emitChanged() {
-    if (typeof window === "undefined") return;
-    const state = get();
-    window.dispatchEvent(
-      new CustomEvent("chroniken-weather-changed", { detail: state })
-    );
-  }
-
   let lastSlot = null;
-  let lastOverrideUntil = null;
 
   function watch() {
     const cfg = loadConfig();
-    const ov = loadOverride();
     const current = currentSlot(cfg);
-    const until = ov ? ov.until : null;
-
-    // Override abgelaufen?
-    if (lastOverrideUntil != null && (until == null || Date.now() >= lastOverrideUntil)) {
-      lastOverrideUntil = null;
-      lastSlot = current;
-      emitChanged();
-      return;
-    }
-
-    if (ov) {
-      lastOverrideUntil = ov.until;
-      return; // während Override kein Slot-Wechsel
-    }
-
     if (lastSlot === null) {
       lastSlot = current;
       return;
     }
     if (current !== lastSlot) {
       lastSlot = current;
-      emitChanged();
+      const state = getWeatherState(current, cfg);
+      if (typeof window !== "undefined") {
+        window.dispatchEvent(
+          new CustomEvent("chroniken-weather-changed", { detail: state })
+        );
+      }
     }
   }
 
@@ -386,18 +252,8 @@
     getWeatherList: function () {
       return loadConfig().weather;
     },
-    // Admin-Steuerung
-    forceWeather: forceWeather,
-    skipWeather: skipWeather,
-    resetTimer: resetTimer,
-    clearOverride: function () {
-      clearOverride();
-      emitChanged();
-    },
-    getOverride: loadOverride,
     DEFAULT_CONFIG: getFileConfig(),
-    STORAGE_KEY: STORAGE_KEY,
-    OVERRIDE_KEY: OVERRIDE_KEY
+    STORAGE_KEY: STORAGE_KEY
   };
 
   if (typeof window !== "undefined") {
