@@ -21,14 +21,6 @@ jobs:
         with:
           node-version: "20"
 
-      - name: Last notified slot (Cache)
-        uses: actions/cache@v4
-        with:
-          path: .github/scripts/.last-weather-slot
-          key: weather-slot-${{ github.run_id }}
-          restore-keys: |
-            weather-slot-
-
       - name: Wetter an Discord senden (nur bei Slot-Wechsel)
         env:
           DISCORD_WEATHER_WEBHOOK: ${{ secrets.DISCORD_WEATHER_WEBHOOK }}
