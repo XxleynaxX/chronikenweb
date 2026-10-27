@@ -1,8 +1,12 @@
 name: Wetter Discord Meldung
 
+# Läuft häufig; weather-notify.js entscheidet anhand der
+# gleichen Slot-Logik wie wetter.js, ob wirklich gemeldet wird
+# (nur wenn ein neuer Wetter-Slot beginnt ≈ Timer auf 0).
 on:
   schedule:
-    - cron: "5 0,6,12,18 * * *"
+    # alle 15 Minuten – robust für intervalHours 1–24
+    - cron: "*/15 * * * *"
   workflow_dispatch:
 
 jobs:
@@ -17,7 +21,15 @@ jobs:
         with:
           node-version: "20"
 
-      - name: Wetter an Discord senden
+      - name: Last notified slot (Cache)
+        uses: actions/cache@v4
+        with:
+          path: .github/scripts/.last-weather-slot
+          key: weather-slot-${{ github.run_id }}
+          restore-keys: |
+            weather-slot-
+
+      - name: Wetter an Discord senden (nur bei Slot-Wechsel)
         env:
           DISCORD_WEATHER_WEBHOOK: ${{ secrets.DISCORD_WEATHER_WEBHOOK }}
         run: node .github/scripts/weather-notify.js
