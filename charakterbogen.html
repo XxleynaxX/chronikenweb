@@ -1758,10 +1758,19 @@ function createCharacterEvent(data) {
     localStorage.setItem(key, JSON.stringify(events));
 }
 
-/* Discord-Proxy: Webhook-URL liegt nur serverseitig (CHAR_WEBHOOK). Frontend braucht kein Admin-Webhook. */
-const DISCORD_PROXY_URL = (typeof window.CHRONIKEN_DISCORD_PROXY === "string" && window.CHRONIKEN_DISCORD_PROXY)
-  ? window.CHRONIKEN_DISCORD_PROXY.replace(/\/$/, "") + "/charakter"
-  : "/charakter"; // gleicher Origin, falls Proxy davor liegt – sonst window.CHRONIKEN_DISCORD_PROXY setzen
+/* Discord-Proxy: Webhook nur serverseitig (CHAR_WEBHOOK). URL aus localStorage (Admin) oder window.CHRONIKEN_DISCORD_PROXY. */
+function getChronikenDiscordProxyUrl() {
+  const DEFAULT_PROXY = "https://chronikenweb-1.onrender.com";
+  try {
+    const saved = localStorage.getItem("chroniken_discord_proxy_url");
+    if (saved && saved.trim()) return saved.trim().replace(/\/$/, "") + "/charakter";
+  } catch (e) {}
+  if (typeof window.CHRONIKEN_DISCORD_PROXY === "string" && window.CHRONIKEN_DISCORD_PROXY.trim()) {
+    return window.CHRONIKEN_DISCORD_PROXY.trim().replace(/\/$/, "") + "/charakter";
+  }
+  return DEFAULT_PROXY.replace(/\/$/, "") + "/charakter";
+}
+const DISCORD_PROXY_URL = getChronikenDiscordProxyUrl();
 
 function buildDiscordPayload(data) {
   const name = data.name || "Unbekannt";
@@ -1792,8 +1801,13 @@ function buildDiscordPayload(data) {
 
 async function sendCharacterToDiscordProxy(data) {
   try {
+    const url = getChronikenDiscordProxyUrl();
+    if (!url) {
+      console.warn("Discord-Proxy: keine URL gesetzt (Admin → Discord-Proxy oder window.CHRONIKEN_DISCORD_PROXY).");
+      return false;
+    }
     const payload = buildDiscordPayload(data);
-    const res = await fetch(DISCORD_PROXY_URL, {
+    const res = await fetch(url, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(payload)

@@ -1,71 +1,123 @@
+/**
+ * Chroniken – Wetter-Kern
+ * =======================
+ * Config-Priorität:
+ *   1. localStorage (Admin-Änderungen, nur Browser)
+ *   2. weather-config.js (Defaults + Discord)
+ *
+ * Discord (GitHub Action) sieht nur weather-config.js.
+ * Nach Admin-Änderungen: im Admin „Für Repo exportieren“
+ * und Inhalt in weather-config.js einfügen + deployen.
+ *
+ * Admin-Override (Skip / Erzwingen / Timer-Reset):
+ *   localStorage-Key chroniken_weather_override_v1
+ *   { mode: "force"|"skip", weather?: {...}, until: ms, startedAt: ms }
+ *   Gilt nur im Browser, nicht für Discord.
+ */
 (function () {
-  const STORAGE_KEY = "chroniken_weather_config";
-  const LAST_NOTIFY_KEY = "chroniken_weather_last_notify_slot";
+  "use strict";
 
-  const DEFAULT_WEATHER = [
-    { name: "Klarer Himmel", icon: "☀️", description: "Ein ruhiger, heller Tag liegt über dem Land.", weight: 12 },
-    { name: "Leichter Wind", icon: "🍃", description: "Ein sanfter Wind zieht durch Wälder und Gassen.", weight: 12 },
-    { name: "Bewölkt", icon: "☁️", description: "Wolken ziehen über den Himmel, doch es bleibt trocken.", weight: 12 },
-    { name: "Nebel", icon: "🌫️", description: "Dichter Nebel liegt über dem Land und verschluckt die Ferne.", weight: 8 },
-    { name: "Leichter Regen", icon: "🌦️", description: "Feiner Regen fällt und lässt die Straßen glänzen.", weight: 10 },
-    { name: "Starker Regen", icon: "🌧️", description: "Kräftiger Regen prasselt auf Dächer und Wege.", weight: 6 },
-    { name: "Gewitter", icon: "⛈️", description: "Donner grollt am Horizont und Blitze erhellen die Wolken.", weight: 4 },
-    { name: "Starker Wind", icon: "🌬️", description: "Böen ziehen durch das Land und lassen Äste rauschen.", weight: 8 },
-    { name: "Schneefall", icon: "🌨️", description: "Leiser Schnee fällt vom Himmel und bedeckt die Landschaft.", weight: 5 },
-    { name: "Starker Schneefall", icon: "❄️", description: "Dichter Schnee fällt und macht Wege langsam schwer passierbar.", weight: 3 },
-    { name: "Frost", icon: "🥶", description: "Klare Kälte liegt in der Luft und Reif bedeckt die Landschaft.", weight: 5 },
-    { name: "Dunstiger Morgen", icon: "🌤️", description: "Heller Dunst liegt über dem Land und löst sich langsam auf.", weight: 5 }
-  ];
+  const STORAGE_KEY = "chroniken_weather_config_v2";
+  const OVERRIDE_KEY = "chroniken_weather_override_v1";
 
-  const DEFAULT_CONFIG = {
-    intervalHours: 6,
-    discordEnabled: false,
-    discordWebhook: "",
-    weather: DEFAULT_WEATHER.map(function (w) { return Object.assign({}, w); })
-  };
+  function getFileConfig() {
+    const raw =
+      (typeof CHRONIKEN_WEATHER_CONFIG !== "undefined" && CHRONIKEN_WEATHER_CONFIG) ||
+      (typeof globalThis !== "undefined" && globalThis.CHRONIKEN_WEATHER_CONFIG) ||
+      null;
 
-  function loadConfig() {
-    try {
-      const raw = localStorage.getItem(STORAGE_KEY);
-      if (!raw) return JSON.parse(JSON.stringify(DEFAULT_CONFIG));
-      const parsed = JSON.parse(raw);
-      if (!parsed || !Array.isArray(parsed.weather) || !parsed.weather.length) {
-        return JSON.parse(JSON.stringify(DEFAULT_CONFIG));
-      }
+    if (!raw || !Array.isArray(raw.weather) || !raw.weather.length) {
       return {
-        intervalHours: Math.max(1, Number(parsed.intervalHours) || 6),
-        discordEnabled: !!parsed.discordEnabled,
-        discordWebhook: String(parsed.discordWebhook || ""),
-        weather: parsed.weather.map(function (w) {
-          return {
-            name: String(w.name || "Unbekannt"),
-            icon: String(w.icon || "🌤️"),
-            description: String(w.description || ""),
-            weight: Math.max(0, Number(w.weight) || 0)
-          };
-        }).filter(function (w) { return w.weight > 0 || w.name; })
+        intervalHours: 6,
+        weather: [
+          { name: "Klarer Himmel", icon: "☀️", description: "Ein ruhiger, heller Tag liegt über dem Land.", weight: 12 }
+        ]
       };
-    } catch (e) {
-      return JSON.parse(JSON.stringify(DEFAULT_CONFIG));
     }
+
+    return normalizeConfig(raw);
   }
 
-  function saveConfig(cfg) {
-    const clean = {
-      intervalHours: Math.max(1, Number(cfg.intervalHours) || 6),
-      discordEnabled: !!cfg.discordEnabled,
-      discordWebhook: String(cfg.discordWebhook || "").trim(),
-      weather: (cfg.weather || []).map(function (w) {
+  function normalizeConfig(raw) {
+    return {
+      intervalHours: Math.max(1, Number(raw.intervalHours) || 6),
+      weather: (raw.weather || []).map(function (w) {
         return {
-          name: String(w.name || "").trim() || "Unbenannt",
+          name: String(w.name || "Unbekannt").trim() || "Unbenannt",
           icon: String(w.icon || "🌤️").trim() || "🌤️",
           description: String(w.description || "").trim(),
           weight: Math.max(0, Number(w.weight) || 0)
         };
       })
     };
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(clean));
+  }
+
+  function loadConfig() {
+    try {
+      const raw = localStorage.getItem(STORAGE_KEY);
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        if (parsed && Array.isArray(parsed.weather) && parsed.weather.length) {
+          return normalizeConfig(parsed);
+        }
+      }
+    } catch (e) {}
+    return getFileConfig();
+  }
+
+  function saveConfig(cfg) {
+    const clean = normalizeConfig(cfg || {});
+    try {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(clean));
+    } catch (e) {
+      console.warn("[ChronikenWeather] localStorage speichern fehlgeschlagen:", e);
+    }
     return clean;
+  }
+
+  function clearLocalConfig() {
+    try {
+      localStorage.removeItem(STORAGE_KEY);
+    } catch (e) {}
+    return getFileConfig();
+  }
+
+  /** Erzeugt den Inhalt für weather-config.js (zum Kopieren ins Repo) */
+  function exportConfigJs(cfg) {
+    cfg = normalizeConfig(cfg || loadConfig());
+    const lines = cfg.weather.map(function (w) {
+      return (
+        "      { name: " + JSON.stringify(w.name) +
+        ", icon: " + JSON.stringify(w.icon) +
+        ", description: " + JSON.stringify(w.description) +
+        ", weight: " + w.weight + " }"
+      );
+    });
+
+    return [
+      "/**",
+      " * Chroniken – zentrale Wetter-Config",
+      " * Generiert aus Admin – in weather-config.js ersetzen und deployen.",
+      " */",
+      "(function (root) {",
+      '  "use strict";',
+      "",
+      "  const WEATHER_CONFIG = {",
+      "    intervalHours: " + cfg.intervalHours + ",",
+      "    weather: [",
+      lines.join(",\n"),
+      "    ]",
+      "  };",
+      "",
+      '  if (typeof root !== "undefined") {',
+      "    root.CHRONIKEN_WEATHER_CONFIG = WEATHER_CONFIG;",
+      "  }",
+      '  if (typeof module !== "undefined" && module.exports) {',
+      "    module.exports = WEATHER_CONFIG;",
+      "  }",
+      "})(typeof globalThis !== \"undefined\" ? globalThis : typeof window !== \"undefined\" ? window : this);",
+      ""
+    ].join("\n");
   }
 
   function slotMs(cfg) {
@@ -83,11 +135,14 @@
   }
 
   function pickWeighted(seed, list) {
-    const total = list.reduce(function (sum, w) { return sum + Math.max(0, Number(w.weight) || 0); }, 0);
+    const total = list.reduce(function (sum, w) {
+      return sum + Math.max(0, Number(w.weight) || 0);
+    }, 0);
+
     if (total <= 0) {
       return list[randomIndex(seed, list.length)] || list[0];
     }
-    // Deterministic: use seed to pick a point in the weight range
+
     let r = randomIndex(seed, total);
     for (let i = 0; i < list.length; i++) {
       r -= Math.max(0, Number(list[i].weight) || 0);
@@ -96,9 +151,120 @@
     return list[list.length - 1];
   }
 
+  /* ========== Override (Admin: Skip / Force / Timer-Reset) ========== */
+
+  function loadOverride() {
+    try {
+      const raw = localStorage.getItem(OVERRIDE_KEY);
+      if (!raw) return null;
+      const o = JSON.parse(raw);
+      if (!o || typeof o.until !== "number") return null;
+      if (Date.now() >= o.until) {
+        clearOverride();
+        return null;
+      }
+      return o;
+    } catch (e) {
+      return null;
+    }
+  }
+
+  function saveOverride(o) {
+    try {
+      if (!o) {
+        localStorage.removeItem(OVERRIDE_KEY);
+        return null;
+      }
+      localStorage.setItem(OVERRIDE_KEY, JSON.stringify(o));
+      return o;
+    } catch (e) {
+      console.warn("[ChronikenWeather] Override speichern fehlgeschlagen:", e);
+      return null;
+    }
+  }
+
+  function clearOverride() {
+    try {
+      localStorage.removeItem(OVERRIDE_KEY);
+    } catch (e) {}
+  }
+
+  /**
+   * Erzwingt ein bestimmtes Wetter für die angegebene Dauer (ms).
+   * durationMs weglassen → volles aktuelles Intervall.
+   */
+  function forceWeather(weatherObj, durationMs) {
+    const cfg = loadConfig();
+    const ms = slotMs(cfg);
+    const until = Date.now() + (durationMs != null ? Math.max(1000, durationMs) : ms);
+    const o = {
+      mode: "force",
+      weather: {
+        name: String(weatherObj.name || "Unbekannt"),
+        icon: String(weatherObj.icon || "🌤️"),
+        description: String(weatherObj.description || ""),
+        weight: Number(weatherObj.weight) || 0
+      },
+      startedAt: Date.now(),
+      until: until
+    };
+    saveOverride(o);
+    emitChanged();
+    return o;
+  }
+
+  /**
+   * Skip: wählt sofort ein neues (gewichtetes) Wetter und startet den Timer neu.
+   * Optional: seedOffset, damit es sich vom aktuellen Slot unterscheidet.
+   */
+  function skipWeather() {
+    const cfg = loadConfig();
+    const list = cfg.weather && cfg.weather.length ? cfg.weather : getFileConfig().weather;
+    const seed = Date.now() ^ (currentSlot(cfg) * 7919);
+    const w = pickWeighted(seed, list);
+    const ms = slotMs(cfg);
+    const o = {
+      mode: "skip",
+      weather: {
+        name: w.name,
+        icon: w.icon,
+        description: w.description,
+        weight: w.weight
+      },
+      startedAt: Date.now(),
+      until: Date.now() + ms
+    };
+    saveOverride(o);
+    emitChanged();
+    return o;
+  }
+
+  /**
+   * Timer-Reset: behält das aktuelle Wetter, setzt aber die Restzeit auf ein volles Intervall.
+   */
+  function resetTimer() {
+    const cfg = loadConfig();
+    const state = get(); // aktuelles (ggf. Override)
+    const ms = slotMs(cfg);
+    const o = {
+      mode: "force",
+      weather: {
+        name: state.name,
+        icon: state.icon,
+        description: state.description,
+        weight: state.weight
+      },
+      startedAt: Date.now(),
+      until: Date.now() + ms
+    };
+    saveOverride(o);
+    emitChanged();
+    return o;
+  }
+
   function getWeatherState(s, cfg) {
     cfg = cfg || loadConfig();
-    const list = cfg.weather && cfg.weather.length ? cfg.weather : DEFAULT_WEATHER;
+    const list = cfg.weather && cfg.weather.length ? cfg.weather : getFileConfig().weather;
     const w = pickWeighted(s, list);
     const ms = slotMs(cfg);
     return {
@@ -108,16 +274,36 @@
       description: w.description,
       weight: w.weight,
       changedAt: new Date(s * ms).toISOString(),
-      intervalHours: cfg.intervalHours
+      intervalHours: cfg.intervalHours,
+      forced: false
     };
   }
 
   function get() {
     const cfg = loadConfig();
+    const ov = loadOverride();
+    if (ov && ov.weather) {
+      return {
+        slot: -1,
+        name: ov.weather.name,
+        icon: ov.weather.icon,
+        description: ov.weather.description,
+        weight: ov.weather.weight || 0,
+        changedAt: new Date(ov.startedAt || Date.now()).toISOString(),
+        intervalHours: cfg.intervalHours,
+        forced: true,
+        overrideMode: ov.mode,
+        until: ov.until
+      };
+    }
     return getWeatherState(currentSlot(cfg), cfg);
   }
 
   function msNext() {
+    const ov = loadOverride();
+    if (ov && typeof ov.until === "number") {
+      return Math.max(0, ov.until - Date.now());
+    }
     const cfg = loadConfig();
     const ms = slotMs(cfg);
     return ms - (Date.now() % ms);
@@ -139,75 +325,86 @@
     return new Date(Date.now() + msNext());
   }
 
-  async function notifyDiscord(state, cfg) {
-    if (!cfg.discordEnabled || !cfg.discordWebhook) return;
-    try {
-      const last = localStorage.getItem(LAST_NOTIFY_KEY);
-      if (last === String(state.slot)) return;
-      localStorage.setItem(LAST_NOTIFY_KEY, String(state.slot));
-
-      const content =
-        "**Wetterwechsel in den Chroniken**\n" +
-        state.icon + " **" + state.name + "**\n" +
-        state.description + "\n" +
-        "_Nächster Wechsel in ca. " + cfg.intervalHours + " Stunden_";
-
-      await fetch(cfg.discordWebhook, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ content: content })
-      });
-    } catch (e) {
-      console.warn("Discord Wetter-Notify fehlgeschlagen:", e);
-    }
+  function emitChanged() {
+    if (typeof window === "undefined") return;
+    const state = get();
+    window.dispatchEvent(
+      new CustomEvent("chroniken-weather-changed", { detail: state })
+    );
   }
 
   let lastSlot = null;
+  let lastOverrideUntil = null;
 
   function watch() {
     const cfg = loadConfig();
+    const ov = loadOverride();
     const current = currentSlot(cfg);
+    const until = ov ? ov.until : null;
+
+    // Override abgelaufen?
+    if (lastOverrideUntil != null && (until == null || Date.now() >= lastOverrideUntil)) {
+      lastOverrideUntil = null;
+      lastSlot = current;
+      emitChanged();
+      return;
+    }
+
+    if (ov) {
+      lastOverrideUntil = ov.until;
+      return; // während Override kein Slot-Wechsel
+    }
+
     if (lastSlot === null) {
       lastSlot = current;
       return;
     }
     if (current !== lastSlot) {
       lastSlot = current;
-      const state = getWeatherState(current, cfg);
-      window.dispatchEvent(
-        new CustomEvent("chroniken-weather-changed", { detail: state })
-      );
-      notifyDiscord(state, cfg);
+      emitChanged();
     }
   }
 
-  setInterval(watch, 1000);
+  if (typeof setInterval !== "undefined") {
+    setInterval(watch, 1000);
+  }
 
-  // Bei Seitenstart: wenn wir in einem neuen Slot sind und Discord an ist, einmal nachziehen
-  (function bootstrapNotify() {
-    const cfg = loadConfig();
-    if (!cfg.discordEnabled || !cfg.discordWebhook) return;
-    const s = currentSlot(cfg);
-    const last = localStorage.getItem(LAST_NOTIFY_KEY);
-    if (last !== String(s)) {
-      notifyDiscord(getWeatherState(s, cfg), cfg);
-    }
-  })();
-
-  window.ChronikenWeather = {
+  const api = {
     get: get,
     getWeatherState: function (s) {
-      return getWeatherState(s == null ? currentSlot(loadConfig()) : s, loadConfig());
+      const cfg = loadConfig();
+      return getWeatherState(s == null ? currentSlot(cfg) : s, cfg);
     },
     msNext: msNext,
     format: format,
     nextChangeTime: nextChangeTime,
     loadConfig: loadConfig,
     saveConfig: saveConfig,
+    clearLocalConfig: clearLocalConfig,
+    exportConfigJs: exportConfigJs,
+    getFileConfig: getFileConfig,
     getWeatherList: function () {
       return loadConfig().weather;
     },
-    DEFAULT_CONFIG: DEFAULT_CONFIG,
-    STORAGE_KEY: STORAGE_KEY
+    // Admin-Steuerung
+    forceWeather: forceWeather,
+    skipWeather: skipWeather,
+    resetTimer: resetTimer,
+    clearOverride: function () {
+      clearOverride();
+      emitChanged();
+    },
+    getOverride: loadOverride,
+    DEFAULT_CONFIG: getFileConfig(),
+    STORAGE_KEY: STORAGE_KEY,
+    OVERRIDE_KEY: OVERRIDE_KEY
   };
+
+  if (typeof window !== "undefined") {
+    window.ChronikenWeather = api;
+  }
+
+  if (typeof module !== "undefined" && module.exports) {
+    module.exports = api;
+  }
 })();

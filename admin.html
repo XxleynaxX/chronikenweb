@@ -131,18 +131,19 @@
         </div>
       </div>
 
-      <div class="form-card" id="weatherConfigCard">
+                  <div class="form-card" id="weatherConfigCard">
         <h2>🌦️ Wetter-Konfiguration</h2>
         <p style="color:var(--text-muted);font-size:0.9rem;margin-bottom:1rem;">
-          Wetterlagen und Chancen. Die Auswahl ist gewichtet (höhere Chance = kommt öfter).
-          Der Wechsel läuft automatisch im Hintergrund; eine öffentliche Wetter-Seite gibt es nicht mehr.
-          Discord-Benachrichtigungen laufen über den chroniken-discord-proxy (kein Webhook im Admin nötig).
+          Änderungen hier gelten <strong>sofort auf der Webseite</strong> (localStorage).
+          Discord liest die Datei <code>weather-config.js</code> im Repo.
+          Nach dem Speichern kannst du die Config exportieren und in die Datei kopieren – dann ist Discord auch synchron.
         </p>
 
         <div class="form-grid" style="margin-bottom:1.2rem;">
           <div class="form-group">
             <label>Intervall (Stunden bis nächster Wechsel)</label>
             <input type="number" id="wxInterval" min="1" max="168" step="1" value="6">
+            <small style="color:var(--text-muted);display:block;margin-top:0.25rem;">z. B. 1 = stündlich. Speichern → wetter.js übernimmt sofort.</small>
           </div>
           <div class="form-group">
             <label>Nächster Wechsel (live)</label>
@@ -154,18 +155,64 @@
           </div>
         </div>
 
+        <!-- Admin: Skip / Reset / Erzwingen -->
+        <div style="margin-bottom:1.4rem;padding:1rem;border:1px solid var(--border);border-radius:12px;background:rgba(168,85,247,0.06);">
+          <h3 style="color:var(--accent-soft);font-size:1rem;margin:0 0 0.6rem;">⚡ Live-Steuerung (nur Browser)</h3>
+          <p style="color:var(--text-muted);font-size:0.85rem;margin:0 0 0.8rem;">
+            Skip = neues Zufalls-Wetter + Timer neu. Reset = aktuelles Wetter behalten, Timer voll neu. Erzwingen = gewähltes Wetter für ein volles Intervall.
+          </p>
+          <div class="form-actions" style="flex-wrap:wrap;gap:0.5rem;margin-bottom:0.8rem;">
+            <button type="button" class="btn" id="wxSkipBtn" title="Aktuelles Wetter überspringen, neues wählen, Timer neu starten">⏭ Skip / Überspringen</button>
+            <button type="button" class="btn secondary" id="wxTimerResetBtn" title="Timer auf volles Intervall zurücksetzen, Wetter bleibt">🔄 Timer Reset</button>
+            <button type="button" class="btn secondary" id="wxClearOverrideBtn" title="Override löschen, zurück zum normalen Zeitslot">✕ Override beenden</button>
+          </div>
+          <div>
+            <label style="display:block;margin-bottom:0.4rem;font-size:0.9rem;">Wetter erzwingen (kleiner Knopf pro Lage):</label>
+            <div id="wxForceBtns" style="display:flex;flex-wrap:wrap;gap:0.4rem;"></div>
+          </div>
+        </div>
+
         <h3 style="color:var(--accent-soft);font-size:1rem;margin:0.5rem 0 0.8rem;">Wetterlagen &amp; Chancen</h3>
         <div id="wxList" style="display:flex;flex-direction:column;gap:0.7rem;margin-bottom:1rem;"></div>
 
-        <div class="form-actions">
+        <div class="form-actions" style="flex-wrap:wrap;gap:0.5rem;">
           <button type="button" class="btn" id="wxAddBtn">+ Neue Wetterlage</button>
-          <button type="button" class="btn secondary" id="wxResetBtn">Standard wiederherstellen</button>
-          <button type="button" class="btn" id="wxSaveBtn" style="margin-left:auto;">💾 Wetter speichern</button>
+          <button type="button" class="btn secondary" id="wxResetBtn">Auf Datei-Config zurück</button>
+          <button type="button" class="btn" id="wxSaveBtn">💾 Speichern (Webseite)</button>
+          <button type="button" class="btn secondary" id="wxExportBtn" style="margin-left:auto;">📋 Für Discord/Repo exportieren</button>
         </div>
-        <p id="wxSaveStatus" style="margin-top:0.6rem;font-size:0.88rem;color:var(--success);display:none;">✓ Gespeichert</p>
+        <p id="wxSaveStatus" style="margin-top:0.6rem;font-size:0.88rem;color:var(--success);display:none;"></p>
+
+        <div id="wxExportBox" style="display:none;margin-top:1rem;">
+          <p style="color:var(--text-muted);font-size:0.88rem;margin-bottom:0.5rem;">
+            Inhalt kopieren → Datei <code>weather-config.js</code> ersetzen → committen/deployen.
+            Danach nutzen Discord und alle Besucher ohne localStorage dieselbe Config.
+          </p>
+          <textarea id="wxExportText" readonly rows="14" style="width:100%;font-family:ui-monospace,monospace;font-size:0.78rem;background:rgba(0,0,0,0.35);color:var(--text);border:1px solid var(--border);border-radius:10px;padding:0.75rem;"></textarea>
+          <button type="button" class="btn secondary" id="wxCopyExportBtn" style="margin-top:0.5rem;">In Zwischenablage kopieren</button>
+        </div>
       </div>
 
-      <div class="form-card">
+      <div class="form-card" id="discordProxyCard">
+        <h2>🔗 Discord-Proxy (Charakter)</h2>
+        <p style="color:var(--text-muted);font-size:0.9rem;margin-bottom:1rem;">
+          Basis-URL deines <code>chroniken-discord-proxy</code> (ohne <code>/charakter</code>).
+          Beim Anlegen, Bearbeiten und Löschen wird eine Discord-Nachricht gesendet.
+        </p>
+        <div class="form-grid">
+          <div class="form-group full">
+            <label>Proxy-URL</label>
+            <input type="url" id="discordProxyUrl" placeholder="https://chronikenweb-1.onrender.com">
+          </div>
+        </div>
+        <div class="form-actions">
+          <button type="button" class="btn" id="btnSaveProxy">Proxy speichern</button>
+          <button type="button" class="btn secondary" id="btnTestProxy">Test-Nachricht senden</button>
+        </div>
+        <p id="proxyStatus" style="margin-top:0.6rem;font-size:0.88rem;display:none;"></p>
+      </div>
+
+<div class="form-card">
         <h2 id="formTitle">Neuer Charakterbogen</h2>
         <form id="charForm">
           <input type="hidden" id="editId" value="">
@@ -286,6 +333,7 @@
     </div>
   </div>
 
+  <script src="weather-config.js"></script>
   <script src="wetter.js"></script>
   <script>
     // ===== Admin-Zugangsdaten (hier ändern) =====
@@ -294,6 +342,180 @@
     const AUTH_KEY = "portal_admin_auth";
     const CHARS_KEY = "portal_char_registry";
     const NEXT_ID_KEY = "portal_char_next_id";
+
+    const PROXY_URL_KEY = "chroniken_discord_proxy_url";
+
+    const DEFAULT_DISCORD_PROXY = "https://chronikenweb-1.onrender.com";
+
+    function getDiscordProxyBase() {
+      try {
+        const saved = localStorage.getItem(PROXY_URL_KEY);
+        if (saved && saved.trim()) return saved.trim().replace(/\/$/, "");
+      } catch (e) {}
+      if (typeof window.CHRONIKEN_DISCORD_PROXY === "string" && window.CHRONIKEN_DISCORD_PROXY.trim()) {
+        return window.CHRONIKEN_DISCORD_PROXY.trim().replace(/\/$/, "");
+      }
+      return DEFAULT_DISCORD_PROXY;
+    }
+
+    function setDiscordProxyBase(url) {
+      try {
+        if (url && url.trim()) localStorage.setItem(PROXY_URL_KEY, url.trim().replace(/\/$/, ""));
+        else localStorage.removeItem(PROXY_URL_KEY);
+      } catch (e) {}
+    }
+
+    async function sendCharDiscord(payload) {
+      const base = getDiscordProxyBase();
+      if (!base) {
+        console.warn("[Discord] Keine Proxy-URL gesetzt.");
+        return false;
+      }
+      try {
+        const res = await fetch(base + "/charakter", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload)
+        });
+        if (!res.ok) {
+          console.warn("[Discord] Proxy Fehler:", res.status);
+          return false;
+        }
+        return true;
+      } catch (e) {
+        console.warn("[Discord] nicht erreichbar:", e);
+        return false;
+      }
+    }
+
+    function charDiscordEmbed(title, color, fields, content) {
+      return {
+        content: content || undefined,
+        embeds: [{
+          title: title,
+          color: color,
+          fields: (fields || []).filter(Boolean),
+          footer: { text: "Chroniken · Charakterverwaltung" },
+          timestamp: new Date().toISOString()
+        }]
+      };
+    }
+
+    function fieldDiff(label, oldVal, newVal) {
+      const a = String(oldVal ?? "").trim();
+      const b = String(newVal ?? "").trim();
+      if (a === b) return null;
+      return { name: label, value: (a || "—") + " → **" + (b || "—") + "**", inline: false };
+    }
+
+    async function notifyCharCreated(c) {
+      const fields = [
+        { name: "ID", value: c.id || "—", inline: true },
+        { name: "Spieler", value: c.player || "—", inline: true },
+        { name: "Volk", value: c.race || "—", inline: true },
+        { name: "Status", value: c.status || "aktiv", inline: true },
+        { name: "Verwarnungen", value: String(c.warnings ?? 0), inline: true }
+      ];
+      if (c.steamId) fields.push({ name: "Steam-ID", value: c.steamId, inline: true });
+      if (c.violation) fields.push({ name: "Regelverstoß", value: String(c.violation).slice(0, 500), inline: false });
+      if (c.notes) fields.push({ name: "Notiz", value: String(c.notes).slice(0, 500), inline: false });
+      return sendCharDiscord(charDiscordEmbed(
+        c.name || "Unbekannt",
+        0x22c55e,
+        fields,
+        "🆕 **Neuer Charakter** in der Verwaltung angelegt"
+      ));
+    }
+
+    async function notifyCharUpdated(oldC, newC) {
+      const oldW = Number(oldC.warnings) || 0;
+      const newW = Number(newC.warnings) || 0;
+      const warnChanged = oldW !== newW;
+
+      const changes = [
+        fieldDiff("Name", oldC.name, newC.name),
+        fieldDiff("Spieler", oldC.player, newC.player),
+        fieldDiff("Steam-ID", oldC.steamId, newC.steamId),
+        fieldDiff("Volk", oldC.race, newC.race),
+        fieldDiff("Status", oldC.status, newC.status),
+        fieldDiff("Verwarnungen", oldW, newW),
+        fieldDiff("Regelverstoß", oldC.violation, newC.violation),
+        fieldDiff("Notiz", oldC.notes, newC.notes)
+      ].filter(Boolean);
+      if (!changes.length) return false;
+
+      // Verwarnung extra: eigene ⚠️-Nachricht (rot/orange, klar hervorgehoben)
+      if (warnChanged) {
+        let warnLine;
+        if (newW > oldW) {
+          warnLine = "⚠️ **Verwarnung erteilt** (" + oldW + " → **" + newW + "**)";
+        } else if (newW < oldW) {
+          warnLine = "⚠️ **Verwarnung reduziert** (" + oldW + " → **" + newW + "**)";
+        } else {
+          warnLine = "⚠️ **Verwarnungen geändert**";
+        }
+        const warnFields = [
+          { name: "ID", value: newC.id || "—", inline: true },
+          { name: "Charakter", value: newC.name || "—", inline: true },
+          { name: "Spieler", value: newC.player || "—", inline: true },
+          { name: "Verwarnungen", value: String(oldW) + " → **" + String(newW) + "**", inline: false }
+        ];
+        if (newC.violation && String(newC.violation).trim()) {
+          warnFields.push({ name: "Regelverstoß", value: String(newC.violation).slice(0, 500), inline: false });
+        }
+        if (newC.notes && String(newC.notes).trim()) {
+          warnFields.push({ name: "Notiz", value: String(newC.notes).slice(0, 400), inline: false });
+        }
+        // weitere Änderungen außer Verwarnung kurz anhängen
+        changes.forEach(function (f) {
+          if (f.name !== "Verwarnungen" && f.name !== "Regelverstoß" && f.name !== "Notiz") {
+            warnFields.push(f);
+          }
+        });
+        return sendCharDiscord(charDiscordEmbed(
+          "⚠️ " + (newC.name || "Unbekannt") + " · " + (newC.id || ""),
+          0xef4444,
+          warnFields,
+          warnLine
+        ));
+      }
+
+      let content = "✏️ **Charakter bearbeitet**";
+      if (changes.some(function (f) { return f.name === "Regelverstoß" || f.name === "Notiz"; })) {
+        content = "📝 **Notiz / Regelverstoß aktualisiert**";
+      }
+      if (changes.some(function (f) { return f.name === "Name"; })) {
+        content = "✏️ **Charakter umbenannt / bearbeitet**";
+      }
+      const fields = [
+        { name: "ID", value: newC.id || "—", inline: true },
+        { name: "Charakter", value: newC.name || "—", inline: true }
+      ].concat(changes);
+      return sendCharDiscord(charDiscordEmbed(
+        (newC.name || "Unbekannt") + " · " + (newC.id || ""),
+        0xf59e0b,
+        fields,
+        content
+      ));
+    }
+
+    async function notifyCharDeleted(c) {
+      const fields = [
+        { name: "ID", value: c.id || "—", inline: true },
+        { name: "Spieler", value: c.player || "—", inline: true },
+        { name: "Volk", value: c.race || "—", inline: true },
+        { name: "Status war", value: c.status || "—", inline: true },
+        { name: "Verwarnungen", value: String(c.warnings ?? 0), inline: true }
+      ];
+      if (c.notes) fields.push({ name: "Letzte Notiz", value: String(c.notes).slice(0, 400), inline: false });
+      return sendCharDiscord(charDiscordEmbed(
+        c.name || "Unbekannt",
+        0xef4444,
+        fields,
+        "🗑️ **Charakter gelöscht**"
+      ));
+    }
+
 
     function isAdmin() {
       try { return sessionStorage.getItem(AUTH_KEY) === "1"; } catch { return false; }
@@ -381,6 +603,7 @@
           saveChars(list.filter(c => c.id !== id));
           if (document.getElementById("editId").value === id) resetForm();
           renderTable();
+          await notifyCharDeleted(char);
         });
       });
     }
@@ -436,21 +659,27 @@
       if (editId) {
         const idx = list.findIndex(c => c.id === editId);
         if (idx >= 0) {
-          list[idx] = { ...list[idx], ...payload };
+          const updated = { ...list[idx], ...payload };
+          list[idx] = updated;
+          saveChars(list);
+          resetForm();
+          renderTable();
+          await notifyCharUpdated(old, updated);
         } else {
           return;
         }
       } else {
-        list.push({
+        const created = {
           id: nextId(),
           createdAt: new Date().toISOString(),
           ...payload
-        });
+        };
+        list.push(created);
+        saveChars(list);
+        resetForm();
+        renderTable();
+        await notifyCharCreated(created);
       }
-
-      saveChars(list);
-      resetForm();
-      renderTable();
     });
 
     document.getElementById("btnCancel").addEventListener("click", resetForm);
@@ -505,10 +734,38 @@
     document.getElementById("btnLogout").addEventListener("click", doLogout);
     document.getElementById("btnLogoutPanel").addEventListener("click", doLogout);
 
+    (function initProxyUi() {
+      const input = document.getElementById("discordProxyUrl");
+      const status = document.getElementById("proxyStatus");
+      if (!input) return;
+      input.value = getDiscordProxyBase();
+      function showProxyStatus(msg, ok) {
+        status.style.display = "block";
+        status.style.color = ok ? "var(--success)" : "var(--danger, #f87171)";
+        status.textContent = msg;
+        setTimeout(function () { status.style.display = "none"; }, 4000);
+      }
+      document.getElementById("btnSaveProxy").addEventListener("click", function () {
+        setDiscordProxyBase(input.value);
+        input.value = getDiscordProxyBase();
+        showProxyStatus(getDiscordProxyBase() ? "✓ Proxy-URL gespeichert" : "Proxy-URL geleert", true);
+      });
+      document.getElementById("btnTestProxy").addEventListener("click", async function () {
+        setDiscordProxyBase(input.value);
+        const ok = await sendCharDiscord(charDiscordEmbed(
+          "Test",
+          0x7c3aed,
+          [{ name: "Status", value: "Proxy erreichbar", inline: true }],
+          "🧪 **Test** aus der Charakterverwaltung"
+        ));
+        showProxyStatus(ok ? "✓ Test gesendet" : "✗ Fehlgeschlagen – URL / CHAR_WEBHOOK prüfen", ok);
+      });
+    })();
+
     updateLoginUI();
     renderAdminEventManager();
 
-    // ===== Wetter-Konfiguration =====
+    // ===== Wetter-Konfiguration (Admin → localStorage + Export für Repo) =====
     (function weatherAdmin() {
       if (!window.ChronikenWeather) return;
 
@@ -524,12 +781,13 @@
         return ((100 * (Number(w) || 0) / t).toFixed(1)) + "%";
       }
 
+      function esc(v) {
+        return String(v ?? "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+      }
+
       function renderRows() {
         const box = document.getElementById("wxList");
         if (!box) return;
-        const esc = function (v) {
-          return String(v ?? "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
-        };
         box.innerHTML = rows.map(function (r, i) {
           return (
             '<div class="wx-row" data-i="' + i + '" style="display:grid;grid-template-columns:52px 1fr 1.4fr 90px 70px 40px;gap:0.5rem;align-items:center;">' +
@@ -547,21 +805,25 @@
           const i = Number(row.dataset.i);
           row.querySelectorAll("input").forEach(function (inp) {
             inp.addEventListener("input", function () {
-              const f = inp.dataset.f;
+              const f = inp.getAttribute("data-f");
               if (f === "weight") rows[i].weight = Math.max(0, Number(inp.value) || 0);
               else rows[i][f] = inp.value;
-              // Prozente aktualisieren
-              box.querySelectorAll(".wx-row").forEach(function (rr) {
-                const ii = Number(rr.dataset.i);
-                const pct = rr.querySelector(".wx-pct");
-                if (pct) pct.textContent = chancePct(rows[ii].weight);
-              });
+              if (f === "weight") {
+                const pct = row.querySelector(".wx-pct");
+                if (pct) pct.textContent = chancePct(rows[i].weight);
+                box.querySelectorAll(".wx-row").forEach(function (rr) {
+                  const ii = Number(rr.dataset.i);
+                  const p = rr.querySelector(".wx-pct");
+                  if (p) p.textContent = chancePct(rows[ii].weight);
+                });
+              }
             });
           });
           const del = row.querySelector("[data-del]");
           if (del) del.addEventListener("click", function () {
             rows.splice(i, 1);
             renderRows();
+            renderForceButtons();
           });
         });
       }
@@ -573,11 +835,12 @@
           return { name: w.name, icon: w.icon, description: w.description, weight: w.weight };
         });
         if (!rows.length) {
-          rows = ChronikenWeather.DEFAULT_CONFIG.weather.map(function (w) {
+          rows = ChronikenWeather.getFileConfig().weather.map(function (w) {
             return Object.assign({}, w);
           });
         }
         renderRows();
+        renderForceButtons();
         refreshLive();
       }
 
@@ -587,40 +850,116 @@
           const next = ChronikenWeather.nextChangeTime();
           const cur = document.getElementById("wxCurrent");
           const nxt = document.getElementById("wxNextChange");
-          if (cur) cur.value = (state.icon || "") + " " + (state.name || "") + "  ·  in " + ChronikenWeather.format(ChronikenWeather.msNext());
+          const forcedTag = state.forced ? " [Admin]" : "";
+          if (cur) cur.value = (state.icon || "") + " " + (state.name || "") + forcedTag + "  ·  in " + ChronikenWeather.format(ChronikenWeather.msNext());
           if (nxt) nxt.value = next.toLocaleString("de-DE", { dateStyle: "short", timeStyle: "medium" });
         } catch (e) {}
+      }
+
+      function renderForceButtons() {
+        const box = document.getElementById("wxForceBtns");
+        if (!box) return;
+        const list = rows.length ? rows : (ChronikenWeather.getWeatherList() || []);
+        box.innerHTML = list.map(function (w, i) {
+          return '<button type="button" class="btn secondary" data-force="' + i + '" style="padding:0.3rem 0.55rem;font-size:0.85rem;" title="' + esc(w.description || w.name) + '">' +
+            esc(w.icon) + " " + esc(w.name) +
+            "</button>";
+        }).join("");
+        box.querySelectorAll("[data-force]").forEach(function (btn) {
+          btn.addEventListener("click", function () {
+            const i = Number(btn.dataset.force);
+            const w = rows[i] || list[i];
+            if (!w) return;
+            ChronikenWeather.forceWeather(w);
+            refreshLive();
+            showStatus("✓ Wetter erzwungen: " + (w.icon || "") + " " + w.name, true);
+          });
+        });
+      }
+
+      function showStatus(msg, ok) {
+        const st = document.getElementById("wxSaveStatus");
+        st.style.display = "block";
+        st.style.color = ok === false ? "var(--danger, #f87171)" : "var(--success)";
+        st.textContent = msg;
+        setTimeout(function () { st.style.display = "none"; }, 3500);
       }
 
       document.getElementById("wxAddBtn").addEventListener("click", function () {
         rows.push({ name: "Neue Lage", icon: "🌤️", description: "", weight: 5 });
         renderRows();
+        renderForceButtons();
       });
 
       document.getElementById("wxResetBtn").addEventListener("click", function () {
-        if (!confirm("Wetterliste und Einstellungen auf Standard zurücksetzen?")) return;
-        ChronikenWeather.saveConfig(ChronikenWeather.DEFAULT_CONFIG);
+        if (!confirm("Lokale Admin-Config löschen und wieder die Datei weather-config.js verwenden?")) return;
+        ChronikenWeather.clearLocalConfig();
+        ChronikenWeather.clearOverride();
         loadIntoForm();
-        const st = document.getElementById("wxSaveStatus");
-        st.style.display = "block";
-        st.textContent = "✓ Standard wiederhergestellt";
-        setTimeout(function () { st.style.display = "none"; }, 2500);
+        document.getElementById("wxExportBox").style.display = "none";
+        showStatus("✓ Zurück auf Datei-Config", true);
       });
 
       document.getElementById("wxSaveBtn").addEventListener("click", function () {
-        const prev = ChronikenWeather.loadConfig();
         const cfg = {
           intervalHours: Math.max(1, Number(document.getElementById("wxInterval").value) || 6),
-          discordEnabled: !!prev.discordEnabled,
-          discordWebhook: prev.discordWebhook || "",
           weather: rows
         };
         ChronikenWeather.saveConfig(cfg);
-        const st = document.getElementById("wxSaveStatus");
-        st.style.display = "block";
-        st.textContent = "✓ Wetter gespeichert";
-        setTimeout(function () { st.style.display = "none"; }, 2500);
+        renderForceButtons();
+        showStatus("✓ Gespeichert – gilt sofort auf der Webseite (wetter.js übernimmt)", true);
         refreshLive();
+      });
+
+      document.getElementById("wxExportBtn").addEventListener("click", function () {
+        const cfg = {
+          intervalHours: Math.max(1, Number(document.getElementById("wxInterval").value) || 6),
+          weather: rows
+        };
+        // zuerst speichern, damit Webseite und Export gleich sind
+        ChronikenWeather.saveConfig(cfg);
+        const js = ChronikenWeather.exportConfigJs(cfg);
+        const box = document.getElementById("wxExportBox");
+        const ta = document.getElementById("wxExportText");
+        ta.value = js;
+        box.style.display = "block";
+        ta.scrollIntoView({ behavior: "smooth", block: "nearest" });
+        showStatus("✓ Export bereit – in weather-config.js einfügen für Discord", true);
+      });
+
+      document.getElementById("wxCopyExportBtn").addEventListener("click", function () {
+        const ta = document.getElementById("wxExportText");
+        ta.select();
+        try {
+          navigator.clipboard.writeText(ta.value).then(function () {
+            showStatus("✓ In Zwischenablage kopiert", true);
+          }).catch(function () {
+            document.execCommand("copy");
+            showStatus("✓ Kopiert", true);
+          });
+        } catch (e) {
+          document.execCommand("copy");
+          showStatus("✓ Kopiert", true);
+        }
+      });
+
+      // Live-Steuerung
+      document.getElementById("wxSkipBtn").addEventListener("click", function () {
+        ChronikenWeather.skipWeather();
+        refreshLive();
+        showStatus("✓ Skip – neues Wetter, Timer neu gestartet", true);
+      });
+
+      document.getElementById("wxTimerResetBtn").addEventListener("click", function () {
+        ChronikenWeather.resetTimer();
+        refreshLive();
+        showStatus("✓ Timer auf volles Intervall zurückgesetzt", true);
+      });
+
+      document.getElementById("wxClearOverrideBtn").addEventListener("click", function () {
+        ChronikenWeather.clearOverride();
+        refreshLive();
+        showStatus("✓ Override beendet – wieder normaler Zeitslot", true);
       });
 
       loadIntoForm();
