@@ -154,14 +154,22 @@
         </div>
 
         <div style="margin-bottom:1.4rem;padding:1rem;border:1px solid var(--border);border-radius:12px;background:rgba(168,85,247,0.06);">
-          <h3 style="color:var(--accent-soft);font-size:1rem;margin:0 0 0.6rem;">⚡ Live-Steuerung (Browser)</h3>
+          <h3 style="color:var(--accent-soft);font-size:1rem;margin:0 0 0.6rem;">⚡ Live-Steuerung</h3>
           <p style="color:var(--text-muted);font-size:0.85rem;margin:0 0 0.8rem;">
-            Skip / Erzwingen / Timer-Reset: nur Browser (wetter.js, Timer läuft weiter). Discord-Wetter läuft getrennt über GitHub Actions + Secret <code>DISCORD_WEATHER_WEBHOOK</code>.
+            Skip / Erzwingen: sofort im Browser (<code>wetter.js</code>, Timer läuft) <strong>und</strong> an Discord (gleicher Webhook wie GitHub-Secret <code>DISCORD_WEATHER_WEBHOOK</code>).
+            Automatische Slot-Meldungen weiterhin über GitHub Actions.
           </p>
+          <div class="form-group" style="margin-bottom:0.8rem;">
+            <label>Discord Wetter-Webhook-URL</label>
+            <input type="url" id="wxDiscordWebhook" placeholder="https://discord.com/api/webhooks/…">
+            <small style="color:var(--text-muted);display:block;margin-top:0.25rem;">Dieselbe URL wie im GitHub-Secret. Wird nur im Browser gespeichert, nicht im Proxy.</small>
+          </div>
           <div class="form-actions" style="flex-wrap:wrap;gap:0.5rem;margin-bottom:0.8rem;">
+            <button type="button" class="btn secondary" id="wxSaveWebhookBtn">Webhook speichern</button>
             <button type="button" class="btn" id="wxSkipBtn">⏭ Skip</button>
             <button type="button" class="btn secondary" id="wxTimerResetBtn">🔄 Timer Reset</button>
             <button type="button" class="btn secondary" id="wxClearOverrideBtn">✕ Override beenden</button>
+            <button type="button" class="btn" id="wxSendDiscordBtn">📢 Jetzt an Discord</button>
           </div>
           <div>
             <label style="display:block;margin-bottom:0.4rem;font-size:0.9rem;">Wetter erzwingen:</label>
@@ -341,8 +349,73 @@
     const NEXT_ID_KEY = "portal_char_next_id";
 
     const PROXY_URL_KEY = "chroniken_discord_proxy_url";
+    /** Gleicher Webhook wie GitHub-Secret DISCORD_WEATHER_WEBHOOK – nur für Admin-Klicks */
+    const WEATHER_WEBHOOK_KEY = "chroniken_weather_discord_webhook";
 
     const DEFAULT_DISCORD_PROXY = "https://chronikenweb-1.onrender.com";
+
+    function getWeatherWebhook() {
+      try {
+        const v = localStorage.getItem(WEATHER_WEBHOOK_KEY);
+        return (v && v.trim()) || "";
+      } catch (e) { return ""; }
+    }
+    function setWeatherWebhook(url) {
+      try {
+        if (url && url.trim()) localStorage.setItem(WEATHER_WEBHOOK_KEY, url.trim());
+        else localStorage.removeItem(WEATHER_WEBHOOK_KEY);
+      } catch (e) {}
+    }
+
+    async function sendWeatherToDiscord(reason) {
+      const webhook = getWeatherWebhook();
+      if (!webhook) {
+        console.warn("[Wetter-Discord] Keine Webhook-URL im Admin gesetzt.");
+        return { ok: false, error: "no_webhook" };
+      }
+      if (!window.ChronikenWeather) return { ok: false, error: "no_api" };
+      const w = ChronikenWeather.get();
+      const next = ChronikenWeather.format(ChronikenWeather.msNext());
+      const payload = {
+        username: "Chroniken Wetter",
+        embeds: [{
+          title: (w.icon || "🌦️") + " " + (w.name || "Unbekannt"),
+          description:
+            (w.description ? w.description + "\n\n" : "") +
+            "Nächster Wechsel: **" + next + "**\n" +
+            "_Quelle: " + (reason || "Admin") + "_",
+          color: 0x7c3aed,
+          footer: { text: "Chroniken · Wetter · Admin" },
+          timestamp: new Date().toISOString()
+        }]
+      };
+      try {
+        const res = await fetch(webhook, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload)
+        });
+        // Discord antwortet oft 204 No Content
+        if (res.ok || res.status === 204) return { ok: true };
+        const t = await res.text().catch(function () { return ""; });
+        console.warn("[Wetter-Discord]", res.status, t);
+        return { ok: false, error: "http_" + res.status };
+      } catch (e) {
+        // CORS kann blockieren – Versuch mit no-cors (Antwort nicht lesbar, Post oft trotzdem an)
+        try {
+          await fetch(webhook, {
+            method: "POST",
+            mode: "no-cors",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(payload)
+          });
+          return { ok: true, opaque: true };
+        } catch (e2) {
+          console.warn("[Wetter-Discord]", e, e2);
+          return { ok: false, error: String(e.message || e) };
+        }
+      }
+    }
 
     function getDiscordProxyBase() {
       try {
@@ -846,7 +919,12 @@
             if (!w || !ChronikenWeather.forceWeather) return;
             ChronikenWeather.forceWeather(w);
             refreshLive();
-            showStatus("✓ Erzwungen: " + (w.icon || "") + " " + w.name + " (Browser · Discord nur über GitHub-Slot)", true);
+            showStatus("✓ Erzwungen: " + (w.icon || "") + " " + w.name + " – sende Discord…", true);
+            sendWeatherToDiscord("Admin · Erzwungen").then(function (r) {
+              if (r.ok) showStatus("✓ Erzwungen + Discord: " + (w.icon || "") + " " + w.name, true);
+              else if (r.error === "no_webhook") showStatus("✓ Erzwungen – Discord-Webhook im Admin eintragen!", false);
+              else showStatus("✓ Erzwungen – Discord fehlgeschlagen (" + (r.error || "?") + ")", false);
+            });
           });
         });
       }
@@ -967,19 +1045,52 @@
         if (!ChronikenWeather.skipWeather) { showStatus("✗ wetter.js zu alt – neu laden", false); return; }
         ChronikenWeather.skipWeather();
         refreshLive();
-        showStatus("✓ Skip – neues Wetter, Timer neu (Browser · Discord über GitHub)", true);
+        showStatus("✓ Skip – sende Discord…", true);
+        sendWeatherToDiscord("Admin · Skip").then(function (r) {
+          if (r.ok) showStatus("✓ Skip + Discord gesendet", true);
+          else if (r.error === "no_webhook") showStatus("✓ Skip – Discord-Webhook im Admin eintragen!", false);
+          else showStatus("✓ Skip – Discord fehlgeschlagen (" + (r.error || "?") + ")", false);
+        });
       });
       document.getElementById("wxTimerResetBtn").addEventListener("click", function () {
         if (!ChronikenWeather.resetTimer) { showStatus("✗ wetter.js zu alt – neu laden", false); return; }
         ChronikenWeather.resetTimer();
         refreshLive();
-        showStatus("✓ Timer neu gestartet (Browser)", true);
+        showStatus("✓ Timer Reset – sende Discord…", true);
+        sendWeatherToDiscord("Admin · Timer Reset").then(function (r) {
+          if (r.ok) showStatus("✓ Timer Reset + Discord", true);
+          else if (r.error === "no_webhook") showStatus("✓ Timer Reset – Webhook eintragen!", false);
+          else showStatus("✓ Timer Reset – Discord fehlgeschlagen", false);
+        });
       });
       document.getElementById("wxClearOverrideBtn").addEventListener("click", function () {
         if (!ChronikenWeather.clearOverride) { showStatus("✗ wetter.js zu alt – neu laden", false); return; }
         ChronikenWeather.clearOverride();
         refreshLive();
         showStatus("✓ Override beendet", true);
+      });
+
+      // Webhook-Feld laden
+      var whInput = document.getElementById("wxDiscordWebhook");
+      if (whInput) whInput.value = getWeatherWebhook();
+
+      document.getElementById("wxSaveWebhookBtn").addEventListener("click", function () {
+        var url = (document.getElementById("wxDiscordWebhook").value || "").trim();
+        setWeatherWebhook(url);
+        if (whInput) whInput.value = getWeatherWebhook();
+        showStatus(getWeatherWebhook() ? "✓ Wetter-Webhook gespeichert" : "Webhook geleert", true);
+      });
+
+      document.getElementById("wxSendDiscordBtn").addEventListener("click", function () {
+        // URL aus Feld mitnehmen falls noch nicht gespeichert
+        var url = (document.getElementById("wxDiscordWebhook").value || "").trim();
+        if (url) setWeatherWebhook(url);
+        showStatus("Discord…", true);
+        sendWeatherToDiscord("Admin · Manuell").then(function (r) {
+          if (r.ok) showStatus("✓ Aktuelles Wetter an Discord gesendet", true);
+          else if (r.error === "no_webhook") showStatus("✗ Zuerst Webhook-URL eintragen und speichern", false);
+          else showStatus("✗ Discord fehlgeschlagen (" + (r.error || "?") + ")", false);
+        });
       });
 
       window.addEventListener("chroniken-weather-changed", function () { refreshLive(); });
