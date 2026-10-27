@@ -156,7 +156,7 @@
         <div style="margin-bottom:1.4rem;padding:1rem;border:1px solid var(--border);border-radius:12px;background:rgba(168,85,247,0.06);">
           <h3 style="color:var(--accent-soft);font-size:1rem;margin:0 0 0.6rem;">⚡ Live-Steuerung (Browser)</h3>
           <p style="color:var(--text-muted);font-size:0.85rem;margin:0 0 0.8rem;">
-            Skip = neues Wetter + Timer neu. Timer-Reset = gleiches Wetter, Countdown voll. Erzwingen = Lage für ein Intervall festsetzen.
+            Skip / Erzwingen / Timer-Reset: nur Browser (wetter.js, Timer läuft weiter). Discord-Wetter läuft getrennt über GitHub Actions + Secret <code>DISCORD_WEATHER_WEBHOOK</code>.
           </p>
           <div class="form-actions" style="flex-wrap:wrap;gap:0.5rem;margin-bottom:0.8rem;">
             <button type="button" class="btn" id="wxSkipBtn">⏭ Skip</button>
@@ -192,8 +192,9 @@
       <div class="form-card" id="discordProxyCard">
         <h2>🔗 Discord-Proxy (Charakter)</h2>
         <p style="color:var(--text-muted);font-size:0.9rem;margin-bottom:1rem;">
-          Basis-URL deines <code>chroniken-discord-proxy</code> (ohne <code>/charakter</code>).
-          Beim Anlegen, Bearbeiten und Löschen wird eine Discord-Nachricht gesendet.
+          Basis-URL deines <code>chroniken-discord-proxy</code> (ohne Pfad).
+          Nur Charakter-Nachrichten über <code>/charakter</code>.
+          Proxy nur Charakter (<code>CHAR_WEBHOOK</code>). Wetter-Discord nur über GitHub.
         </p>
         <div class="form-grid">
           <div class="form-group full">
@@ -383,6 +384,7 @@
         return false;
       }
     }
+
 
     function charDiscordEmbed(title, color, fields, content) {
       return {
@@ -844,7 +846,7 @@
             if (!w || !ChronikenWeather.forceWeather) return;
             ChronikenWeather.forceWeather(w);
             refreshLive();
-            showStatus("✓ Erzwungen: " + (w.icon || "") + " " + w.name, true);
+            showStatus("✓ Erzwungen: " + (w.icon || "") + " " + w.name + " (Browser · Discord nur über GitHub-Slot)", true);
           });
         });
       }
@@ -965,13 +967,13 @@
         if (!ChronikenWeather.skipWeather) { showStatus("✗ wetter.js zu alt – neu laden", false); return; }
         ChronikenWeather.skipWeather();
         refreshLive();
-        showStatus("✓ Skip – neues Wetter, Timer neu", true);
+        showStatus("✓ Skip – neues Wetter, Timer neu (Browser · Discord über GitHub)", true);
       });
       document.getElementById("wxTimerResetBtn").addEventListener("click", function () {
         if (!ChronikenWeather.resetTimer) { showStatus("✗ wetter.js zu alt – neu laden", false); return; }
         ChronikenWeather.resetTimer();
         refreshLive();
-        showStatus("✓ Timer neu gestartet", true);
+        showStatus("✓ Timer neu gestartet (Browser)", true);
       });
       document.getElementById("wxClearOverrideBtn").addEventListener("click", function () {
         if (!ChronikenWeather.clearOverride) { showStatus("✗ wetter.js zu alt – neu laden", false); return; }
