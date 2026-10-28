@@ -30,20 +30,16 @@
 
   <main>
     <h1 class="page-title">Bibliothek</h1>
-    <p class="page-desc">Bücher, Schriften und Archive. Schreiben nur mit dem Bibliotheks-Passwort möglich.</p>
+    <p class="page-desc">Bücher, Schriften und Archive. Schreiben nach Anmeldung als Bibliothek oder Admin (Login oben links auf der Startseite).</p>
 
     <div class="wiki-controls">
-      <button class="btn" id="btnUnlock">🔓 Schreiben freischalten</button>
       <button class="btn secondary" id="btnNewTopic" style="display:none;">+ Neuer Eintrag</button>
-      <button class="btn secondary" id="btnLock" style="display:none;">🔒 Sperren</button>
-      <span class="status" id="status">Schreibmodus: gesperrt</span>
     </div>
 
     <div id="listView">
       <ul class="topic-list" id="topicList"></ul>
       <div class="empty" id="emptyState" style="display:none;">
-        Noch keine Einträge vorhanden.<br>
-        Schalte den Schreibmodus frei und erstelle den ersten Eintrag.
+        Noch keine Einträge vorhanden.
       </div>
     </div>
 
@@ -79,30 +75,15 @@
     </div>
   </main>
 
-  <div class="modal-overlay" id="pwModal">
-    <div class="modal">
-      <h3>Schreibmodus freischalten</h3>
-      <p style="color:var(--text-muted); margin-bottom:1rem; font-size:0.9rem;">
-        Bibliotheks-Passwort eingeben, um Einträge zu erstellen und zu bearbeiten.
-      </p>
-      <div class="form-group">
-        <input type="password" id="pwInput" placeholder="Passwort..." autocomplete="off">
-      </div>
-      <div class="modal-actions">
-        <button class="btn" id="pwConfirm">Freischalten</button>
-        <button class="btn secondary" id="pwCancel">Abbrechen</button>
-      </div>
-    </div>
-  </div>
-
   <footer>
-    <p>© Kiyasha</p>
+    <p>© 2026 Kiyasha · Chroniken – Alle Rechte vorbehalten · <a href="#" class="legal-link" onclick="openLegalNotice(); return false;">Hinweis</a></p>
   </footer>
 
   <script>
-    // ===== Eigenes Passwort für die Bibliothek =====
-    const PASSWORD = "bibliothek456";     // <-- anderes Passwort als Wiki
+    // ===== Bibliothek – Schreiben mit Bibliothek-Login ODER Admin-Login =====
     const STORAGE_KEY = "portal_bibliothek_topics";
+    const LIB_KEY     = "portal_bibliothek_auth";
+    const ADMIN_KEY   = "portal_admin_auth";
 
     let unlocked = false;
     let editingId = null;
@@ -113,11 +94,7 @@
     const viewTopic   = document.getElementById("viewTopic");
     const editorArea  = document.getElementById("editorArea");
     const statusEl    = document.getElementById("status");
-    const btnUnlock   = document.getElementById("btnUnlock");
     const btnNewTopic = document.getElementById("btnNewTopic");
-    const btnLock     = document.getElementById("btnLock");
-    const pwModal     = document.getElementById("pwModal");
-    const pwInput     = document.getElementById("pwInput");
 
     function loadTopics() {
       try {
@@ -255,47 +232,29 @@
       showList();
     }
 
-    function setUnlocked(state) {
-      unlocked = state;
-      statusEl.textContent = state ? "Schreibmodus: freigeschaltet" : "Schreibmodus: gesperrt";
-      statusEl.classList.toggle("unlocked", state);
-      btnUnlock.style.display = state ? "none" : "inline-block";
-      btnNewTopic.style.display = state ? "inline-block" : "none";
-      btnLock.style.display = state ? "inline-block" : "none";
+    function canWrite() {
+      try {
+        return sessionStorage.getItem(LIB_KEY) === "1" || sessionStorage.getItem(ADMIN_KEY) === "1";
+      } catch { return false; }
     }
 
-    btnUnlock.addEventListener("click", () => {
-      pwModal.classList.add("open");
-      pwInput.value = "";
-      pwInput.focus();
-    });
-
-    document.getElementById("pwCancel").addEventListener("click", () => {
-      pwModal.classList.remove("open");
-    });
-
-    document.getElementById("pwConfirm").addEventListener("click", () => {
-      if (pwInput.value === PASSWORD) {
-        setUnlocked(true);
-        pwModal.classList.remove("open");
-      } else {
-        alert("Falsches Passwort.");
-        pwInput.value = "";
-        pwInput.focus();
+    function setUnlocked(state) {
+      unlocked = state;
+      if (statusEl) {
+        statusEl.textContent = state ? "Schreibmodus: freigeschaltet" : "Schreibmodus: gesperrt (Login auf Startseite)";
+        statusEl.classList.toggle("unlocked", state);
       }
-    });
+      if (btnNewTopic) btnNewTopic.style.display = state ? "inline-block" : "none";
+    }
 
-    pwInput.addEventListener("keydown", e => {
-      if (e.key === "Enter") document.getElementById("pwConfirm").click();
-    });
+    if (btnNewTopic) btnNewTopic.addEventListener("click", () => openEditor());
+    document.getElementById("btnSave")?.addEventListener("click", saveTopic);
+    document.getElementById("btnCancel")?.addEventListener("click", showList);
+    document.getElementById("btnBack")?.addEventListener("click", showList);
 
-    btnLock.addEventListener("click", () => setUnlocked(false));
-    btnNewTopic.addEventListener("click", () => openEditor());
-    document.getElementById("btnSave").addEventListener("click", saveTopic);
-    document.getElementById("btnCancel").addEventListener("click", showList);
-    document.getElementById("btnBack").addEventListener("click", showList);
-
+    setUnlocked(canWrite());
     renderList();
   </script>
+<script src="legal-notice.js"></script>
 </body>
 </html>

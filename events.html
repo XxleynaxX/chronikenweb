@@ -41,17 +41,13 @@
     </div>
 
     <div class="wiki-controls">
-      <button class="btn" id="btnUnlock">🔓 Schreiben freischalten</button>
       <button class="btn secondary" id="btnNewTopic" style="display:none;">+ Neues Event</button>
-      <button class="btn secondary" id="btnLock" style="display:none;">🔒 Sperren</button>
-      <span class="status" id="status">Schreibmodus: gesperrt</span>
     </div>
 
     <div id="listView">
       <ul class="topic-list" id="topicList"></ul>
       <div class="empty" id="emptyState" style="display:none;">
-        Noch keine Events.<br>
-        Schalte den Schreibmodus frei und erstelle das erste Event.
+        Noch keine Events.
       </div>
     </div>
 
@@ -97,29 +93,15 @@
     </div>
   </main>
 
-  <div class="modal-overlay" id="pwModal">
-    <div class="modal">
-      <h3>Schreibmodus freischalten</h3>
-      <p style="color:var(--text-muted); margin-bottom:1rem; font-size:0.9rem;">
-        Passwort eingeben, um Events zu erstellen und zu bearbeiten.
-      </p>
-      <div class="form-group">
-        <input type="password" id="pwInput" placeholder="Passwort..." autocomplete="off">
-      </div>
-      <div class="modal-actions">
-        <button class="btn" id="pwConfirm">Freischalten</button>
-        <button class="btn secondary" id="pwCancel">Abbrechen</button>
-      </div>
-    </div>
   </div>
 
   <footer>
-    <p>© Kiyasha</p>
+    <p>© 2026 Kiyasha · Chroniken – Alle Rechte vorbehalten · <a href="#" class="legal-link" onclick="openLegalNotice(); return false;">Hinweis</a></p>
   </footer>
 
   <script>
-    const PASSWORD = "portal123";
     const STORAGE_KEY = "portal_events";
+    const AUTH_KEY = "portal_admin_auth";
 
     let unlocked = false;
     let editingId = null;
@@ -130,11 +112,7 @@
     const viewTopic   = document.getElementById("viewTopic");
     const editorArea  = document.getElementById("editorArea");
     const statusEl    = document.getElementById("status");
-    const btnUnlock   = document.getElementById("btnUnlock");
     const btnNewTopic = document.getElementById("btnNewTopic");
-    const btnLock     = document.getElementById("btnLock");
-    const pwModal     = document.getElementById("pwModal");
-    const pwInput     = document.getElementById("pwInput");
 
     function loadTopics() {
       try { return JSON.parse(localStorage.getItem(STORAGE_KEY)) || []; }
@@ -258,39 +236,25 @@
       showList();
     }
 
-    function setUnlocked(state) {
-      unlocked = state;
-      statusEl.textContent = state ? "Schreibmodus: freigeschaltet" : "Schreibmodus: gesperrt";
-      statusEl.classList.toggle("unlocked", state);
-      btnUnlock.style.display = state ? "none" : "inline-block";
-      btnNewTopic.style.display = state ? "inline-block" : "none";
-      btnLock.style.display = state ? "inline-block" : "none";
+    function isAdmin() {
+      try { return sessionStorage.getItem(AUTH_KEY) === "1"; } catch { return false; }
     }
 
-    btnUnlock.addEventListener("click", () => {
-      pwModal.classList.add("open");
-      pwInput.value = "";
-      pwInput.focus();
-    });
-    document.getElementById("pwCancel").addEventListener("click", () => pwModal.classList.remove("open"));
-    document.getElementById("pwConfirm").addEventListener("click", () => {
-      if (pwInput.value === PASSWORD) {
-        setUnlocked(true);
-        pwModal.classList.remove("open");
-      } else {
-        alert("Falsches Passwort.");
-        pwInput.value = "";
-        pwInput.focus();
+    function setUnlocked(state) {
+      unlocked = state;
+      if (statusEl) {
+        statusEl.textContent = state ? "Schreibmodus: freigeschaltet (Admin)" : "Schreibmodus: gesperrt";
+        statusEl.classList.toggle("unlocked", state);
       }
-    });
-    pwInput.addEventListener("keydown", e => {
-      if (e.key === "Enter") document.getElementById("pwConfirm").click();
-    });
-    btnLock.addEventListener("click", () => setUnlocked(false));
+      btnNewTopic.style.display = state ? "inline-block" : "none";
+    }
+
     btnNewTopic.addEventListener("click", () => openEditor());
     document.getElementById("btnSave").addEventListener("click", saveTopic);
     document.getElementById("btnCancel").addEventListener("click", showList);
     document.getElementById("btnBack").addEventListener("click", showList);
+
+    setUnlocked(isAdmin());
 
 
     // ===== Geburtstage aus Charakterbögen =====
@@ -338,5 +302,6 @@
 
     renderList();
   </script>
+<script src="legal-notice.js"></script>
 </body>
 </html>

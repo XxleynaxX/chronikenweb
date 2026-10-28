@@ -100,10 +100,7 @@
     <p class="page-desc">Die Gesetze und Richtlinien, die im Portal gelten. Klicke auf eine Kachel für den vollen Text.</p>
 
     <div class="wiki-controls">
-      <button class="btn" id="btnUnlock">🔓 Schreiben freischalten</button>
       <button class="btn secondary" id="btnEdit" style="display:none;">Bearbeiten</button>
-      <button class="btn secondary" id="btnLock" style="display:none;">🔒 Sperren</button>
-      <span class="status" id="status">Schreibmodus: gesperrt</span>
     </div>
 
     <div id="contentView">
@@ -146,29 +143,15 @@
     </div>
   </main>
 
-  <div class="modal-overlay" id="pwModal">
-    <div class="modal">
-      <h3>Schreibmodus freischalten</h3>
-      <p style="color:var(--text-muted); margin-bottom:1rem; font-size:0.9rem;">
-        Passwort eingeben, um die Regeln zu bearbeiten.
-      </p>
-      <div class="form-group">
-        <input type="password" id="pwInput" placeholder="Passwort..." autocomplete="off">
-      </div>
-      <div class="modal-actions">
-        <button class="btn" id="pwConfirm">Freischalten</button>
-        <button class="btn secondary" id="pwCancel">Abbrechen</button>
-      </div>
-    </div>
   </div>
 
   <footer>
-    <p>© Kiyasha</p>
+    <p>© 2026 Kiyasha · Chroniken – Alle Rechte vorbehalten · <a href="#" class="legal-link" onclick="openLegalNotice(); return false;">Hinweis</a></p>
   </footer>
 
   <script>
-    const PASSWORD = "portal123";
     const STORAGE_KEY = "portal_regeln_data_v2";
+    const AUTH_KEY = "portal_admin_auth";
 
     const DEFAULT_DATA = {
       bau: [
@@ -397,11 +380,7 @@
     const contentView = document.getElementById("contentView");
     const editorArea = document.getElementById("editorArea");
     const statusEl = document.getElementById("status");
-    const btnUnlock = document.getElementById("btnUnlock");
     const btnEdit = document.getElementById("btnEdit");
-    const btnLock = document.getElementById("btnLock");
-    const pwModal = document.getElementById("pwModal");
-    const pwInput = document.getElementById("pwInput");
     const inputContent = document.getElementById("inputContent");
 
     function loadData() {
@@ -461,13 +440,17 @@
       });
     }
 
+    function isAdmin() {
+      try { return sessionStorage.getItem(AUTH_KEY) === "1"; } catch { return false; }
+    }
+
     function setUnlocked(state) {
       unlocked = state;
-      statusEl.textContent = state ? "Schreibmodus: freigeschaltet" : "Schreibmodus: gesperrt";
-      statusEl.classList.toggle("unlocked", state);
-      btnUnlock.style.display = state ? "none" : "inline-block";
+      if (statusEl) {
+        statusEl.textContent = state ? "Schreibmodus: freigeschaltet (Admin)" : "Schreibmodus: gesperrt";
+        statusEl.classList.toggle("unlocked", state);
+      }
       btnEdit.style.display = state ? "inline-block" : "none";
-      btnLock.style.display = state ? "inline-block" : "none";
     }
 
     function openEditor() {
@@ -483,27 +466,9 @@
       render();
     }
 
-    btnUnlock.addEventListener("click", () => {
-      pwModal.classList.add("open");
-      pwInput.value = "";
-      pwInput.focus();
-    });
-    document.getElementById("pwCancel").addEventListener("click", () => pwModal.classList.remove("open"));
-    document.getElementById("pwConfirm").addEventListener("click", () => {
-      if (pwInput.value === PASSWORD) {
-        setUnlocked(true);
-        pwModal.classList.remove("open");
-      } else {
-        alert("Falsches Passwort.");
-        pwInput.value = "";
-        pwInput.focus();
-      }
-    });
-    pwInput.addEventListener("keydown", e => {
-      if (e.key === "Enter") document.getElementById("pwConfirm").click();
-    });
-    btnLock.addEventListener("click", () => setUnlocked(false));
     btnEdit.addEventListener("click", openEditor);
+
+    setUnlocked(isAdmin());
     document.getElementById("btnSave").addEventListener("click", () => {
       try {
         const data = JSON.parse(inputContent.value);
@@ -519,5 +484,6 @@
 
     render();
   </script>
+<script src="legal-notice.js"></script>
 </body>
 </html>

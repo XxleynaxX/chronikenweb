@@ -246,21 +246,23 @@
   </main>
 
   <footer>
-    <p>© Kiyasha</p>
+    <p>© 2026 Kiyasha · Chroniken – Alle Rechte vorbehalten · <a href="#" class="legal-link" onclick="openLegalNotice(); return false;">Hinweis</a></p>
   </footer>
 
-  <!-- Admin-Login oben links -->
+  <!-- Login oben links (Admin + Bibliothek) -->
   <div id="loginPanel" class="login-panel">
     <div id="loginFormWrap">
-      <div class="login-title">Admin-Login</div>
+      <div class="login-title">Login</div>
       <input type="text" id="loginUser" placeholder="Benutzername" autocomplete="username">
       <input type="password" id="loginPass" placeholder="Passwort" autocomplete="current-password">
       <button type="button" class="btn" id="btnLogin" style="width:100%;">Anmelden</button>
       <div class="login-err" id="loginErr"></div>
     </div>
     <div id="loginLoggedIn" style="display:none;">
-      <div class="login-title">Admin aktiv</div>
-      <a href="admin.html" class="btn" style="display:block; text-align:center; text-decoration:none; margin-bottom:0.4rem;">Zur Verwaltung</a>
+      <div class="login-title" id="loginRoleTitle">Angemeldet</div>
+      <div id="loginRoleInfo" style="font-size:0.78rem;color:var(--text-muted);margin-bottom:0.5rem;"></div>
+      <a href="admin.html" class="btn" id="btnToAdmin" style="display:none; text-align:center; text-decoration:none; margin-bottom:0.4rem;">Zur Verwaltung</a>
+      <a href="bibliothek.html" class="btn secondary" id="btnToLib" style="display:none; text-align:center; text-decoration:none; margin-bottom:0.4rem;">Zur Bibliothek</a>
       <button type="button" class="btn secondary" id="btnLogoutPanel" style="width:100%;">Abmelden</button>
     </div>
   </div>
@@ -280,47 +282,94 @@
   <script src="weather-config.js"></script>
   <script src="wetter.js"></script>
 <script>
-    // ===== ADMIN LOGIN (oben links) =====
+    // ===== LOGIN oben links (Admin + Bibliothek) =====
     (function() {
       const ADMIN_USER = "admin";
       const ADMIN_PASS = "chroniken2026";
-      const AUTH_KEY = "portal_admin_auth";
+      const LIB_USER = "bibliothek";
+      const LIB_PASS = "bibliothek456";
+      const ADMIN_KEY = "portal_admin_auth";
+      const LIB_KEY = "portal_bibliothek_auth";
 
       function isAdmin() {
-        try { return sessionStorage.getItem(AUTH_KEY) === "1"; } catch { return false; }
+        try { return sessionStorage.getItem(ADMIN_KEY) === "1"; } catch { return false; }
+      }
+      function isLib() {
+        try { return sessionStorage.getItem(LIB_KEY) === "1"; } catch { return false; }
       }
       function setAdmin(on) {
         try {
-          if (on) sessionStorage.setItem(AUTH_KEY, "1");
-          else sessionStorage.removeItem(AUTH_KEY);
+          if (on) sessionStorage.setItem(ADMIN_KEY, "1");
+          else sessionStorage.removeItem(ADMIN_KEY);
         } catch {}
       }
-      function refreshAdminUI() {
-        const logged = isAdmin();
+      function setLib(on) {
+        try {
+          if (on) sessionStorage.setItem(LIB_KEY, "1");
+          else sessionStorage.removeItem(LIB_KEY);
+        } catch {}
+      }
+      function refreshLoginUI() {
+        const admin = isAdmin();
+        const lib = isLib();
+        const logged = admin || lib;
         const gate = document.getElementById("adminGate");
-        if (gate) gate.style.display = logged ? "" : "none";
+        if (gate) gate.style.display = admin ? "" : "none";
         const formWrap = document.getElementById("loginFormWrap");
         const loggedIn = document.getElementById("loginLoggedIn");
         if (formWrap) formWrap.style.display = logged ? "none" : "block";
         if (loggedIn) loggedIn.style.display = logged ? "block" : "none";
+
+        const roleTitle = document.getElementById("loginRoleTitle");
+        const roleInfo = document.getElementById("loginRoleInfo");
+        const btnAdmin = document.getElementById("btnToAdmin");
+        const btnLib = document.getElementById("btnToLib");
+
+        if (admin && lib) {
+          if (roleTitle) roleTitle.textContent = "Angemeldet";
+          if (roleInfo) roleInfo.textContent = "Admin + Bibliothek";
+          if (btnAdmin) btnAdmin.style.display = "block";
+          if (btnLib) btnLib.style.display = "block";
+        } else if (admin) {
+          if (roleTitle) roleTitle.textContent = "Admin aktiv";
+          if (roleInfo) roleInfo.textContent = "kann auch in der Bibliothek schreiben";
+          if (btnAdmin) btnAdmin.style.display = "block";
+          if (btnLib) btnLib.style.display = "block";
+        } else if (lib) {
+          if (roleTitle) roleTitle.textContent = "Bibliothek aktiv";
+          if (roleInfo) roleInfo.textContent = "";
+          if (btnAdmin) btnAdmin.style.display = "none";
+          if (btnLib) btnLib.style.display = "block";
+        }
       }
       function doLogin() {
-        const u = (document.getElementById("loginUser") || {}).value || "";
+        const u = ((document.getElementById("loginUser") || {}).value || "").trim();
         const p = (document.getElementById("loginPass") || {}).value || "";
         const err = document.getElementById("loginErr");
-        if (u.trim() === ADMIN_USER && p === ADMIN_PASS) {
+        let ok = false;
+        if (u === ADMIN_USER && p === ADMIN_PASS) {
           setAdmin(true);
+          ok = true;
+        }
+        if (u === LIB_USER && p === LIB_PASS) {
+          setLib(true);
+          ok = true;
+        }
+        if (ok) {
           if (err) err.textContent = "";
           const passEl = document.getElementById("loginPass");
           if (passEl) passEl.value = "";
-          refreshAdminUI();
+          const userEl = document.getElementById("loginUser");
+          if (userEl) userEl.value = "";
+          refreshLoginUI();
         } else if (err) {
           err.textContent = "Falsche Zugangsdaten.";
         }
       }
       function doLogout() {
         setAdmin(false);
-        refreshAdminUI();
+        setLib(false);
+        refreshLoginUI();
       }
       document.getElementById("btnLogin")?.addEventListener("click", doLogin);
       document.getElementById("btnLogoutPanel")?.addEventListener("click", doLogout);
@@ -328,7 +377,7 @@
       document.getElementById("loginUser")?.addEventListener("keydown", e => {
         if (e.key === "Enter") document.getElementById("loginPass")?.focus();
       });
-      refreshAdminUI();
+      refreshLoginUI();
     })();
 
     // ===== LIVE NEWS =====
@@ -586,7 +635,7 @@
       // Lautstärke: Slider steuert alles (Fantasy deutlich leiser)
       function applyVolume() {
         const v = (parseInt(volSlider.value, 10) || 0) / 100;
-        ambient.volume = v * 0.85;          // Natur
+        ambient.volume = v * 0.15;          // Natur
         fantasy.volume = v * 0.28;          // Fantasy-Melodie sehr dezent
         owl.volume = Math.min(1, v * 1.15); // Uhu etwas präsenter
         if (volLabel) volLabel.textContent = volSlider.value + "%";
@@ -646,5 +695,6 @@
       }
     })();
   </script>
+<script src="legal-notice.js"></script>
 </body>
 </html>
