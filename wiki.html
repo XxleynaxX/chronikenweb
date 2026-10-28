@@ -33,6 +33,7 @@
 
     <div class="wiki-controls">
       <button class="btn secondary" id="btnNewTopic" style="display:none;">+ Neues Thema</button>
+      <span id="status" style="margin-left:1rem;font-size:0.9rem;opacity:0.8;"></span>
     </div>
 
     <!-- Liste der Themen -->
@@ -69,28 +70,29 @@
           <label for="inputContent">Inhalt</label>
           <textarea id="inputContent" placeholder="Schreibe hier deinen Text..."></textarea>
         </div>
-        <div style="display:flex; gap:0.8rem;">
+        <div style="display:flex; gap:0.8rem; align-items:center;">
           <button class="btn" id="btnSave">Speichern</button>
           <button class="btn secondary" id="btnCancel">Abbrechen</button>
+          <span id="saveStatus" style="font-size:0.9rem;opacity:0.8;"></span>
         </div>
       </div>
     </div>
   </main>
 
-  </div>
-
   <footer>
     <p>© 2026 Kiyasha · Chroniken – Alle Rechte vorbehalten · <a href="#" class="legal-link" onclick="openLegalNotice(); return false;">Hinweis</a></p>
   </footer>
 
+  <script src="jsonbin-storage.js"></script>
   <script>
     // ===== Konfiguration =====
-    const STORAGE_KEY = "portal_wiki_topics";
     const AUTH_KEY = "portal_admin_auth";   // gleicher Key wie Admin-Login
+    const COLLECTION = "wiki";
 
     // ===== State =====
     let unlocked = false;
     let editingId = null;                  // null = neues Thema
+    let topicsCache = [];                   // lokale Kopie für schnelle UI
 
     // ===== DOM =====
     const topicList   = document.getElementById("topicList");
@@ -100,23 +102,54 @@
     const editorArea  = document.getElementById("editorArea");
     const statusEl    = document.getElementById("status");
     const btnNewTopic = document.getElementById("btnNewTopic");
+    const saveStatus  = document.getElementById("saveStatus");
 
-    // ===== Storage =====
-    function loadTopics() {
-      try {
-        return JSON.parse(localStorage.getItem(STORAGE_KEY)) || [];
-      } catch {
-        return [];
+    function setStatus(text, isError = false) {
+      if (statusEl) {
+        statusEl.textContent = text;
+        statusEl.style.color = isError ? "#e74c3c" : "";
       }
     }
 
-    function saveTopics(topics) {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(topics));
+    function setSaveStatus(text, isError = false) {
+      if (saveStatus) {
+        saveStatus.textContent = text;
+        saveStatus.style.color = isError ? "#e74c3c" : "#2ecc71";
+      }
+    }
+
+    // ===== Storage über JSONBin =====
+    async function loadTopics() {
+      try {
+        setStatus("Lade Themen…");
+        const topics = await ChronikenStorage.load(COLLECTION);
+        topicsCache = Array.isArray(topics) ? topics : [];
+        setStatus("");
+        return topicsCache;
+      } catch (e) {
+        console.error(e);
+        setStatus("Fehler beim Laden", true);
+        return topicsCache;
+      }
+    }
+
+    async function saveTopics(topics) {
+      try {
+        setSaveStatus("Speichere…");
+        await ChronikenStorage.save(COLLECTION, topics);
+        topicsCache = topics;
+        setSaveStatus("Gespeichert");
+        setTimeout(() => setSaveStatus(""), 2000);
+      } catch (e) {
+        console.error(e);
+        setSaveStatus("Fehler beim Speichern", true);
+        throw e;
+      }
     }
 
     // ===== Render Liste =====
     function renderList() {
-      const topics = loadTopics().sort((a, b) => b.updated - a.updated);
+      const topics = [...topicsCache].sort((a, b) => b.updated - a.updated);
       topicList.innerHTML = "";
 
       if (topics.length === 0) {
@@ -142,7 +175,7 @@
     }
 
     function escapeHtml(str) {
-      return str
+      return String(str || "")
         .replace(/&/g, "&amp;")
         .replace(/</g, "&lt;")
         .replace(/>/g, "&gt;")
@@ -151,15 +184,14 @@
 
     // ===== Thema anzeigen =====
     function showTopic(id) {
-      const topics = loadTopics();
-      const t = topics.find(x => x.id === id);
+      const t = topicsCache.find(x => x.id === id);
       if (!t) return;
 
       document.getElementById("viewTitle").textContent = t.title;
       document.getElementById("viewMeta").textContent =
         "Zuletzt geändert: " + new Date(t.updated).toLocaleString("de-DE");
       const vc = document.getElementById("viewContent");
-      // Zeilenumbrüche erhalten (Enter) + lange Zeilen umbrechen
+      // Zeilenumbrüche erhalten
       vc.textContent = (t.content || "").replace(/\r\n/g, "\n").replace(/\r/g, "\n");
 
       const actions = document.getElementById("viewActions");
@@ -171,11 +203,15 @@
 
       // Edit / Delete Buttons
       document.getElementById("btnEdit").onclick = () => openEditor(t);
-      document.getElementById("btnDelete").onclick = () => {
+      document.getElementById("btnDelete").onclick = async () => {
         if (confirm("Thema wirklich löschen?")) {
-          const filtered = topics.filter(x => x.id !== id);
-          saveTopics(filtered);
-          showList();
+          const filtered = topicsCache.filter(x => x.id !== id);
+          try {
+            await saveTopics(filtered);
+            showList();
+          } catch (e) {
+            alert("Löschen fehlgeschlagen. Bitte erneut versuchen.");
+          }
         }
       };
     }
@@ -194,6 +230,7 @@
         topic ? "Thema bearbeiten" : "Neues Thema";
       document.getElementById("inputTitle").value = topic ? topic.title : "";
       document.getElementById("inputContent").value = topic ? topic.content : "";
+      setSaveStatus("");
 
       listView.style.display = "none";
       viewTopic.style.display = "none";
@@ -201,7 +238,7 @@
       document.getElementById("inputTitle").focus();
     }
 
-    function saveTopic() {
+    async function saveTopic() {
       const title = document.getElementById("inputTitle").value.trim();
       const content = document.getElementById("inputContent").value.trim();
 
@@ -210,7 +247,7 @@
         return;
       }
 
-      const topics = loadTopics();
+      const topics = [...topicsCache];
       const now = Date.now();
 
       if (editingId) {
@@ -230,8 +267,12 @@
         });
       }
 
-      saveTopics(topics);
-      showList();
+      try {
+        await saveTopics(topics);
+        showList();
+      } catch (e) {
+        alert("Speichern fehlgeschlagen. Bitte erneut versuchen.");
+      }
     }
 
     // ===== Unlock (nur über Admin-Login) =====
@@ -241,11 +282,12 @@
 
     function setUnlocked(state) {
       unlocked = state;
-      if (statusEl) {
-        statusEl.textContent = state ? "Schreibmodus: freigeschaltet (Admin)" : "Schreibmodus: gesperrt";
-        statusEl.classList.toggle("unlocked", state);
+      if (statusEl && !statusEl.textContent.includes("Lade")) {
+        // Status nur setzen, wenn nicht gerade geladen wird
       }
-      btnNewTopic.style.display = state ? "inline-block" : "none";
+      if (btnNewTopic) {
+        btnNewTopic.style.display = state ? "inline-block" : "none";
+      }
     }
 
     // ===== Events =====
@@ -256,8 +298,15 @@
 
     // ===== Init =====
     setUnlocked(isAdmin());
-    renderList();
+    loadTopics().then(() => {
+      renderList();
+      if (isAdmin()) {
+        setStatus("Schreibmodus: freigeschaltet (Admin)");
+      } else {
+        setStatus("Schreibmodus: gesperrt");
+      }
+    });
   </script>
-<script src="legal-notice.js"></script>
+  <script src="legal-notice.js"></script>
 </body>
 </html>

@@ -34,6 +34,7 @@
 
     <div class="wiki-controls">
       <button class="btn secondary" id="btnNewTopic" style="display:none;">+ Neuer Eintrag</button>
+      <span id="status" style="margin-left:1rem;font-size:0.9rem;opacity:0.8;"></span>
     </div>
 
     <div id="listView">
@@ -67,9 +68,10 @@
           <label for="inputContent">Inhalt</label>
           <textarea id="inputContent" placeholder="Schreibe hier den Inhalt..."></textarea>
         </div>
-        <div style="display:flex; gap:0.8rem;">
+        <div style="display:flex; gap:0.8rem; align-items:center;">
           <button class="btn" id="btnSave">Speichern</button>
           <button class="btn secondary" id="btnCancel">Abbrechen</button>
+          <span id="saveStatus" style="font-size:0.9rem;opacity:0.8;"></span>
         </div>
       </div>
     </div>
@@ -79,14 +81,16 @@
     <p>© 2026 Kiyasha · Chroniken – Alle Rechte vorbehalten · <a href="#" class="legal-link" onclick="openLegalNotice(); return false;">Hinweis</a></p>
   </footer>
 
+  <script src="jsonbin-storage.js"></script>
   <script>
     // ===== Bibliothek – Schreiben mit Bibliothek-Login ODER Admin-Login =====
-    const STORAGE_KEY = "portal_bibliothek_topics";
     const LIB_KEY     = "portal_bibliothek_auth";
     const ADMIN_KEY   = "portal_admin_auth";
+    const COLLECTION  = "bibliothek";
 
     let unlocked = false;
     let editingId = null;
+    let topicsCache = [];
 
     const topicList   = document.getElementById("topicList");
     const emptyState  = document.getElementById("emptyState");
@@ -95,21 +99,52 @@
     const editorArea  = document.getElementById("editorArea");
     const statusEl    = document.getElementById("status");
     const btnNewTopic = document.getElementById("btnNewTopic");
+    const saveStatus  = document.getElementById("saveStatus");
 
-    function loadTopics() {
-      try {
-        return JSON.parse(localStorage.getItem(STORAGE_KEY)) || [];
-      } catch {
-        return [];
+    function setStatus(text, isError = false) {
+      if (statusEl) {
+        statusEl.textContent = text;
+        statusEl.style.color = isError ? "#e74c3c" : "";
       }
     }
 
-    function saveTopics(topics) {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(topics));
+    function setSaveStatus(text, isError = false) {
+      if (saveStatus) {
+        saveStatus.textContent = text;
+        saveStatus.style.color = isError ? "#e74c3c" : "#2ecc71";
+      }
+    }
+
+    async function loadTopics() {
+      try {
+        setStatus("Lade Einträge…");
+        const topics = await ChronikenStorage.load(COLLECTION);
+        topicsCache = Array.isArray(topics) ? topics : [];
+        setStatus("");
+        return topicsCache;
+      } catch (e) {
+        console.error(e);
+        setStatus("Fehler beim Laden", true);
+        return topicsCache;
+      }
+    }
+
+    async function saveTopics(topics) {
+      try {
+        setSaveStatus("Speichere…");
+        await ChronikenStorage.save(COLLECTION, topics);
+        topicsCache = topics;
+        setSaveStatus("Gespeichert");
+        setTimeout(() => setSaveStatus(""), 2000);
+      } catch (e) {
+        console.error(e);
+        setSaveStatus("Fehler beim Speichern", true);
+        throw e;
+      }
     }
 
     function renderList() {
-      const topics = loadTopics().sort((a, b) => b.updated - a.updated);
+      const topics = [...topicsCache].sort((a, b) => b.updated - a.updated);
       topicList.innerHTML = "";
 
       if (topics.length === 0) {
@@ -134,16 +169,24 @@
           e.preventDefault();
           showTopic(t.id);
         });
-        const eb=li.querySelector("[data-edit-list]");
-        if(eb) eb.onclick=()=>openEditor(t);
-        const db=li.querySelector("[data-del-list]");
-        if(db) db.onclick=()=>{ if(!confirm("Eintrag wirklich löschen?")) return; saveTopics(loadTopics().filter(x=>x.id!==t.id)); showList(); };
+        const eb = li.querySelector("[data-edit-list]");
+        if (eb) eb.onclick = () => openEditor(t);
+        const db = li.querySelector("[data-del-list]");
+        if (db) db.onclick = async () => {
+          if (!confirm("Eintrag wirklich löschen?")) return;
+          try {
+            await saveTopics(topicsCache.filter(x => x.id !== t.id));
+            showList();
+          } catch (e) {
+            alert("Löschen fehlgeschlagen. Bitte erneut versuchen.");
+          }
+        };
         topicList.appendChild(li);
       });
     }
 
     function escapeHtml(str) {
-      return str
+      return String(str || "")
         .replace(/&/g, "&amp;")
         .replace(/</g, "&lt;")
         .replace(/>/g, "&gt;")
@@ -151,15 +194,13 @@
     }
 
     function showTopic(id) {
-      const topics = loadTopics();
-      const t = topics.find(x => x.id === id);
+      const t = topicsCache.find(x => x.id === id);
       if (!t) return;
 
       document.getElementById("viewTitle").textContent = t.title;
       document.getElementById("viewMeta").textContent =
         "Zuletzt geändert: " + new Date(t.updated).toLocaleString("de-DE");
       const vc = document.getElementById("viewContent");
-      // Zeilenumbrüche erhalten (Enter) + lange Zeilen umbrechen
       vc.textContent = (t.content || "").replace(/\r\n/g, "\n").replace(/\r/g, "\n");
 
       const actions = document.getElementById("viewActions");
@@ -170,11 +211,14 @@
       viewTopic.style.display = "block";
 
       document.getElementById("btnEdit").onclick = () => openEditor(t);
-      document.getElementById("btnDelete").onclick = () => {
+      document.getElementById("btnDelete").onclick = async () => {
         if (confirm("Eintrag wirklich löschen?")) {
-          const filtered = topics.filter(x => x.id !== id);
-          saveTopics(filtered);
-          showList();
+          try {
+            await saveTopics(topicsCache.filter(x => x.id !== id));
+            showList();
+          } catch (e) {
+            alert("Löschen fehlgeschlagen. Bitte erneut versuchen.");
+          }
         }
       };
     }
@@ -192,6 +236,7 @@
         topic ? "Eintrag bearbeiten" : "Neuer Eintrag";
       document.getElementById("inputTitle").value = topic ? topic.title : "";
       document.getElementById("inputContent").value = topic ? topic.content : "";
+      setSaveStatus("");
 
       listView.style.display = "none";
       viewTopic.style.display = "none";
@@ -199,7 +244,7 @@
       document.getElementById("inputTitle").focus();
     }
 
-    function saveTopic() {
+    async function saveTopic() {
       const title = document.getElementById("inputTitle").value.trim();
       const content = document.getElementById("inputContent").value.trim();
 
@@ -208,7 +253,7 @@
         return;
       }
 
-      const topics = loadTopics();
+      const topics = [...topicsCache];
       const now = Date.now();
 
       if (editingId) {
@@ -228,8 +273,12 @@
         });
       }
 
-      saveTopics(topics);
-      showList();
+      try {
+        await saveTopics(topics);
+        showList();
+      } catch (e) {
+        alert("Speichern fehlgeschlagen. Bitte erneut versuchen.");
+      }
     }
 
     function canWrite() {
@@ -240,10 +289,6 @@
 
     function setUnlocked(state) {
       unlocked = state;
-      if (statusEl) {
-        statusEl.textContent = state ? "Schreibmodus: freigeschaltet" : "Schreibmodus: gesperrt (Login auf Startseite)";
-        statusEl.classList.toggle("unlocked", state);
-      }
       if (btnNewTopic) btnNewTopic.style.display = state ? "inline-block" : "none";
     }
 
@@ -253,8 +298,15 @@
     document.getElementById("btnBack")?.addEventListener("click", showList);
 
     setUnlocked(canWrite());
-    renderList();
+    loadTopics().then(() => {
+      renderList();
+      if (canWrite()) {
+        setStatus("Schreibmodus: freigeschaltet");
+      } else {
+        setStatus("Schreibmodus: gesperrt (Login auf Startseite)");
+      }
+    });
   </script>
-<script src="legal-notice.js"></script>
+  <script src="legal-notice.js"></script>
 </body>
 </html>

@@ -72,7 +72,13 @@
 
   function clone(x) { return JSON.parse(JSON.stringify(x)); }
 
-  function load(key) {
+  // Keys die über JSONBin geteilt werden
+  const SHARED_KEYS = ["voelker", "berufe", "goetter"];
+
+  // Lokaler Cache (wird von JSONBin befüllt)
+  const memCache = {};
+
+  function loadFromLocal(key) {
     try {
       const raw = localStorage.getItem(key);
       if (raw !== null) {
@@ -80,13 +86,46 @@
         if (Array.isArray(parsed)) return parsed;
       }
     } catch (e) {}
-    const seed = clone(DEFAULTS[key] || []);
-    try { localStorage.setItem(key, JSON.stringify(seed)); } catch (e) {}
-    return seed;
+    return null;
   }
 
+  function saveToLocal(key, arr) {
+    try { localStorage.setItem(key, JSON.stringify(arr)); } catch (e) {}
+  }
+
+  /**
+   * Synchrones load – gibt Cache oder localStorage oder Defaults zurück.
+   * Im Hintergrund wird von JSONBin aktualisiert.
+   */
+  function load(key) {
+    if (memCache[key]) return clone(memCache[key]);
+
+    const local = loadFromLocal(key);
+    if (local && local.length > 0) {
+      memCache[key] = local;
+      return clone(local);
+    }
+
+    const seed = clone(DEFAULTS[key] || []);
+    memCache[key] = seed;
+    saveToLocal(key, seed);
+    return clone(seed);
+  }
+
+  /**
+   * Speichert lokal + (falls shared) asynchron zu JSONBin.
+   */
   function save(key, arr) {
-    localStorage.setItem(key, JSON.stringify(arr));
+    const data = Array.isArray(arr) ? arr : [];
+    memCache[key] = data;
+    saveToLocal(key, data);
+
+    if (SHARED_KEYS.includes(key) && window.ChronikenStorage) {
+      // Im Hintergrund speichern, UI blockiert nicht
+      ChronikenStorage.save(key, data).catch(err => {
+        console.warn("JSONBin-Save für", key, "fehlgeschlagen:", err);
+      });
+    }
   }
 
   function resetDefaults(key) {
@@ -105,8 +144,45 @@
       .replace(/>/g, "&gt;").replace(/"/g, "&quot;");
   }
 
+  /**
+   * Einmalig: Daten von JSONBin holen und mit lokalen Defaults mergen.
+   * Wird beim Laden der Seite aufgerufen.
+   */
+  async function syncFromRemote() {
+    if (!window.ChronikenStorage) return;
+
+    try {
+      const remote = await ChronikenStorage.ensureCache();
+
+      for (const key of SHARED_KEYS) {
+        const remoteList = remote[key];
+        if (Array.isArray(remoteList) && remoteList.length > 0) {
+          // Remote hat Daten → übernehmen
+          memCache[key] = remoteList;
+          saveToLocal(key, remoteList);
+        } else {
+          // Remote leer → Defaults hochladen (einmalig seed)
+          const local = loadFromLocal(key) || clone(DEFAULTS[key] || []);
+          if (local.length > 0) {
+            memCache[key] = local;
+            await ChronikenStorage.save(key, local);
+          }
+        }
+      }
+    } catch (e) {
+      console.warn("JSONBin-Sync fehlgeschlagen, nutze lokale Daten:", e);
+    }
+  }
+
+  // Beim Laden der Seite sofort synchronisieren (nicht-blockierend)
+  if (typeof window !== "undefined") {
+    // Kleiner Delay, damit jsonbin-storage.js schon geladen ist
+    setTimeout(() => { syncFromRemote(); }, 50);
+  }
+
   window.ChronikenData = {
     load, save, resetDefaults, isAdmin, esc,
-    DEFAULTS
+    DEFAULTS,
+    syncFromRemote   // falls man manuell neu laden will
   };
 })();

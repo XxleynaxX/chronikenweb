@@ -162,6 +162,7 @@
     <p>© 2026 Kiyasha · Chroniken – Alle Rechte vorbehalten · <a href="#" class="legal-link" onclick="openLegalNotice(); return false;">Hinweis</a></p>
   </footer>
 
+  <script src="jsonbin-storage.js"></script>
   <script src="chroniken-data.js"></script>
   <script>
     const KEY = "kreaturen";
@@ -193,15 +194,33 @@
     const el = id => document.getElementById(id);
     function admin(){ return ChronikenData.isAdmin(); }
     function loadData(){
+      // 1. Memory-Cache (nach Remote-Sync)
+      if (window._kreaturenCache) return JSON.parse(JSON.stringify(window._kreaturenCache));
+      // 2. localStorage
       try {
-        const raw=localStorage.getItem(STORAGE_KEY);
-        if(raw){ const d=JSON.parse(raw); if(d && Array.isArray(d.beasts) && Array.isArray(d.magic)){ if(!Array.isArray(d.peaceful)) d.peaceful=[]; if(!Array.isArray(d.magicbeasts)) d.magicbeasts=[]; if(!Array.isArray(d.dragons)) d.dragons=[]; if(!Array.isArray(d.undead)) d.undead=[]; if(!Array.isArray(d.spirits)) d.spirits=[]; if(!Array.isArray(d.elementals)) d.elementals=[]; if(!Array.isArray(d.plants)) d.plants=[]; if(!Array.isArray(d.water)) d.water=[]; if(!Array.isArray(d.sky)) d.sky=[]; if(!Array.isArray(d.demons)) d.demons=[]; return d; } }
+        const raw = localStorage.getItem(STORAGE_KEY);
+        if (raw) {
+          const d = JSON.parse(raw);
+          if (d && typeof d === "object") {
+            window._kreaturenCache = d;
+            return JSON.parse(JSON.stringify(d));
+          }
+        }
       } catch(e){}
-      const d=JSON.parse(JSON.stringify(DEFAULT_DATA));
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(d));
-      return d;
+      // 3. Defaults
+      const seed = JSON.parse(JSON.stringify(DEFAULT_DATA));
+      window._kreaturenCache = seed;
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(seed));
+      return JSON.parse(JSON.stringify(seed));
     }
-    function saveData(d){ localStorage.setItem(STORAGE_KEY, JSON.stringify(d)); }
+    function saveData(d){
+      window._kreaturenCache = d;
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(d));
+      // Im Hintergrund zu JSONBin
+      if (window.ChronikenStorage) {
+        ChronikenStorage.save("kreaturen", d).catch(err => console.warn("Kreaturen JSONBin-Save fehlgeschlagen:", err));
+      }
+    }
     function resetForm(){
       editCategory=null; editIndex=null;
       el("fName").value=""; el("fCategory").value="beasts"; el("fDomain").value=""; el("fShort").value=""; el("fFull").value="";
@@ -248,7 +267,25 @@
       d[category].push(item); saveData(d); resetForm(); el("status").style.color="#22c55e"; el("status").textContent="✓ Gespeichert"; render();
       setTimeout(()=>el("status").textContent="",2500);
     }
-    el("btnSave").onclick=save; el("btnCancel").onclick=resetForm; render(); window.addEventListener("storage",render);
+    el("btnSave").onclick=save; el("btnCancel").onclick=resetForm;
+
+    // Von JSONBin laden (falls vorhanden)
+    (async function(){
+      if (!window.ChronikenStorage) { render(); return; }
+      try {
+        const remote = await ChronikenStorage.load("kreaturen");
+        if (remote && typeof remote === "object" && !Array.isArray(remote) && Object.keys(remote).length > 0) {
+          window._kreaturenCache = remote;
+          localStorage.setItem(STORAGE_KEY, JSON.stringify(remote));
+        } else {
+          // Remote leer → Defaults hochladen
+          const local = loadData();
+          await ChronikenStorage.save("kreaturen", local);
+        }
+      } catch(e){ console.warn("Kreaturen Remote-Sync:", e); }
+      render();
+    })();
+    window.addEventListener("storage",render);
   </script>
 <script src="legal-notice.js"></script>
 </body>
