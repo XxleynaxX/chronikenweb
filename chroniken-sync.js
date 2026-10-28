@@ -13,7 +13,7 @@
   const MASTER_KEY = "$2a$10$UtTY0igLD.IvUKF5WDV89uC7/zf7h2HP3R3jXC/mghWJDo20hRpqO";
   const API = "https://api.jsonbin.io/v3/b/" + EVENTS_BIN_ID;
 
-  const LS = { events: "portal_events", birthdays: "portal_birthdays", calendar: "chroniken_calendar_entries", disabledHolidays: "chroniken_disabled_holidays" };
+  const LS = { events: "portal_events", birthdays: "portal_birthdays", calendar: "chroniken_calendar_entries", disabledHolidays: "chroniken_disabled_holidays", weather: "chroniken_weather_events_bin" };
   const KEYS = Object.keys(LS);
   const AUTH_KEY = "portal_admin_auth";
 
@@ -242,6 +242,8 @@
     saveShared: saveShared,
     saveCalendar: function (list) { return saveShared("calendar", list); },
     saveDisabledHolidays: function (list) { return saveShared("disabledHolidays", list); },
+    loadWeather: function () { return loadShared("weather"); },
+    saveWeather: function (state) { return saveShared("weather", [state]); },
     /** Lokale Daten komplett in den Bin schreiben (Admin-Button). */
     async pushLocal() {
       let rec = {};

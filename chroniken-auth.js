@@ -59,12 +59,6 @@
     try { return Number(localStorage.getItem(LOGOUT_KEY) || 0) >= t; } catch (e) { return false; }
   }
 
-  // Nach einem echten Logout bleibt der Browser in diesem Zustand,
-  // bis eine neue Discord-Anmeldung erfolgreich abgeschlossen wurde.
-  function isLogoutBlocked() {
-    try { return !!localStorage.getItem(LOGOUT_KEY); } catch (e) { return false; }
-  }
-
   function name() { try { return sessionStorage.getItem(NAME_KEY) || ""; } catch (e) { return ""; } }
 
   function showError(msg) {
@@ -163,8 +157,6 @@
       const res = await fetch(proxyBase() + "/auth/me", { headers: { Authorization: "Bearer " + val } });
       const info = await res.json();
       if (!res.ok || !info.ok) throw new Error("Token ungültig");
-      // Eine erfolgreiche neue Anmeldung hebt den Logout-Schutz wieder auf.
-      try { localStorage.removeItem(LOGOUT_KEY); } catch (e) {}
       sessionStorage.setItem(TOKEN_KEY, val);
       sessionStorage.setItem(NAME_KEY, info.name || "");
       if (info.admin) sessionStorage.setItem(ADMIN_KEY, "1"); else sessionStorage.removeItem(ADMIN_KEY);
@@ -235,12 +227,9 @@
   function navWidget() {
     const nav = document.querySelector("header nav") || document.querySelector("nav");
     if (!nav || nav.querySelector(".nav-auth")) return;
-    const logoutBlocked = isLogoutBlocked();
-    const admin = logoutBlocked ? false : flag(ADMIN_KEY);
-    const lib = logoutBlocked ? false : flag(LIB_KEY);
-    const healer = logoutBlocked ? false : flag(HEALER_KEY);
+    const admin = flag(ADMIN_KEY), lib = flag(LIB_KEY), healer = flag(HEALER_KEY);
     let token = "";
-    try { token = logoutBlocked ? "" : (sessionStorage.getItem(TOKEN_KEY) || ""); } catch (e) {}
+    try { token = sessionStorage.getItem(TOKEN_KEY) || ""; } catch (e) {}
     const box = document.createElement("div");
     box.className = "nav-auth";
     if (!(admin || lib || healer || token)) {
@@ -275,15 +264,6 @@
   function warmUp() {
     try { fetch(proxyBase() + "/auth/ping", { cache: "no-store" }).catch(function () {}); } catch (e) {}
   }
-
-  // Browser-Back/Forward-Cache kann eine alte, bereits angemeldete Seite
-  // wiederherstellen, ohne die Scripts neu auszuführen. Nach Logout laden wir
-  // eine solche Seite einmal frisch, damit wirklich überall "abgemeldet" gilt.
-  global.addEventListener("pageshow", function (event) {
-    if (event.persisted && isLogoutBlocked()) {
-      global.location.reload();
-    }
-  });
 
   global.ChronikenAuth = { login: login, clear: clear, logout: logout, name: name };
   function start() {

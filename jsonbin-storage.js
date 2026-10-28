@@ -45,7 +45,7 @@
   }
 
   function isObj(v) { return !!v && typeof v === "object" && !Array.isArray(v); }
-  const OBJECT_KEYS = ["kreaturen", "weather"];
+  const OBJECT_KEYS = ["kreaturen"];
 
   function defaults(record) {
     const out = {};
@@ -54,7 +54,6 @@
     });
     out.kreaturen = record.kreaturen && typeof record.kreaturen === "object" && !Array.isArray(record.kreaturen)
       ? record.kreaturen : null;
-    out.weather = isObj(record.weather) ? record.weather : null;
     return out;
   }
 
@@ -74,6 +73,10 @@
   }
 
   async function load(name) {
+    if (name === "weather" && global.ChronikenSync && typeof global.ChronikenSync.loadWeather === "function") {
+      const list = await global.ChronikenSync.loadWeather();
+      return Array.isArray(list) && list[0] && isObj(list[0]) ? list[0] : null;
+    }
     if (name === "heiler") {
       return (await ensureHealer()).heiler;
     }
@@ -82,6 +85,10 @@
   }
 
   async function save(name, value) {
+    if (name === "weather" && global.ChronikenSync && typeof global.ChronikenSync.saveWeather === "function") {
+      await global.ChronikenSync.saveWeather(value);
+      return value;
+    }
     if (name === "heiler") {
       const latest = await fetchBin(HEALER_API);
       latest.heiler = Array.isArray(value) ? value : [];

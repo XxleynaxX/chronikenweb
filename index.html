@@ -307,11 +307,9 @@
         } catch {}
       }
       function refreshLoginUI() {
-        let logoutBlocked = false;
-        try { logoutBlocked = !!localStorage.getItem("chroniken_logout"); } catch (e) {}
-        const admin = !logoutBlocked && isAdmin();
-        const lib = !logoutBlocked && isLib();
-        const heiler = !logoutBlocked && isHeiler();
+        const admin = isAdmin();
+        const lib = isLib();
+        const heiler = isHeiler();
         const logged = admin || lib || heiler;
         const gate = document.getElementById("adminGate");
         if (gate) gate.style.display = admin ? "" : "none";
