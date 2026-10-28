@@ -1756,6 +1756,7 @@ function createCharacterEvent(data) {
     events=events.filter(e=>e.characterEventId!==eventId && e.characterName!==data.name);
     events.push({id:"e_"+Date.now()+"_"+Math.random().toString(36).slice(2,7), characterEventId:eventId, characterName:data.name, title:"🎂 Geburtstag von "+data.name, date, eventType:"Geburtstag", content:"Automatisch aus dem Charakterbogen erstellt.", showInNews:true, created:Date.now(), updated:Date.now(), birthdayDay:day, birthdayMonth:month, birthdayYear:year});
     localStorage.setItem(key, JSON.stringify(events));
+    try { if (window.ChronikenSync) ChronikenSync.upsertCharacter(events[events.length-1], null); } catch (e) {}
 }
 
 /* Discord-Proxy: Webhook nur serverseitig (CHAR_WEBHOOK). URL aus localStorage (Admin) oder window.CHRONIKEN_DISCORD_PROXY. */
@@ -1947,6 +1948,7 @@ function registerBirthdayForEvents(data) {
     updated: Date.now()
   });
   localStorage.setItem("portal_birthdays", JSON.stringify(list));
+  try { if (window.ChronikenSync) ChronikenSync.upsertCharacter(null, list[list.length-1]); } catch (e) {}
 }
 
 
@@ -2142,6 +2144,8 @@ document.addEventListener("DOMContentLoaded", () => { renderDynamicRaceOptions()
   <p>© 2026 Kiyasha · Chroniken – Alle Rechte vorbehalten · <a href="#" class="legal-link" onclick="openLegalNotice(); return false;">Hinweis</a></p>
 </footer>
 
+<script src="jsonbin-storage.js"></script>
+<script src="chroniken-sync.js"></script>
 <script src="legal-notice.js"></script>
 </body>
 </html>

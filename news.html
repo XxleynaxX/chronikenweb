@@ -44,8 +44,11 @@
     <p>© 2026 Kiyasha · Chroniken – Alle Rechte vorbehalten · <a href="#" class="legal-link" onclick="openLegalNotice(); return false;">Hinweis</a></p>
   </footer>
 
+  <script src="jsonbin-storage.js"></script>
+  <script src="chroniken-sync.js"></script>
   <script>
     const EVENTS_KEY = "portal_events";
+    function isAdminNews() { try { return sessionStorage.getItem("portal_admin_auth") === "1"; } catch { return false; } }
 
     function loadEvents() {
       try { return JSON.parse(localStorage.getItem(EVENTS_KEY)) || []; }
@@ -87,11 +90,22 @@
           <p style="margin-top:1rem;">
             <a href="events.html" style="color:var(--purple-bright);font-size:0.9rem;">→ Zum Event-Bereich</a>
           </p>`;
+        if (isAdminNews()) {
+          const bar = document.createElement("div");
+          bar.style.cssText = "display:flex;gap:.6rem;flex-wrap:wrap;margin-top:.8rem;";
+          bar.innerHTML = '<a class="btn secondary" style="text-decoration:none;" href="events.html#edit=' + encodeURIComponent(e.id) + '">✏️ Bearbeiten</a><button type="button" class="btn danger">🗑️ Löschen</button>';
+          bar.querySelector("button").addEventListener("click", async () => {
+            if (!confirm("Diese News / dieses Event wirklich löschen?")) return;
+            try { await ChronikenSync.removeEvent(e.id); } catch (err) { alert("Löschen fehlgeschlagen: " + err.message); }
+          });
+          card.appendChild(bar);
+        }
         list.appendChild(card);
       });
     }
 
     render();
+    document.addEventListener("chroniken-synced", render);
   </script>
 <script src="legal-notice.js"></script>
 </body>

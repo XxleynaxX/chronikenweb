@@ -41,6 +41,7 @@
     </div>
 
     <div class="wiki-controls">
+      <span id="syncStatus" class="small" style="margin-right:auto;"></span>
       <button class="btn secondary" id="btnNewTopic" style="display:none;">+ Neues Event</button>
     </div>
 
@@ -99,6 +100,8 @@
     <p>© 2026 Kiyasha · Chroniken – Alle Rechte vorbehalten · <a href="#" class="legal-link" onclick="openLegalNotice(); return false;">Hinweis</a></p>
   </footer>
 
+  <script src="jsonbin-storage.js"></script>
+  <script src="chroniken-sync.js"></script>
   <script>
     const STORAGE_KEY = "portal_events";
     const AUTH_KEY = "portal_admin_auth";
@@ -119,18 +122,17 @@
       catch { return []; }
     }
 
-    // Geburtstage sind automatisch mit portal_events verknüpft.
-    // Beim Löschen werden deshalb beide Einträge entfernt.
-    function deleteBirthday(name) {
-      if (!name) return;
-      let birthdays = [];
-      try { birthdays = JSON.parse(localStorage.getItem("portal_birthdays") || "[]"); } catch {}
-      localStorage.setItem("portal_birthdays", JSON.stringify(birthdays.filter(b => b.name !== name)));
-      const events = loadTopics();
-      saveTopics(events.filter(e => !(e.eventType === "Geburtstag" && e.characterName === name)));
+    function setSync(msg, ok) {
+      const el = document.getElementById("syncStatus");
+      if (!el) return;
+      el.textContent = msg;
+      el.style.color = ok === false ? "#fb7185" : "#22c55e";
     }
-    function saveTopics(topics) {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(topics));
+    // Geburtstage sind mit portal_events verknüpft – ChronikenSync entfernt beide Einträge in JSONBin.
+    async function deleteBirthday(name) {
+      if (!name) return;
+      try { await ChronikenSync.removeBirthday(name); setSync("✓ In JSONBin gelöscht", true); }
+      catch (e) { setSync("✗ Löschen fehlgeschlagen: " + e.message, false); }
     }
 
     function escapeHtml(str) {
@@ -156,6 +158,15 @@
             <strong>${escapeHtml(t.title)}</strong>${newsBadge}
             <div class="topic-meta">${date}</div>
           </a>`;
+        if (unlocked) {
+          const bar = document.createElement("div");
+          bar.className = "tile-actions";
+          bar.style.cssText = "display:flex;gap:.5rem;margin-top:.5rem;";
+          bar.innerHTML = '<button type="button" class="btn secondary" data-edit>✏️ Bearbeiten</button><button type="button" class="btn danger" data-del>🗑️ Löschen</button>';
+          bar.querySelector("[data-edit]").addEventListener("click", () => openEditor(t));
+          bar.querySelector("[data-del]").addEventListener("click", () => removeTopic(t.id));
+          li.appendChild(bar);
+        }
         li.querySelector("a").addEventListener("click", e => {
           e.preventDefault();
           showTopic(t.id);
@@ -178,17 +189,18 @@
       editorArea.classList.remove("visible");
       viewTopic.style.display = "block";
       document.getElementById("btnEdit").onclick = () => openEditor(t);
-      document.getElementById("btnDelete").onclick = () => {
-        if (confirm("Event wirklich löschen?")) {
-          const removed = topics.find(x => x.id === id);
-          saveTopics(topics.filter(x => x.id !== id));
-          if (removed && removed.eventType === "Geburtstag" && removed.characterName) {
-            deleteBirthday(removed.characterName);
-          }
-          renderBirthdays();
-          showList();
-        }
-      };
+      document.getElementById("btnDelete").onclick = () => removeTopic(id);
+    }
+
+    async function removeTopic(id) {
+      if (!confirm("Event wirklich löschen?")) return;
+      try {
+        setSync("Lösche…", true);
+        await ChronikenSync.removeEvent(id);
+        setSync("✓ In JSONBin gelöscht", true);
+      } catch (e) { setSync("✗ Löschen fehlgeschlagen: " + e.message, false); alert("Löschen fehlgeschlagen: " + e.message); return; }
+      renderBirthdays();
+      showList();
     }
 
     function showList() {
@@ -211,28 +223,25 @@
       document.getElementById("inputTitle").focus();
     }
 
-    function saveTopic() {
+    async function saveTopic() {
       const title = document.getElementById("inputTitle").value.trim();
       const date = document.getElementById("inputDate").value.trim();
       const content = document.getElementById("inputContent").value.trim();
       const showInNews = document.getElementById("inputNews").checked;
       if (!title) { alert("Bitte einen Titel eingeben."); return; }
-      const topics = loadTopics();
-      const now = Date.now();
-      if (editingId) {
-        const t = topics.find(x => x.id === editingId);
-        if (t) {
-          t.title = title; t.date = date; t.content = content;
-          t.showInNews = showInNews; t.updated = now;
-        }
-      } else {
-        topics.push({
-          id: "e_" + now + "_" + Math.random().toString(36).slice(2, 7),
-          title, date, content, showInNews,
-          created: now, updated: now
-        });
+      const btn = document.getElementById("btnSave");
+      btn.disabled = true;
+      try {
+        setSync("Speichere…", true);
+        await ChronikenSync.saveEvent({ title, date, content, showInNews }, editingId);
+        setSync("✓ In JSONBin gespeichert", true);
+      } catch (e) {
+        setSync("✗ Speichern fehlgeschlagen: " + e.message, false);
+        alert("Speichern fehlgeschlagen: " + e.message);
+        btn.disabled = false;
+        return;
       }
-      saveTopics(topics);
+      btn.disabled = false;
       showList();
     }
 
@@ -301,6 +310,19 @@
     renderBirthdays();
 
     renderList();
+
+    document.addEventListener("chroniken-synced", () => {
+      renderBirthdays();
+      if (listView.style.display !== "none") renderList();
+      openFromHash();
+    });
+    function openFromHash() {
+      const m = location.hash.match(/^#edit=(.+)$/);
+      if (!m || !unlocked) return;
+      const t = loadTopics().find(x => x.id === decodeURIComponent(m[1]));
+      if (t) { history.replaceState(null, "", location.pathname); openEditor(t); }
+    }
+    openFromHash();
   </script>
 <script src="legal-notice.js"></script>
 </body>

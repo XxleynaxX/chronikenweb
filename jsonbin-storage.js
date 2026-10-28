@@ -101,7 +101,12 @@
     }
 
     cache = data;
-    await saveBin(data);
+    // Frisch lesen und nur diese Collection ersetzen, damit parallele Änderungen
+    // anderer Seiten/Admins (und fremde Schlüssel im Bin) nicht überschrieben werden.
+    let latest = {};
+    try { latest = await fetchBin(); } catch (e) { latest = {}; }
+    latest[name] = data[name];
+    await saveBin(Object.assign({}, latest, { [name]: data[name] }));
   }
 
   function setCache(newCache) {

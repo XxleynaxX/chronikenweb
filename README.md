@@ -54,6 +54,20 @@ portal-website/
 
 ---
 
+## ☁️ JSONBin & Discord-Webhook (Events/News)
+
+- Events, News und Geburtstage liegen zentral in einem eigenen JSONBin (`chroniken-sync.js`, `EVENTS_BIN_ID`). `localStorage` ist nur noch Cache.
+- Im Admin (Events & Kalender verwalten): neues Event, ✏️ Bearbeiten, 🗑️ Löschen – auch direkt auf `events.html` und `news.html`.
+- Erster Start: „Lokale Daten nach JSONBin hochladen“ im Admin, falls bereits Events im Browser liegen.
+
+## 🎮 Discord-Login (über chroniken-discord-proxy)
+
+Button „Mit Discord anmelden“ auf Startseite und Admin-Seite. Der Proxy prüft die Rollen auf dem Server:
+Admin-Rollen → Admin (+ Bibliothek), Bibliotheks-Rolle → Bibliothek.
+Render → Environment: `DISCORD_CLIENT_ID`, `DISCORD_CLIENT_SECRET`, `AUTH_SECRET` (lange Zufallsfolge),
+`ALLOWED_RETURN_ORIGINS` (Adresse der Website). Discord Developer Portal → OAuth2 → Redirect:
+`https://chronikenweb-1.onrender.com/auth/callback`.
+
 ## 📅 Ingame-Zeitrechnung
 
 | Real | Ingame |

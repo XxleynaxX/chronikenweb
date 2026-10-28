@@ -1,13 +1,133 @@
 const http = require('http');
+const crypto = require('crypto');
 
 const PORT = process.env.PORT || 3000;
 const CHAR_WEBHOOK = process.env.CHAR_WEBHOOK || '';
 
+/* ===== Discord-Login (OAuth2) =====
+   Benötigte Umgebungsvariablen (Render → Environment):
+   DISCORD_CLIENT_ID        Client-ID der Discord-Application
+   DISCORD_CLIENT_SECRET    Client-Secret der Discord-Application
+   AUTH_SECRET              lange zufällige Zeichenfolge (signiert die Login-Tokens)
+   ALLOWED_RETURN_ORIGINS   Adresse(n) der Website, kommagetrennt, z. B. https://deinname.github.io
+   Optional (haben Standardwerte):
+   PUBLIC_URL, DISCORD_GUILD_ID, ADMIN_ROLE_IDS, LIB_ROLE_IDS, SESSION_HOURS */
+const CLIENT_ID = process.env.DISCORD_CLIENT_ID || '';
+const CLIENT_SECRET = process.env.DISCORD_CLIENT_SECRET || '';
+const AUTH_SECRET = process.env.AUTH_SECRET || '';
+const PUBLIC_URL = (process.env.PUBLIC_URL || 'https://chronikenweb-1.onrender.com').replace(/\/$/, '');
+const GUILD_ID = process.env.DISCORD_GUILD_ID || '1204906165004279889';
+const ADMIN_ROLES = (process.env.ADMIN_ROLE_IDS || '1251121611130540063,1300216664113156116').split(',').map(s => s.trim()).filter(Boolean);
+const LIB_ROLES = (process.env.LIB_ROLE_IDS || '1564874876236472470').split(',').map(s => s.trim()).filter(Boolean);
+const ALLOWED_ORIGINS = (process.env.ALLOWED_RETURN_ORIGINS || '').split(',').map(s => s.trim().replace(/\/$/, '')).filter(Boolean);
+const SESSION_MS = (Number(process.env.SESSION_HOURS) || 12) * 3600 * 1000;
+
+function b64u(buf) { return Buffer.from(buf).toString('base64url'); }
+function sign(payload) {
+  const body = b64u(JSON.stringify(payload));
+  const sig = crypto.createHmac('sha256', AUTH_SECRET).update(body).digest('base64url');
+  return body + '.' + sig;
+}
+function verify(token) {
+  if (!AUTH_SECRET || typeof token !== 'string') return null;
+  const [body, sig] = token.split('.');
+  if (!body || !sig) return null;
+  const expect = crypto.createHmac('sha256', AUTH_SECRET).update(body).digest('base64url');
+  const a = Buffer.from(sig), b = Buffer.from(expect);
+  if (a.length !== b.length || !crypto.timingSafeEqual(a, b)) return null;
+  try {
+    const p = JSON.parse(Buffer.from(body, 'base64url').toString('utf8'));
+    return p && p.exp > Date.now() ? p : null;
+  } catch { return null; }
+}
+function returnAllowed(url) {
+  try { const u = new URL(url); return ALLOWED_ORIGINS.includes(u.origin) && /^https?:$/.test(u.protocol); }
+  catch { return false; }
+}
+function redirect(res, location) { res.writeHead(302, { Location: location, 'Cache-Control': 'no-store' }); res.end(); }
+function page(res, status, text) {
+  res.writeHead(status, { 'Content-Type': 'text/plain; charset=utf-8' });
+  res.end(text);
+}
+function backWithError(res, ret, msg) {
+  if (ret && returnAllowed(ret)) return redirect(res, ret + '#auth_error=' + encodeURIComponent(msg));
+  page(res, 400, msg);
+}
+
+async function handleAuth(req, res, url) {
+  if (!CLIENT_ID || !CLIENT_SECRET || !AUTH_SECRET) {
+    return page(res, 500, 'Discord-Login nicht eingerichtet: DISCORD_CLIENT_ID, DISCORD_CLIENT_SECRET und AUTH_SECRET fehlen.');
+  }
+  const redirectUri = PUBLIC_URL + '/auth/callback';
+
+  // 1) Weiterleitung zu Discord
+  if (url.pathname === '/auth/login') {
+    const ret = url.searchParams.get('return') || '';
+    if (!returnAllowed(ret)) return page(res, 400, 'Rückkehr-Adresse nicht erlaubt. ALLOWED_RETURN_ORIGINS prüfen.');
+    const state = sign({ ret, n: crypto.randomBytes(8).toString('hex'), exp: Date.now() + 10 * 60 * 1000 });
+    const q = new URLSearchParams({
+      client_id: CLIENT_ID, response_type: 'code', redirect_uri: redirectUri,
+      scope: 'identify guilds.members.read', state, prompt: 'none'
+    });
+    return redirect(res, 'https://discord.com/oauth2/authorize?' + q);
+  }
+
+  // 2) Rückkehr von Discord: Rollen prüfen, Token ausstellen
+  if (url.pathname === '/auth/callback') {
+    const st = verify(url.searchParams.get('state') || '');
+    if (!st) return page(res, 400, 'Anmeldung abgelaufen. Bitte erneut versuchen.');
+    const ret = st.ret;
+    if (url.searchParams.get('error')) return backWithError(res, ret, 'Anmeldung abgebrochen.');
+    const code = url.searchParams.get('code');
+    if (!code) return backWithError(res, ret, 'Kein Code von Discord erhalten.');
+    try {
+      const tr = await fetch('https://discord.com/api/oauth2/token', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: new URLSearchParams({
+          client_id: CLIENT_ID, client_secret: CLIENT_SECRET, grant_type: 'authorization_code',
+          code, redirect_uri: redirectUri
+        })
+      });
+      if (!tr.ok) return backWithError(res, ret, 'Discord-Anmeldung fehlgeschlagen (Token).');
+      const tok = await tr.json();
+      const mr = await fetch('https://discord.com/api/users/@me/guilds/' + GUILD_ID + '/member', {
+        headers: { Authorization: 'Bearer ' + tok.access_token }
+      });
+      if (mr.status === 404 || mr.status === 403) return backWithError(res, ret, 'Du bist nicht auf dem Discord-Server.');
+      if (!mr.ok) return backWithError(res, ret, 'Rollen konnten nicht gelesen werden.');
+      const m = await mr.json();
+      const roles = Array.isArray(m.roles) ? m.roles : [];
+      const admin = roles.some(r => ADMIN_ROLES.includes(r));
+      const lib = admin || roles.some(r => LIB_ROLES.includes(r));
+      if (!admin && !lib) return backWithError(res, ret, 'Dir fehlt die nötige Rolle (Admin oder Bibliothek).');
+      const user = m.user || {};
+      const token = sign({
+        sub: user.id, name: m.nick || user.global_name || user.username || 'Discord',
+        admin, lib, exp: Date.now() + SESSION_MS
+      });
+      return redirect(res, ret + '#auth=' + token);
+    } catch (e) {
+      return backWithError(res, ret, 'Discord nicht erreichbar.');
+    }
+  }
+
+  // 3) Token prüfen (Website fragt beim Laden nach)
+  if (url.pathname === '/auth/me') {
+    const h = req.headers.authorization || '';
+    const p = verify(h.replace(/^Bearer\s+/i, ''));
+    res.writeHead(p ? 200 : 401, { 'Content-Type': 'application/json' });
+    return res.end(JSON.stringify(p ? { ok: true, name: p.name, admin: p.admin, lib: p.lib, exp: p.exp } : { ok: false }));
+  }
+
+  res.writeHead(404); res.end('Not found');
+}
+
 const server = http.createServer(async (req, res) => {
-  // CORS – damit admin.html aufrufen darf
+  // CORS – damit die Website aufrufen darf
   res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
 
   if (req.method === 'OPTIONS') {
     res.writeHead(204);
@@ -15,7 +135,15 @@ const server = http.createServer(async (req, res) => {
     return;
   }
 
-  if (req.method === 'POST' && req.url === '/charakter') {
+  const url = new URL(req.url, 'http://localhost');
+
+  if (req.method === 'GET' && url.pathname.startsWith('/auth/')) {
+    try { await handleAuth(req, res, url); }
+    catch (e) { page(res, 500, 'Fehler: ' + e.message); }
+    return;
+  }
+
+  if (req.method === 'POST' && url.pathname === '/charakter') {
     if (!CHAR_WEBHOOK) {
       res.writeHead(500, { 'Content-Type': 'application/json' });
       res.end(JSON.stringify({ ok: false, error: 'CHAR_WEBHOOK fehlt' }));

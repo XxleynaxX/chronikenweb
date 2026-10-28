@@ -102,8 +102,13 @@ let calendarEditIndex = null;
 function loadCalendarEntries() {
   try { return JSON.parse(localStorage.getItem(CAL_KEY) || "[]"); } catch { return []; }
 }
-function saveCalendarEntries(list) { localStorage.setItem(CAL_KEY, JSON.stringify(list)); }
-function activeHolidays() { return [...holidays, ...loadCalendarEntries().map((h,i)=>({...h, custom:true, customIndex:i}))]; }
+function saveCalendarEntries(list) {
+  localStorage.setItem(CAL_KEY, JSON.stringify(list));
+  if (window.ChronikenSync) return ChronikenSync.saveCalendar(list).catch(e => alert("JSONBin speichern fehlgeschlagen: " + e.message));
+  return Promise.resolve();
+}
+function disabledHolidays() { try { return JSON.parse(localStorage.getItem("chroniken_disabled_holidays") || "[]"); } catch { return []; } }
+function activeHolidays() { return [...holidays.filter((h,i)=>!disabledHolidays().includes(i)), ...loadCalendarEntries().map((h,i)=>({...h, custom:true, customIndex:i}))]; }
 
 function getDate() {
   let realDays = Math.floor((Date.now() - start.getTime()) / 86400000);
@@ -166,14 +171,16 @@ function renderAdminCalendarTools() {
 }
 function resetCalendarForm(){calendarEditIndex=null;document.getElementById('calendarName').value='';document.getElementById('calendarMonth').value='0';document.getElementById('calendarDay').value='1';document.getElementById('calendarDesc').value='';document.getElementById('calendarFormTitle').textContent='Neuen Kalendereintrag anlegen';document.getElementById('calendarSave').textContent='Speichern';document.getElementById('calendarCancel').style.display='none';}
 function editCalendarEntry(i){const h=loadCalendarEntries()[i];if(!h)return;calendarEditIndex=i;document.getElementById('calendarName').value=h.n||'';document.getElementById('calendarMonth').value=h.m;document.getElementById('calendarDay').value=h.d;document.getElementById('calendarDesc').value=h.t||'';document.getElementById('calendarFormTitle').textContent='Kalendereintrag bearbeiten';document.getElementById('calendarSave').textContent='Änderungen speichern';document.getElementById('calendarCancel').style.display='inline-block';window.scrollTo({top:0,behavior:'smooth'});}
-function saveCalendarEntry(){const name=document.getElementById('calendarName').value.trim();const m=Number(document.getElementById('calendarMonth').value);const day=Number(document.getElementById('calendarDay').value);if(!name||day<1||day>30){document.getElementById('calendarStatus').textContent='Bitte Name und gültigen Tag eingeben.';return;}const list=loadCalendarEntries();const entry={n:name,m,d:day,t:document.getElementById('calendarDesc').value.trim()};if(calendarEditIndex!==null&&list[calendarEditIndex])list[calendarEditIndex]=entry;else list.push(entry);saveCalendarEntries(list);resetCalendarForm();document.getElementById('calendarStatus').textContent='✓ Gespeichert';location.reload();}
-function deleteCalendarEntry(i){if(!confirm('Diesen Kalendereintrag wirklich löschen?'))return;const list=loadCalendarEntries();list.splice(i,1);saveCalendarEntries(list);location.reload();}
+async function saveCalendarEntry(){const name=document.getElementById('calendarName').value.trim();const m=Number(document.getElementById('calendarMonth').value);const day=Number(document.getElementById('calendarDay').value);if(!name||day<1||day>30){document.getElementById('calendarStatus').textContent='Bitte Name und gültigen Tag eingeben.';return;}const list=loadCalendarEntries();const entry={n:name,m,d:day,t:document.getElementById('calendarDesc').value.trim()};if(calendarEditIndex!==null&&list[calendarEditIndex])list[calendarEditIndex]=entry;else list.push(entry);await saveCalendarEntries(list);resetCalendarForm();document.getElementById('calendarStatus').textContent='✓ Gespeichert';location.reload();}
+async function deleteCalendarEntry(i){if(!confirm('Diesen Kalendereintrag wirklich löschen?'))return;const list=loadCalendarEntries();list.splice(i,1);await saveCalendarEntries(list);location.reload();}
 function escapeHtml(str){return String(str??'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
 document.getElementById('calendarSave').onclick=saveCalendarEntry;
 document.getElementById('calendarCancel').onclick=resetCalendarForm;
 renderAdminCalendarTools();
 
 </script>
+<script src="jsonbin-storage.js"></script>
+<script src="chroniken-sync.js" data-reload-on-change></script>
 <script src="legal-notice.js"></script>
 </body>
 </html>

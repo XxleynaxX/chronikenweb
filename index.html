@@ -253,7 +253,8 @@
   <div id="loginPanel" class="login-panel">
     <div id="loginFormWrap">
       <div class="login-title">Login</div>
-      <input type="text" id="loginUser" placeholder="Benutzername" autocomplete="username">
+      <button type="button" class="btn" data-discord-login style="width:100%;background:#5865F2;border-color:#5865F2;margin-bottom:.6rem;">🎮 Mit Discord anmelden</button>
+            <input type="text" id="loginUser" placeholder="Benutzername" autocomplete="username">
       <input type="password" id="loginPass" placeholder="Passwort" autocomplete="current-password">
       <button type="button" class="btn" id="btnLogin" style="width:100%;">Anmelden</button>
       <div class="login-err" id="loginErr"></div>
@@ -279,6 +280,9 @@
     <div class="emoji" id="vampEmoji" title="Vampir!">🧛</div>
   </div>
 
+  <script src="chroniken-auth.js"></script>
+  <script src="jsonbin-storage.js"></script>
+  <script src="chroniken-sync.js" data-reload-on-change></script>
   <script src="weather-config.js"></script>
   <script src="wetter.js"></script>
 <script>
@@ -332,12 +336,12 @@
           if (btnLib) btnLib.style.display = "block";
         } else if (admin) {
           if (roleTitle) roleTitle.textContent = "Admin aktiv";
-          if (roleInfo) roleInfo.textContent = "kann auch in der Bibliothek schreiben";
+          if (roleInfo) roleInfo.textContent = (window.ChronikenAuth && ChronikenAuth.name() ? ChronikenAuth.name() + " · " : "") + "kann auch in der Bibliothek schreiben";
           if (btnAdmin) btnAdmin.style.display = "block";
           if (btnLib) btnLib.style.display = "block";
         } else if (lib) {
           if (roleTitle) roleTitle.textContent = "Bibliothek aktiv";
-          if (roleInfo) roleInfo.textContent = "";
+          if (roleInfo) roleInfo.textContent = (window.ChronikenAuth && ChronikenAuth.name()) || "";
           if (btnAdmin) btnAdmin.style.display = "none";
           if (btnLib) btnLib.style.display = "block";
         }
@@ -367,6 +371,7 @@
         }
       }
       function doLogout() {
+        try { ChronikenAuth.clear(); } catch (e) {}
         setAdmin(false);
         setLib(false);
         refreshLoginUI();

@@ -104,7 +104,8 @@
 
     <div id="lockedView" class="locked-msg" style="display:none;">
       <h2>🔒 Nur für Admins</h2>
-      <p>Bitte unten links mit Benutzername und Passwort anmelden, um die Charakterverwaltung zu nutzen.</p>
+      <p>Bitte unten links mit Discord (Admin-Rolle) oder mit Benutzername und Passwort anmelden, um die Charakterverwaltung zu nutzen.</p>
+      <p style="margin-top:1rem;"><button type="button" class="btn" data-discord-login style="background:#5865F2;border-color:#5865F2;">🎮 Mit Discord anmelden</button></p>
       <p style="margin-top:1rem;"><a href="index.html" class="btn secondary">Zur Startseite</a></p>
     </div>
 
@@ -195,6 +196,18 @@
           <textarea id="wxExportText" readonly rows="14" style="width:100%;font-family:ui-monospace,monospace;font-size:0.78rem;background:rgba(0,0,0,0.35);color:var(--text);border:1px solid var(--border);border-radius:10px;padding:0.75rem;"></textarea>
           <button type="button" class="btn secondary" id="wxCopyExportBtn" style="margin-top:0.5rem;">In Zwischenablage kopieren</button>
         </div>
+      </div>
+
+      <div class="form-card" id="eventsSyncCard">
+        <h2>☁️ JSONBin-Sync (Events &amp; News)</h2>
+        <p style="color:var(--text-muted);font-size:0.9rem;margin-bottom:1rem;">
+          Events, News und Geburtstage liegen zentral im Bin <code id="evBinId"></code>.
+        </p>
+        <div class="form-actions">
+          <button type="button" class="btn secondary" id="evSyncNow">🔄 Mit JSONBin abgleichen</button>
+          <button type="button" class="btn secondary" id="evPushLocal">⬆️ Lokale Events nach JSONBin hochladen</button>
+        </div>
+        <div class="status" id="evWebhookStatus" style="display:none;margin-top:.8rem;"></div>
       </div>
 
       <div class="form-card" id="discordProxyCard">
@@ -327,7 +340,8 @@
   <div id="loginPanel" class="login-panel">
     <div id="loginFormWrap">
       <div class="login-title">Admin-Login</div>
-      <input type="text" id="loginUser" placeholder="Benutzername" autocomplete="username">
+      <button type="button" class="btn" data-discord-login style="width:100%;background:#5865F2;border-color:#5865F2;margin-bottom:.6rem;">🎮 Mit Discord anmelden</button>
+            <input type="text" id="loginUser" placeholder="Benutzername" autocomplete="username">
       <input type="password" id="loginPass" placeholder="Passwort" autocomplete="current-password">
       <button type="button" class="btn" id="btnLogin" style="width:100%;">Anmelden</button>
       <div class="login-err" id="loginErr"></div>
@@ -338,6 +352,9 @@
     </div>
   </div>
 
+  <script src="chroniken-auth.js"></script>
+  <script src="jsonbin-storage.js"></script>
+  <script src="chroniken-sync.js"></script>
   <script src="weather-config.js"></script>
   <script src="wetter.js"></script>
   <script>
@@ -858,26 +875,107 @@
       try { return JSON.parse(localStorage.getItem(key) || "[]"); } catch { return []; }
     }
     function adminSaveJSON(key, value) { localStorage.setItem(key, JSON.stringify(value)); }
+    let adminEditing = null; // {type:"event"|"bday", id|name}
+    const adminMonths = ["Frostmond","Eismond","Tauwind","Blütenmond","Sonnenhain","Glutmond","Erntemond","Goldlaub","Nebelmond","Dunkelmond","Sternenfall","Nachtfrost"];
+    function evStatus(msg, ok) {
+      const el = document.getElementById("evWebhookStatus");
+      if (!el) return;
+      el.style.display = "block";
+      el.style.color = ok ? "var(--success)" : "var(--danger, #f87171)";
+      el.textContent = msg;
+      clearTimeout(evStatus._t);
+      evStatus._t = setTimeout(function () { el.style.display = "none"; }, 5000);
+    }
     function renderAdminEventManager() {
       const box = document.getElementById("adminEventManager");
       if (!box || !isAdmin()) { if (box) box.innerHTML = "<p class=\"small\">Bitte zuerst als Admin anmelden.</p>"; return; }
       const birthdays = adminLoadJSON("portal_birthdays");
-      const events = adminLoadJSON("portal_events");
+      const events = adminLoadJSON("portal_events").sort((a, b) => (b.updated || 0) - (a.updated || 0));
       let disabled = adminLoadJSON("chroniken_disabled_holidays");
-      const months = ["Frostmond","Eismond","Tauwind","Blütenmond","Sonnenhain","Glutmond","Erntemond","Goldlaub","Nebelmond","Dunkelmond","Sternenfall","Nachtfrost"];
       const fixed = [
         [0,1,"Nacht der ersten Flamme"],[2,15,"Fest der drei Winde"],[3,20,"Blütensegen"],[5,15,"Sonnenwende der Krone"],[6,30,"Danktag der Ernte"],[8,13,"Nacht des Schleiers"],[10,30,"Sternennacht"],[11,15,"Fuchsfeuer"]
       ];
       const esc = v => String(v ?? "").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;");
-      let html = "";
-      birthdays.forEach(b => { html += `<div class=\"card\" style=\"margin:.6rem 0;padding:.8rem;display:flex;justify-content:space-between;gap:1rem;align-items:center\"><span><strong>🎂 ${esc(b.name)}</strong><br><small>${esc(b.day)}. ${esc(b.monthName || months[b.month] || "Monat")}${b.year ? " " + esc(b.year) : ""}</small></span><button class=\"btn danger\" type=\"button\" data-admin-bday=\"${esc(b.name)}\">Löschen</button></div>`; });
-      events.filter(e => e.eventType !== "Geburtstag").forEach(e => { html += `<div class=\"card\" style=\"margin:.6rem 0;padding:.8rem;display:flex;justify-content:space-between;gap:1rem;align-items:center\"><span><strong>📅 ${esc(e.title || e.characterName || "Event")}</strong><br><small>${esc(e.date || "")}</small></span><button class=\"btn danger\" type=\"button\" data-admin-event=\"${esc(e.id)}\">Löschen</button></div>`; });
-      fixed.forEach((h,i) => { if (!disabled.includes(i)) html += `<div class=\"card\" style=\"margin:.6rem 0;padding:.8rem;display:flex;justify-content:space-between;gap:1rem;align-items:center\"><span><strong>✨ ${esc(h[2])}</strong><br><small>${h[1]}. ${months[h[0]]}</small></span><button class=\"btn danger\" type=\"button\" data-admin-holiday=\"${i}\">Aus Kalender entfernen</button></div>`; });
-      box.innerHTML = html || "<p class=\"small\">Keine löschbaren Einträge vorhanden.</p>";
-      box.querySelectorAll("[data-admin-bday]").forEach(btn => btn.addEventListener("click", () => { const name=btn.dataset.adminBday; if (!confirm("Geburtstag von " + name + " wirklich löschen?")) return; adminSaveJSON("portal_birthdays", birthdays.filter(b => b.name !== name)); adminSaveJSON("portal_events", events.filter(e => !(e.eventType === "Geburtstag" && e.characterName === name))); renderAdminEventManager(); }));
-      box.querySelectorAll("[data-admin-event]").forEach(btn => btn.addEventListener("click", () => { const id=btn.dataset.adminEvent; if (!confirm("Dieses Event wirklich löschen?")) return; adminSaveJSON("portal_events", events.filter(e => e.id !== id)); renderAdminEventManager(); }));
-      box.querySelectorAll("[data-admin-holiday]").forEach(btn => btn.addEventListener("click", () => { const i=Number(btn.dataset.adminHoliday); if (!confirm("Diesen Feiertag aus dem Kalender entfernen?")) return; if (!disabled.includes(i)) disabled.push(i); adminSaveJSON("chroniken_disabled_holidays", disabled); renderAdminEventManager(); }));
+      const row = (inner, btns) => `<div class="card" style="margin:.6rem 0;padding:.8rem;display:flex;justify-content:space-between;gap:1rem;align-items:center;flex-wrap:wrap"><span>${inner}</span><span style="display:flex;gap:.5rem;flex-wrap:wrap">${btns}</span></div>`;
+      let html = `<div class="form-actions" style="margin:0 0 .8rem"><button type="button" class="btn" data-admin-new>+ Neues Event / News</button></div>`;
+
+      // Editor (Event neu/bearbeiten)
+      if (adminEditing && adminEditing.type === "event") {
+        const t = adminEditing.id ? events.find(e => e.id === adminEditing.id) : null;
+        html += `<div class="card" style="margin:.6rem 0;padding:1rem;border-color:var(--accent)"><h3 style="margin-bottom:.8rem">${t ? "Event bearbeiten" : "Neues Event"}</h3>
+          <div class="form-grid">
+            <div class="form-group full"><label>Titel</label><input type="text" id="aeTitle" value="${esc(t ? t.title : "")}"></div>
+            <div class="form-group full"><label>Datum / Zeitraum</label><input type="text" id="aeDate" value="${esc(t ? t.date : "")}" placeholder="z.B. 20.10.2026"></div>
+            <div class="form-group full"><label>Text</label><textarea id="aeContent">${esc(t ? t.content : "")}</textarea></div>
+            <div class="form-group full"><label style="display:flex;gap:.5rem;align-items:center;"><input type="checkbox" id="aeNews" style="width:auto;" ${(!t || t.showInNews) ? "checked" : ""}> Auch in den News anzeigen</label></div>
+          </div>
+          <div class="form-actions"><button type="button" class="btn" data-ae-save>Speichern</button><button type="button" class="btn secondary" data-ae-cancel>Abbrechen</button></div></div>`;
+      }
+      if (adminEditing && adminEditing.type === "bday") {
+        const b = birthdays.find(x => x.name === adminEditing.name) || {};
+        html += `<div class="card" style="margin:.6rem 0;padding:1rem;border-color:var(--accent)"><h3 style="margin-bottom:.8rem">Geburtstag bearbeiten</h3>
+          <div class="form-grid">
+            <div class="form-group"><label>Name</label><input type="text" id="abName" value="${esc(b.name)}"></div>
+            <div class="form-group"><label>Jahr</label><input type="number" id="abYear" value="${esc(b.year)}"></div>
+            <div class="form-group"><label>Tag (1–30)</label><input type="number" id="abDay" min="1" max="30" value="${esc(b.day)}"></div>
+            <div class="form-group"><label>Monat</label><select id="abMonth">${adminMonths.map((m,i)=>`<option value="${i}" ${i===b.month?"selected":""}>${m}</option>`).join("")}</select></div>
+          </div>
+          <div class="form-actions"><button type="button" class="btn" data-ab-save>Speichern</button><button type="button" class="btn secondary" data-ae-cancel>Abbrechen</button></div></div>`;
+      }
+
+      birthdays.forEach(b => { html += row(`<strong>🎂 ${esc(b.name)}</strong><br><small>${esc(b.day)}. ${esc(b.monthName || adminMonths[b.month] || "Monat")}${b.year ? " " + esc(b.year) : ""}</small>`,
+        `<button class="btn secondary" type="button" data-admin-bday-edit="${esc(b.name)}">✏️ Bearbeiten</button><button class="btn danger" type="button" data-admin-bday="${esc(b.name)}">🗑️ Löschen</button>`); });
+      events.filter(e => e.eventType !== "Geburtstag").forEach(e => { html += row(`<strong>📅 ${esc(e.title || e.characterName || "Event")}</strong>${e.showInNews ? ' <small style="color:var(--accent-soft)">● News</small>' : ""}<br><small>${esc(e.date || "")}</small>`,
+        `<button class="btn secondary" type="button" data-admin-event-edit="${esc(e.id)}">✏️ Bearbeiten</button><button class="btn danger" type="button" data-admin-event="${esc(e.id)}">🗑️ Löschen</button>`); });
+      fixed.forEach((h,i) => { if (!disabled.includes(i)) html += row(`<strong>✨ ${esc(h[2])}</strong><br><small>${h[1]}. ${adminMonths[h[0]]}</small>`, `<button class="btn danger" type="button" data-admin-holiday="${i}">Aus Kalender entfernen</button>`); });
+      box.innerHTML = html;
+
+      const run = async (label, fn) => {
+        try { evStatus(label + "…", true); await fn(); evStatus("✓ In JSONBin gespeichert", true); }
+        catch (err) { evStatus("✗ " + err.message, false); alert(err.message); }
+        adminEditing = null; renderAdminEventManager();
+      };
+      box.querySelector("[data-admin-new]").addEventListener("click", () => { adminEditing = { type: "event", id: null }; renderAdminEventManager(); });
+      box.querySelectorAll("[data-ae-cancel]").forEach(b => b.addEventListener("click", () => { adminEditing = null; renderAdminEventManager(); }));
+      const sv = box.querySelector("[data-ae-save]");
+      if (sv) sv.addEventListener("click", () => {
+        const title = document.getElementById("aeTitle").value.trim();
+        if (!title) { alert("Bitte einen Titel eingeben."); return; }
+        const data = { title, date: document.getElementById("aeDate").value.trim(), content: document.getElementById("aeContent").value.trim(), showInNews: document.getElementById("aeNews").checked };
+        run("Speichere", () => ChronikenSync.saveEvent(data, adminEditing.id));
+      });
+      const sb = box.querySelector("[data-ab-save]");
+      if (sb) sb.addEventListener("click", () => {
+        const name = document.getElementById("abName").value.trim();
+        const day = parseInt(document.getElementById("abDay").value, 10);
+        const month = parseInt(document.getElementById("abMonth").value, 10);
+        const year = parseInt(document.getElementById("abYear").value, 10);
+        if (!name || !day || day < 1 || day > 30) { alert("Name und Tag (1–30) prüfen."); return; }
+        const old = adminEditing.name;
+        run("Speichere", () => ChronikenSync.saveBirthday(old, { name, day, month, year: isNaN(year) ? "" : year }));
+      });
+      box.querySelectorAll("[data-admin-event-edit]").forEach(btn => btn.addEventListener("click", () => { adminEditing = { type: "event", id: btn.dataset.adminEventEdit }; renderAdminEventManager(); }));
+      box.querySelectorAll("[data-admin-bday-edit]").forEach(btn => btn.addEventListener("click", () => { adminEditing = { type: "bday", name: btn.dataset.adminBdayEdit }; renderAdminEventManager(); }));
+      box.querySelectorAll("[data-admin-bday]").forEach(btn => btn.addEventListener("click", () => { const name = btn.dataset.adminBday; if (!confirm("Geburtstag von " + name + " wirklich löschen?")) return; run("Lösche", () => ChronikenSync.removeBirthday(name)); }));
+      box.querySelectorAll("[data-admin-event]").forEach(btn => btn.addEventListener("click", () => { const id = btn.dataset.adminEvent; if (!confirm("Dieses Event wirklich löschen?")) return; run("Lösche", () => ChronikenSync.removeEvent(id)); }));
+      box.querySelectorAll("[data-admin-holiday]").forEach(btn => btn.addEventListener("click", () => { const i=Number(btn.dataset.adminHoliday); if (!confirm("Diesen Feiertag aus dem Kalender entfernen?")) return; if (!disabled.includes(i)) disabled.push(i); adminSaveJSON("chroniken_disabled_holidays", disabled); run("Speichere", () => ChronikenSync.saveDisabledHolidays(disabled)); }));
     }
+    document.addEventListener("chroniken-synced", function () { if (!adminEditing) renderAdminEventManager(); });
+
+    (function initEventsSyncUi() {
+      const $ = id => document.getElementById(id);
+      if (!$("evSyncNow")) return;
+      $("evBinId").textContent = ChronikenSync.EVENTS_BIN_ID;
+      $("evSyncNow").addEventListener("click", async () => {
+        try { const ch = await ChronikenSync.pull(); evStatus(ch ? "✓ Neue Daten aus JSONBin geladen" : "✓ Bereits aktuell", true); }
+        catch (e) { evStatus("✗ " + e.message, false); }
+      });
+      $("evPushLocal").addEventListener("click", async () => {
+        if (!confirm("Lokale Events/Geburtstage dieses Browsers in JSONBin schreiben und die dortigen Daten ersetzen?")) return;
+        try { await ChronikenSync.pushLocal(); evStatus("✓ Hochgeladen", true); }
+        catch (e) { evStatus("✗ " + e.message, false); }
+      });
+    })();
 
     function doLogin() {
       const u = document.getElementById("loginUser").value.trim();
@@ -893,6 +991,7 @@
       }
     }
     function doLogout() {
+      try { ChronikenAuth.clear(); } catch (e) {}
       setAdmin(false);
       updateLoginUI();
       renderAdminEventManager();
