@@ -1,85 +1,74 @@
 /**
- * Chroniken – Wetter-Kern (Browser + Node/Discord)
- * Config: localStorage (Admin) > weather-config.js
- * Live: forceWeather / skipWeather / resetTimer / clearOverride (nur Browser)
+ * Chroniken – Wetter-Kern (Browser)
+ *
+ * Gemeinsamer Zustand liegt im Haupt-Bin unter "weather":
+ *   { intervalMinutes, weather:[{name,icon,description,weight}], anchor, seed,
+ *     forced:{name,icon,description}|null, forcedSlot, title, text, updatedAt }
+ * Ohne gespeicherten Zustand gilt weather-config.js (gleiche Auswahl wie früher).
+ *
+ * Webseite und Render-Proxy (chroniken-discord-proxy/weather.js) berechnen
+ * das Wetter mit derselben Formel → überall gleiches Wetter, gleicher Timer.
+ * Der Proxy postet jeden Wechsel in Discord (DISCORD_WEATHER_WEBHOOK).
  */
 (function () {
   "use strict";
 
-  var STORAGE_KEY = "chroniken_weather_config_v2";
-  var OVERRIDE_KEY = "chroniken_weather_override_v1";
+  var PROXY = "https://chronikenweb-1.onrender.com";
+  var CACHE_KEY = "chroniken_weather_shared_v1";
+  var DEFAULT_TITLE = "🌦️ Wetter in Chroniken";
+  var DEFAULT_TEXT = "%wetter_icon% %wetter% ist jetzt bei Chroniken.\n\n%wetter_beschreibung%\n\nNächster Wechsel: %naechster_wetterwechsel%";
+  var FALLBACK_WEATHER = [
+    { name: "Klarer Himmel", icon: "☀️", description: "Ein ruhiger, heller Tag liegt über dem Land.", weight: 12 },
+    { name: "Bewölkt", icon: "☁️", description: "Wolken ziehen über den Himmel, doch es bleibt trocken.", weight: 12 },
+    { name: "Leichter Regen", icon: "🌦️", description: "Feiner Regen fällt und lässt die Straßen glänzen.", weight: 10 }
+  ];
 
-  function getFileConfig() {
-    var raw = null;
+  function proxyBase() {
     try {
-      if (typeof CHRONIKEN_WEATHER_CONFIG !== "undefined" && CHRONIKEN_WEATHER_CONFIG) {
-        raw = CHRONIKEN_WEATHER_CONFIG;
-      } else if (typeof globalThis !== "undefined" && globalThis.CHRONIKEN_WEATHER_CONFIG) {
-        raw = globalThis.CHRONIKEN_WEATHER_CONFIG;
-      }
+      var saved = localStorage.getItem("chroniken_discord_proxy_url");
+      if (saved && saved.trim()) return saved.trim().replace(/\/$/, "");
     } catch (e) {}
-
-    if (!raw || !Array.isArray(raw.weather) || !raw.weather.length) {
-      return {
-        intervalHours: 6,
-        weather: [
-          { name: "Klarer Himmel", icon: "☀️", description: "Ein ruhiger, heller Tag liegt über dem Land.", weight: 12 },
-          { name: "Leichter Wind", icon: "🍃", description: "Ein sanfter Wind zieht durch Wälder und Gassen.", weight: 12 },
-          { name: "Bewölkt", icon: "☁️", description: "Wolken ziehen über den Himmel, doch es bleibt trocken.", weight: 12 },
-          { name: "Nebel", icon: "🌫️", description: "Dichter Nebel liegt über dem Land und verschluckt die Ferne.", weight: 8 },
-          { name: "Leichter Regen", icon: "🌦️", description: "Feiner Regen fällt und lässt die Straßen glänzen.", weight: 10 },
-          { name: "Starker Regen", icon: "🌧️", description: "Kräftiger Regen prasselt auf Dächer und Wege.", weight: 6 },
-          { name: "Gewitter", icon: "⛈️", description: "Donner grollt am Horizont und Blitze erhellen die Wolken.", weight: 4 },
-          { name: "Starker Wind", icon: "🌬️", description: "Böen ziehen durch das Land und lassen Äste rauschen.", weight: 8 },
-          { name: "Schneefall", icon: "🌨️", description: "Leiser Schnee fällt vom Himmel und bedeckt die Landschaft.", weight: 5 },
-          { name: "Starker Schneefall", icon: "❄️", description: "Dichter Schnee fällt und macht Wege langsam schwer passierbar.", weight: 3 },
-          { name: "Frost", icon: "🥶", description: "Klare Kälte liegt in der Luft und Reif bedeckt die Landschaft.", weight: 5 },
-          { name: "Dunstiger Morgen", icon: "🌤️", description: "Heller Dunst liegt über dem Land und löst sich langsam auf.", weight: 5 }
-        ]
-      };
-    }
-    return normalizeConfig(raw);
+    return PROXY;
   }
 
-  function normalizeConfig(raw) {
-    raw = raw || {};
+  /* ---------- Normalisieren ---------- */
+  function cleanWeather(w) {
+    w = w || {};
     return {
-      intervalHours: Math.max(1, Number(raw.intervalHours) || 6),
-      weather: (raw.weather || []).map(function (w) {
-        w = w || {};
-        return {
-          name: String(w.name || "Unbekannt").trim() || "Unbenannt",
-          icon: String(w.icon || "🌤️").trim() || "🌤️",
-          description: String(w.description || "").trim(),
-          weight: Math.max(0, Number(w.weight) || 0)
-        };
-      })
+      name: String(w.name || "").trim() || "Unbenannt",
+      icon: String(w.icon || "").trim() || "🌤️",
+      description: String(w.description || "").trim(),
+      weight: Math.max(0, Number(w.weight) || 0)
     };
   }
 
-  function loadConfig() {
-    try {
-      if (typeof localStorage !== "undefined") {
-        var raw = localStorage.getItem(STORAGE_KEY);
-        if (raw) {
-          var parsed = JSON.parse(raw);
-          if (parsed && Array.isArray(parsed.weather) && parsed.weather.length) {
-            return normalizeConfig(parsed);
-          }
-        }
-      }
-    } catch (e) {}
-    return getFileConfig();
+  function fileConfig() {
+    var raw = (typeof globalThis !== "undefined" && globalThis.CHRONIKEN_WEATHER_CONFIG) || null;
+    var list = raw && Array.isArray(raw.weather) && raw.weather.length ? raw.weather : FALLBACK_WEATHER;
+    return {
+      intervalMinutes: Math.max(1, Number(raw && raw.intervalHours) || 6) * 60,
+      weather: list.map(cleanWeather)
+    };
   }
 
-  function slotMs(cfg) {
-    return Math.max(1, (cfg && cfg.intervalHours) || 6) * 60 * 60 * 1000;
+  function normalize(raw) {
+    var base = fileConfig();
+    raw = raw && typeof raw === "object" ? raw : {};
+    var list = Array.isArray(raw.weather) && raw.weather.length ? raw.weather.map(cleanWeather) : base.weather;
+    return {
+      intervalMinutes: Math.max(1, Math.round(Number(raw.intervalMinutes) || base.intervalMinutes)),
+      weather: list,
+      anchor: Number(raw.anchor) || 0,
+      seed: Math.max(0, Math.floor(Number(raw.seed) || 0)),
+      forced: raw.forced && raw.forced.name ? cleanWeather(raw.forced) : null,
+      forcedSlot: Math.max(0, Math.floor(Number(raw.forcedSlot) || 0)),
+      title: typeof raw.title === "string" && raw.title.trim() ? raw.title : DEFAULT_TITLE,
+      text: typeof raw.text === "string" && raw.text.trim() ? raw.text : DEFAULT_TEXT,
+      updatedAt: Number(raw.updatedAt) || 0
+    };
   }
 
-  function currentSlot(cfg) {
-    return Math.floor(Date.now() / slotMs(cfg));
-  }
-
+  /* ---------- Auswahl (identisch im Proxy) ---------- */
   function randomIndex(seed, length) {
     if (!length || length < 1) return 0;
     var x = (seed * 1103515245 + 12345) >>> 0;
@@ -88,298 +77,171 @@
   }
 
   function pickWeighted(seed, list) {
-    list = list || [];
-    if (!list.length) {
-      return { name: "Unbekannt", icon: "🌤️", description: "", weight: 0 };
-    }
-    var total = 0;
-    for (var i = 0; i < list.length; i++) {
-      total += Math.max(0, Number(list[i].weight) || 0);
-    }
-    if (total <= 0) {
-      return list[randomIndex(seed, list.length)] || list[0];
-    }
+    var total = 0, i;
+    for (i = 0; i < list.length; i++) total += list[i].weight;
+    if (total <= 0) return list[randomIndex(seed, list.length)] || list[0];
     var r = randomIndex(seed, total);
-    for (var j = 0; j < list.length; j++) {
-      r -= Math.max(0, Number(list[j].weight) || 0);
-      if (r < 0) return list[j];
-    }
+    for (i = 0; i < list.length; i++) { r -= list[i].weight; if (r < 0) return list[i]; }
     return list[list.length - 1];
   }
 
-  function pickRandom(list, excludeName) {
-    list = list || [];
-    var pool = [];
-    for (var i = 0; i < list.length; i++) {
-      if (list[i] && (!excludeName || list[i].name !== excludeName)) pool.push(list[i]);
-    }
-    if (!pool.length) pool = list.slice();
-    if (!pool.length) return { name: "Unbekannt", icon: "🌤️", description: "", weight: 1 };
-    var total = 0;
-    for (var j = 0; j < pool.length; j++) total += Math.max(0, Number(pool[j].weight) || 0);
-    if (total <= 0) return pool[Math.floor(Math.random() * pool.length)];
-    var r = Math.random() * total;
-    for (var k = 0; k < pool.length; k++) {
-      r -= Math.max(0, Number(pool[k].weight) || 0);
-      if (r < 0) return pool[k];
-    }
-    return pool[pool.length - 1];
-  }
-
-  function readOverride() {
-    try {
-      if (typeof localStorage === "undefined") return null;
-      var raw = localStorage.getItem(OVERRIDE_KEY);
-      if (!raw) return null;
-      var o = JSON.parse(raw);
-      if (!o || !o.until || !o.name) return null;
-      if (Date.now() >= Number(o.until)) {
-        try { localStorage.removeItem(OVERRIDE_KEY); } catch (e) {}
-        return null;
-      }
-      return o;
-    } catch (e) {
-      return null;
-    }
-  }
-
-  function writeOverride(o) {
-    try {
-      if (typeof localStorage === "undefined") return;
-      if (!o) localStorage.removeItem(OVERRIDE_KEY);
-      else localStorage.setItem(OVERRIDE_KEY, JSON.stringify(o));
-    } catch (e) {
-      console.warn("[ChronikenWeather] Override:", e);
-    }
-  }
-
-  function stateFromOverride(o, cfg) {
-    cfg = cfg || loadConfig();
+  function compute(st, now) {
+    now = now == null ? Date.now() : now;
+    var ms = st.intervalMinutes * 60000;
+    var k = Math.max(0, Math.floor((now - st.anchor) / ms));
+    var forced = !!(st.forced && k === st.forcedSlot);
+    var w = forced ? st.forced : pickWeighted(st.seed + k, st.weather);
     return {
-      slot: "override",
-      name: o.name,
-      icon: o.icon || "🌤️",
-      description: o.description || "",
-      weight: o.weight || 0,
-      changedAt: new Date(o.startedAt || Date.now()).toISOString(),
-      intervalHours: cfg.intervalHours,
-      forced: true,
-      until: o.until
-    };
-  }
-
-  function getWeatherState(s, cfg) {
-    cfg = cfg || loadConfig();
-    var list = (cfg.weather && cfg.weather.length) ? cfg.weather : getFileConfig().weather;
-    var w = pickWeighted(s, list);
-    var ms = slotMs(cfg);
-    return {
-      slot: s,
+      key: st.anchor + ":" + k,
+      slot: k,
       name: w.name,
       icon: w.icon,
       description: w.description,
       weight: w.weight,
-      changedAt: new Date(s * ms).toISOString(),
-      intervalHours: cfg.intervalHours,
-      forced: false
+      forced: forced,
+      intervalMinutes: st.intervalMinutes,
+      intervalHours: st.intervalMinutes / 60,
+      changedAt: new Date(st.anchor + k * ms).toISOString(),
+      nextAt: st.anchor + (k + 1) * ms
     };
   }
 
-  function get() {
-    var cfg = loadConfig();
-    var o = readOverride();
-    if (o) return stateFromOverride(o, cfg);
-    return getWeatherState(currentSlot(cfg), cfg);
+  /* ---------- Zustand laden ---------- */
+  var shared = (function () {
+    try { var c = JSON.parse(localStorage.getItem(CACHE_KEY) || "null"); if (c) return normalize(c); } catch (e) {}
+    return normalize(null);
+  })();
+  var lastKey = null;
+
+  function emit() {
+    var cur = compute(shared);
+    try { window.dispatchEvent(new CustomEvent("chroniken-weather-changed", { detail: cur })); } catch (e) {}
+    return cur;
   }
 
-  function msNext() {
-    var o = readOverride();
-    if (o) return Math.max(0, Number(o.until) - Date.now());
-    var cfg = loadConfig();
-    var ms = slotMs(cfg);
-    return ms - (Date.now() % ms);
+  function apply(raw) {
+    var next = normalize(raw);
+    var changed = JSON.stringify(next) !== JSON.stringify(shared);
+    shared = next;
+    try { localStorage.setItem(CACHE_KEY, JSON.stringify(raw || null)); } catch (e) {}
+    if (changed) { lastKey = compute(shared).key; emit(); }
   }
 
-  function format(ms) {
-    var total = Math.max(0, Math.floor(Number(ms) / 1000));
-    var h = Math.floor(total / 3600);
-    var m = Math.floor((total % 3600) / 60);
-    var s = total % 60;
-    return (
-      String(h).padStart(2, "0") + ":" +
-      String(m).padStart(2, "0") + ":" +
-      String(s).padStart(2, "0")
-    );
+  function withTimeout(promise, ms) {
+    return Promise.race([promise, new Promise(function (_, rej) { setTimeout(function () { rej(new Error("Zeitüberschreitung")); }, ms); })]);
   }
 
-  function nextChangeTime() {
-    return new Date(Date.now() + msNext());
-  }
-
-  var lastSlot = null;
-  var lastForcedUntil = null;
-
-  function emitChange(state) {
-    state = state || get();
+  async function refresh() {
     try {
-      if (typeof window !== "undefined" && window.dispatchEvent) {
-        window.dispatchEvent(new CustomEvent("chroniken-weather-changed", { detail: state }));
-      }
+      var r = await withTimeout(fetch(proxyBase() + "/weather/state", { cache: "no-store" }), 6000);
+      var d = await r.json();
+      if (r.ok && d && d.ok && d.source === "jsonbin") { apply(d.state); return "proxy"; }
     } catch (e) {}
-  }
-
-  function saveConfig(cfg) {
-    var clean = normalizeConfig(cfg || {});
     try {
-      if (typeof localStorage !== "undefined") {
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(clean));
-      }
-    } catch (e) {
-      console.warn("[ChronikenWeather] speichern fehlgeschlagen:", e);
-    }
-    emitChange(get());
-    return clean;
-  }
-
-  function clearLocalConfig() {
-    try {
-      if (typeof localStorage !== "undefined") localStorage.removeItem(STORAGE_KEY);
+      if (window.ChronikenStorage) { apply(await ChronikenStorage.refresh("weather")); return "jsonbin"; }
     } catch (e) {}
-    emitChange(get());
-    return getFileConfig();
+    return "cache";
   }
 
-  function exportConfigJs(cfg) {
-    cfg = normalizeConfig(cfg || loadConfig());
-    var lines = cfg.weather.map(function (w) {
-      return (
-        "      { name: " + JSON.stringify(w.name) +
-        ", icon: " + JSON.stringify(w.icon) +
-        ", description: " + JSON.stringify(w.description) +
-        ", weight: " + w.weight + " }"
-      );
-    });
-    return [
-      "/** Chroniken – Wetter-Config (aus Admin exportiert) */",
-      "(function (root) {",
-      '  "use strict";',
-      "  var WEATHER_CONFIG = {",
-      "    intervalHours: " + cfg.intervalHours + ",",
-      "    weather: [",
-      lines.join(",\n"),
-      "    ]",
-      "  };",
-      '  if (typeof root !== "undefined") root.CHRONIKEN_WEATHER_CONFIG = WEATHER_CONFIG;',
-      '  if (typeof module !== "undefined" && module.exports) module.exports = WEATHER_CONFIG;',
-      '})(typeof globalThis !== "undefined" ? globalThis : typeof window !== "undefined" ? window : this);',
-      ""
-    ].join("\n");
+  /* ---------- Admin-Aktionen (speichern im Haupt-Bin, Proxy neu laden lassen) ---------- */
+  function randomSeed() { return Math.floor(Math.random() * 1000000); }
+
+  function pickRandom(list, excludeName) {
+    var pool = list.filter(function (w) { return w.name !== excludeName; });
+    if (!pool.length) pool = list.slice();
+    var total = pool.reduce(function (s, w) { return s + w.weight; }, 0);
+    if (total <= 0) return pool[Math.floor(Math.random() * pool.length)];
+    var r = Math.random() * total;
+    for (var i = 0; i < pool.length; i++) { r -= pool[i].weight; if (r < 0) return pool[i]; }
+    return pool[pool.length - 1];
   }
 
-  function forceWeather(w) {
-    var cfg = loadConfig();
-    var ms = slotMs(cfg);
+  function plain(w) { return { name: w.name, icon: w.icon, description: w.description, weight: w.weight }; }
+
+  async function update(mutator) {
+    if (!window.ChronikenStorage) throw new Error("jsonbin-storage.js fehlt");
+    var latest = normalize(await ChronikenStorage.refresh("weather"));
     var now = Date.now();
-    var entry = {
-      name: String((w && w.name) || "Unbekannt"),
-      icon: String((w && w.icon) || "🌤️"),
-      description: String((w && w.description) || ""),
-      weight: Math.max(0, Number(w && w.weight) || 0),
-      startedAt: now,
-      until: now + ms
+    var next = mutator(latest, compute(latest, now), now) || latest;
+    next.updatedAt = now;
+    var record = {
+      intervalMinutes: next.intervalMinutes,
+      weather: next.weather.map(plain),
+      anchor: next.anchor, seed: next.seed,
+      forced: next.forced ? plain(next.forced) : null,
+      forcedSlot: next.forcedSlot,
+      title: next.title, text: next.text,
+      updatedAt: next.updatedAt
     };
-    writeOverride(entry);
-    lastForcedUntil = entry.until;
-    lastSlot = null;
-    var state = stateFromOverride(entry, cfg);
-    emitChange(state);
-    return state;
+    await ChronikenStorage.save("weather", record);
+    apply(record);
+    var discord = false;
+    try {
+      var r = await withTimeout(fetch(proxyBase() + "/weather/reload", { method: "POST" }), 45000);
+      discord = r.ok;
+    } catch (e) {}
+    return { state: compute(shared), proxy: discord };
   }
 
-  function skipWeather() {
-    var cfg = loadConfig();
-    var cur = get();
-    return forceWeather(pickRandom(cfg.weather, cur && cur.name));
-  }
-
-  function resetTimer() {
-    var cur = get();
-    return forceWeather({
-      name: cur.name,
-      icon: cur.icon,
-      description: cur.description,
-      weight: cur.weight
-    });
-  }
-
-  function clearOverride() {
-    writeOverride(null);
-    lastForcedUntil = null;
-    var cfg = loadConfig();
-    lastSlot = currentSlot(cfg);
-    var state = getWeatherState(lastSlot, cfg);
-    emitChange(state);
-    return state;
-  }
-
-  function watch() {
-    var cfg = loadConfig();
-    var o = readOverride();
-    if (o) {
-      lastForcedUntil = o.until;
-      return;
-    }
-    if (lastForcedUntil !== null) {
-      lastForcedUntil = null;
-      lastSlot = currentSlot(cfg);
-      emitChange(getWeatherState(lastSlot, cfg));
-      return;
-    }
-    var current = currentSlot(cfg);
-    if (lastSlot === null) {
-      lastSlot = current;
-      return;
-    }
-    if (current !== lastSlot) {
-      lastSlot = current;
-      emitChange(getWeatherState(current, cfg));
-    }
-  }
-
-  if (typeof setInterval !== "undefined") {
-    setInterval(watch, 1000);
+  function restartWith(w) {
+    return function (st, cur, now) {
+      st.anchor = now; st.seed = randomSeed(); st.forced = cleanWeather(w || cur); st.forcedSlot = 0;
+      return st;
+    };
   }
 
   var api = {
-    get: get,
-    getWeatherState: function (s) {
-      var cfg = loadConfig();
-      var o = readOverride();
-      if (o && (s == null || s === undefined)) return stateFromOverride(o, cfg);
-      return getWeatherState(s == null ? currentSlot(cfg) : s, cfg);
+    get: function () { return compute(shared); },
+    msNext: function () { return Math.max(0, compute(shared).nextAt - Date.now()); },
+    nextChangeTime: function () { return new Date(compute(shared).nextAt); },
+    format: function (ms) {
+      var t = Math.max(0, Math.floor(Number(ms) / 1000));
+      var d = Math.floor(t / 86400), h = Math.floor((t % 86400) / 3600), m = Math.floor((t % 3600) / 60), s = t % 60;
+      var hms = String(h).padStart(2, "0") + ":" + String(m).padStart(2, "0") + ":" + String(s).padStart(2, "0");
+      return d ? d + "T " + hms : hms;
     },
-    msNext: msNext,
-    format: format,
-    nextChangeTime: nextChangeTime,
-    loadConfig: loadConfig,
-    saveConfig: saveConfig,
-    clearLocalConfig: clearLocalConfig,
-    exportConfigJs: exportConfigJs,
-    getFileConfig: getFileConfig,
-    getWeatherList: function () { return loadConfig().weather; },
-    forceWeather: forceWeather,
-    skipWeather: skipWeather,
-    resetTimer: resetTimer,
-    clearOverride: clearOverride,
-    DEFAULT_CONFIG: getFileConfig(),
-    STORAGE_KEY: STORAGE_KEY,
-    OVERRIDE_KEY: OVERRIDE_KEY
+    formatInterval: function (min) {
+      min = Number(min) || 0;
+      if (min % 1440 === 0) return (min / 1440) + (min === 1440 ? " Tag" : " Tage");
+      if (min % 60 === 0) return (min / 60) + (min === 60 ? " Stunde" : " Stunden");
+      return min + (min === 1 ? " Minute" : " Minuten");
+    },
+    getShared: function () { return JSON.parse(JSON.stringify(shared)); },
+    getWeatherList: function () { return shared.weather.slice(); },
+    loadConfig: function () { return { intervalHours: shared.intervalMinutes / 60, intervalMinutes: shared.intervalMinutes, weather: shared.weather.slice() }; },
+    refresh: refresh,
+    // Admin
+    chooseWeather: function (w) { return update(restartWith(w)); },
+    skipWeather: function () {
+      return update(function (st, cur, now) { return restartWith(pickRandom(st.weather, cur.name))(st, cur, now); });
+    },
+    resetTimer: function () { return update(restartWith(null)); },
+    setIntervalMinutes: function (min) {
+      min = Math.max(1, Math.round(Number(min) || 0));
+      return update(function (st, cur, now) { st.intervalMinutes = min; return restartWith(null)(st, cur, now); });
+    },
+    saveWeatherList: function (list) {
+      list = (list || []).map(cleanWeather).filter(function (w) { return w.name; });
+      if (!list.length) return Promise.reject(new Error("Mindestens eine Wetterlage nötig"));
+      // aktuelles Wetter + Timer bleiben unverändert
+      return update(function (st, cur) { st.forced = cleanWeather(cur); st.forcedSlot = cur.slot; st.weather = list; return st; });
+    },
+    saveTemplate: function (title, text) {
+      return update(function (st) { st.title = String(title || "").trim() || DEFAULT_TITLE; st.text = String(text || "").trim() || DEFAULT_TEXT; return st; });
+    },
+    DEFAULT_TITLE: DEFAULT_TITLE,
+    DEFAULT_TEXT: DEFAULT_TEXT,
+    _compute: compute,
+    _normalize: normalize
   };
 
-  if (typeof window !== "undefined") {
-    window.ChronikenWeather = api;
-  }
-  if (typeof module !== "undefined" && module.exports) {
-    module.exports = api;
-  }
+  setInterval(function () {
+    var cur = compute(shared);
+    if (lastKey === null) { lastKey = cur.key; return; }
+    if (cur.key !== lastKey) { lastKey = cur.key; emit(); }
+  }, 1000);
+  setInterval(refresh, 60 * 1000);
+  refresh();
+
+  window.ChronikenWeather = api;
 })();

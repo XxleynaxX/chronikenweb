@@ -6,7 +6,9 @@
  *   - Wetterlagen + Gewichte
  *
  * Wird von wetter.js (Webseite) und von
- * .github/scripts/weather-notify.js (Discord) gelesen.
+ * chroniken-discord-proxy/weather.js (Discord-Meldung auf Render) gelesen.
+ * Liegt Render nur im Proxy-Ordner, nutzt er die Kopie
+ * chroniken-discord-proxy/weather-config.js – Änderungen dort mit übernehmen.
  *
  * Änderungen nur hier vornehmen und deployen.
  * Kein localStorage.
@@ -44,7 +46,7 @@
     root.CHRONIKEN_WEATHER_CONFIG = WEATHER_CONFIG;
   }
 
-  // Node (GitHub Action)
+  // Node (Render-Proxy)
   if (typeof module !== "undefined" && module.exports) {
     module.exports = WEATHER_CONFIG;
   }

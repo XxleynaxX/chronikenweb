@@ -44,6 +44,9 @@
     return res.json();
   }
 
+  function isObj(v) { return !!v && typeof v === "object" && !Array.isArray(v); }
+  const OBJECT_KEYS = ["kreaturen", "weather"];
+
   function defaults(record) {
     const out = {};
     mainCollections.forEach(name => {
@@ -51,6 +54,7 @@
     });
     out.kreaturen = record.kreaturen && typeof record.kreaturen === "object" && !Array.isArray(record.kreaturen)
       ? record.kreaturen : null;
+    out.weather = isObj(record.weather) ? record.weather : null;
     return out;
   }
 
@@ -74,7 +78,7 @@
       return (await ensureHealer()).heiler;
     }
     const data = await ensureMain();
-    return name === "kreaturen" ? data.kreaturen : (Array.isArray(data[name]) ? data[name] : []);
+    return OBJECT_KEYS.includes(name) ? data[name] : (Array.isArray(data[name]) ? data[name] : []);
   }
 
   async function save(name, value) {
@@ -88,8 +92,8 @@
 
     const data = await ensureMain();
     const latest = await fetchBin(MAIN_API);
-    latest[name] = name === "kreaturen"
-      ? ((value && typeof value === "object" && !Array.isArray(value)) ? value : null)
+    latest[name] = OBJECT_KEYS.includes(name)
+      ? (isObj(value) ? value : null)
       : (Array.isArray(value) ? value : []);
     data[name] = latest[name];
     mainCache = data;

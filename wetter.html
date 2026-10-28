@@ -10,6 +10,7 @@
   <link rel="stylesheet" href="chroniken-admin.css">
 
   <script src="chroniken-data.js"></script>
+  <script src="jsonbin-storage.js"></script>
   <script src="weather-config.js"></script>
   <script src="wetter.js"></script>
 
@@ -72,6 +73,26 @@
       color: var(--text-muted);
       font-size: .85rem;
     }
+
+    .wadmin { margin-top: 2rem; }
+    .wadmin .admin-form { margin-bottom: 1.2rem; text-align: left; }
+    .wadmin .row { display: flex; gap: .6rem; flex-wrap: wrap; align-items: center; }
+    .wadmin .row select, .wadmin .row input { padding: .6rem .7rem; border: 1px solid var(--border); background: var(--bg-input, rgba(255,255,255,.03)); color: var(--text); border-radius: 8px; font: inherit; }
+    .wadmin .row select, .wadmin .row input { width: auto; flex: 0 0 auto; }
+    .wadmin .row input[type=number] { width: 7rem; }
+    .wadmin .row select { min-width: 14rem; max-width: 100%; }
+    .wadmin .quick { display: flex; gap: .4rem; flex-wrap: wrap; margin-top: .7rem; }
+    .wadmin .quick button { padding: .3rem .7rem; font-size: .82rem; }
+    .wlist { display: flex; flex-direction: column; gap: .5rem; }
+    .wrow { display: grid; grid-template-columns: 4rem 1fr 2fr 5rem auto; gap: .5rem; align-items: center; }
+    .wrow input { width: 100%; padding: .5rem .6rem; border: 1px solid var(--border); background: var(--bg-input, rgba(255,255,255,.03)); color: var(--text); border-radius: 8px; font: inherit; }
+    .wrow.head { font-size: .78rem; color: var(--text-muted); font-weight: 600; }
+    .wrow .btn { padding: .45rem .7rem; }
+    .wstatus { font-size: .88rem; }
+    .wstatus.err { color: #fb7185; }
+    .wstatus.ok { color: #22c55e; }
+    .admin-badge { display: inline-block; font-size: .75rem; padding: .1rem .5rem; border-radius: 999px; background: rgba(168,85,247,.2); color: var(--accent-soft); margin-left: .4rem; vertical-align: middle; }
+    @media (max-width: 700px) { .wrow { grid-template-columns: 3.2rem 1fr 4rem auto; } .wrow .wdesc { grid-column: 1 / -1; order: 5; } .wrow.head { display: none; } }
   </style>
 </head>
 
@@ -107,8 +128,8 @@
     <section class="hero">
       <h1>🌦️ Wetter</h1>
 
-      <p class="subtitle">
-        Das Wetter der Chroniken wechselt alle sechs Stunden.
+      <p class="subtitle" id="subtitle">
+        Das Wetter der Chroniken wechselt regelmäßig.
       </p>
     </section>
 
@@ -140,6 +161,76 @@
       </div>
 
     </div>
+
+
+    <section class="wadmin" id="weatherAdmin" style="display:none">
+      <h2>⚙️ Wetter verwalten <span class="admin-badge">Admin</span></h2>
+      <p class="admin-note">Änderungen gelten sofort für alle Besucher und werden über den Render-Proxy in Discord gemeldet.</p>
+
+      <div class="admin-form">
+        <h2>🌤️ Aktuelles Wetter</h2>
+        <div class="row">
+          <button type="button" class="btn" id="btnSkip">⏭ Wetter überspringen</button>
+          <button type="button" class="btn secondary" id="btnReset">🔄 Timer neu starten</button>
+        </div>
+        <div class="row" style="margin-top:1rem">
+          <select id="chooseSelect" aria-label="Wetter auswählen"></select>
+          <button type="button" class="btn" id="btnChoose">Dieses Wetter setzen</button>
+        </div>
+      </div>
+
+      <div class="admin-form">
+        <h2>⏱️ Timer</h2>
+        <p class="admin-note" style="margin-bottom:.7rem">Jetzt: alle <strong id="curInterval">–</strong>. Der Timer startet nach dem Speichern neu, das aktuelle Wetter bleibt.</p>
+        <div class="row">
+          <input type="number" id="intervalValue" min="1" step="1" aria-label="Dauer">
+          <select id="intervalUnit" aria-label="Einheit" style="min-width:8rem">
+            <option value="1">Minuten</option>
+            <option value="60">Stunden</option>
+            <option value="1440">Tage</option>
+          </select>
+          <button type="button" class="btn" id="btnInterval">Timer speichern</button>
+        </div>
+        <div class="quick">
+          <button type="button" class="btn secondary" data-min="1">1 Min</button>
+          <button type="button" class="btn secondary" data-min="15">15 Min</button>
+          <button type="button" class="btn secondary" data-min="60">1 Std</button>
+          <button type="button" class="btn secondary" data-min="180">3 Std</button>
+          <button type="button" class="btn secondary" data-min="360">6 Std</button>
+          <button type="button" class="btn secondary" data-min="1440">1 Tag</button>
+        </div>
+      </div>
+
+      <div class="admin-form">
+        <h2>🌈 Wetterlagen</h2>
+        <p class="admin-note" style="margin-bottom:.7rem">Chance = wie oft das Wetter vorkommt (höher = öfter, 0 = nie zufällig).</p>
+        <div class="wlist" id="wlist"></div>
+        <div class="admin-actions">
+          <button type="button" class="btn secondary" id="btnAddWeather">➕ Neues Wetter</button>
+          <button type="button" class="btn" id="btnSaveList">Wetterlagen speichern</button>
+        </div>
+      </div>
+
+      <div class="admin-form">
+        <h2>📨 Discord-Nachricht</h2>
+        <div class="admin-grid">
+          <div class="admin-field full">
+            <label for="tplTitle">Titel</label>
+            <input type="text" id="tplTitle">
+          </div>
+          <div class="admin-field full">
+            <label for="tplText">Text</label>
+            <textarea id="tplText" rows="5"></textarea>
+            <span class="small">Platzhalter: <code>%wetter%</code> <code>%wetter_icon%</code> <code>%wetter_beschreibung%</code> <code>%naechster_wetterwechsel%</code> <code>%datum%</code> <code>%zeit%</code></span>
+          </div>
+        </div>
+        <div class="admin-actions">
+          <button type="button" class="btn" id="btnSaveTpl">Nachricht speichern</button>
+        </div>
+      </div>
+
+      <p class="wstatus" id="wstatus" role="status"></p>
+    </section>
 
     <section style="margin-top:2rem">
 
@@ -181,13 +272,16 @@
       }
       if (!weather) weather = ChronikenWeather.get();
       el("icon").textContent = weather.icon || "🌦️";
-      el("name").textContent = (weather.name || "Unbekannt") + (weather.forced ? " [Admin]" : "");
+      el("name").textContent = weather.name || "Unbekannt";
       el("desc").textContent = weather.description || "";
       el("countdown").textContent = ChronikenWeather.format(ChronikenWeather.msNext());
+      el("subtitle").textContent = "Das Wetter der Chroniken wechselt alle " + ChronikenWeather.formatInterval(weather.intervalMinutes) + ".";
     }
 
     window.addEventListener("chroniken-weather-changed", function (event) {
       draw(event.detail);
+      renderWeatherList();
+      renderAdmin();
     });
 
     function renderWeatherList() {
@@ -205,8 +299,127 @@
       }).join("");
     }
 
+
+    /* ---------- Admin-Menü ---------- */
+    function isAdmin() {
+      try { return sessionStorage.getItem("portal_admin_auth") === "1"; } catch (e) { return false; }
+    }
+    let listDirty = false, tplDirty = false;
+
+    function setStatus(text, kind) {
+      el("wstatus").textContent = text;
+      el("wstatus").className = "wstatus" + (kind ? " " + kind : "");
+    }
+
+    function rowHtml(w) {
+      return '<div class="wrow">' +
+        '<input class="wicon" value="' + escapeHtml(w.icon) + '" aria-label="Icon">' +
+        '<input class="wname" value="' + escapeHtml(w.name) + '" placeholder="Name" aria-label="Name">' +
+        '<input class="wdesc" value="' + escapeHtml(w.description) + '" placeholder="Beschreibung" aria-label="Beschreibung">' +
+        '<input class="wweight" type="number" min="0" step="1" value="' + escapeHtml(w.weight) + '" aria-label="Chance">' +
+        '<button type="button" class="btn danger" data-del title="Löschen">✕</button></div>';
+    }
+
+    function renderList(list) {
+      el("wlist").innerHTML = '<div class="wrow head"><span>Icon</span><span>Name</span><span class="wdesc">Beschreibung</span><span>Chance</span><span></span></div>' +
+        list.map(rowHtml).join("");
+    }
+
+    function readList() {
+      return Array.from(el("wlist").querySelectorAll(".wrow:not(.head)")).map(function (r) {
+        return {
+          icon: r.querySelector(".wicon").value.trim(),
+          name: r.querySelector(".wname").value.trim(),
+          description: r.querySelector(".wdesc").value.trim(),
+          weight: Number(r.querySelector(".wweight").value) || 0
+        };
+      }).filter(function (w) { return w.name; });
+    }
+
+    function renderAdmin() {
+      if (!isAdmin() || !window.ChronikenWeather) { el("weatherAdmin").style.display = "none"; return; }
+      el("weatherAdmin").style.display = "";
+      const st = ChronikenWeather.getShared();
+      const cur = ChronikenWeather.get();
+      el("chooseSelect").innerHTML = st.weather.map(function (w, i) {
+        return '<option value="' + i + '"' + (w.name === cur.name ? " selected" : "") + ">" + escapeHtml(w.icon + " " + w.name) + "</option>";
+      }).join("");
+      el("curInterval").textContent = ChronikenWeather.formatInterval(st.intervalMinutes);
+      if (document.activeElement !== el("intervalValue") && document.activeElement !== el("intervalUnit")) {
+        const m = st.intervalMinutes, unit = m % 1440 === 0 ? 1440 : m % 60 === 0 ? 60 : 1;
+        el("intervalUnit").value = String(unit);
+        el("intervalValue").value = m / unit;
+      }
+      if (!listDirty) renderList(st.weather);
+      if (!tplDirty) { el("tplTitle").value = st.title; el("tplText").value = st.text; }
+    }
+
+    async function run(label, fn) {
+      const buttons = el("weatherAdmin").querySelectorAll("button");
+      buttons.forEach(function (b) { b.disabled = true; });
+      setStatus(label + " …");
+      try {
+        const r = await fn();
+        setStatus("✓ Gespeichert: " + r.state.icon + " " + r.state.name + " · " +
+          (r.proxy ? "Discord wird benachrichtigt." : "Render-Proxy nicht erreichbar – die Discord-Meldung kommt, sobald er wieder läuft."), r.proxy ? "ok" : "");
+        return true;
+      } catch (e) {
+        setStatus("Fehler: " + e.message, "err");
+        return false;
+      } finally {
+        buttons.forEach(function (b) { b.disabled = false; });
+        draw();
+        renderAdmin();
+      }
+    }
+
+    el("btnSkip").addEventListener("click", function () { run("Überspringe", ChronikenWeather.skipWeather); });
+    el("btnReset").addEventListener("click", function () { run("Starte Timer neu", ChronikenWeather.resetTimer); });
+    el("btnChoose").addEventListener("click", function () {
+      const w = ChronikenWeather.getWeatherList()[Number(el("chooseSelect").value)];
+      if (w) run("Setze Wetter", function () { return ChronikenWeather.chooseWeather(w); });
+    });
+    function saveInterval(min) {
+      if (!(min >= 1)) { setStatus("Bitte mindestens 1 Minute eintragen.", "err"); return; }
+      run("Speichere Timer", function () { return ChronikenWeather.setIntervalMinutes(min); });
+    }
+    el("btnInterval").addEventListener("click", function () {
+      saveInterval(Math.round(Number(el("intervalValue").value) * Number(el("intervalUnit").value)));
+    });
+    document.querySelectorAll(".quick [data-min]").forEach(function (b) {
+      b.addEventListener("click", function () { saveInterval(Number(b.dataset.min)); });
+    });
+    el("wlist").addEventListener("input", function () { listDirty = true; });
+    el("wlist").addEventListener("click", function (e) {
+      const del = e.target.closest("[data-del]");
+      if (!del) return;
+      del.closest(".wrow").remove();
+      listDirty = true;
+    });
+    el("btnAddWeather").addEventListener("click", function () {
+      el("wlist").insertAdjacentHTML("beforeend", rowHtml({ icon: "🌤️", name: "", description: "", weight: 5 }));
+      listDirty = true;
+      const rows = el("wlist").querySelectorAll(".wrow .wname");
+      rows[rows.length - 1].focus();
+    });
+    el("btnSaveList").addEventListener("click", async function () {
+      const list = readList();
+      if (!list.length) { setStatus("Mindestens eine Wetterlage mit Namen nötig.", "err"); return; }
+      const names = list.map(function (w) { return w.name.toLowerCase(); });
+      if (new Set(names).size !== names.length) { setStatus("Jeder Name darf nur einmal vorkommen.", "err"); return; }
+      listDirty = false;
+      await run("Speichere Wetterlagen", function () { return ChronikenWeather.saveWeatherList(list); });
+    });
+    el("tplTitle").addEventListener("input", function () { tplDirty = true; });
+    el("tplText").addEventListener("input", function () { tplDirty = true; });
+    el("btnSaveTpl").addEventListener("click", async function () {
+      tplDirty = false;
+      await run("Speichere Nachricht", function () { return ChronikenWeather.saveTemplate(el("tplTitle").value, el("tplText").value); });
+    });
+
     draw();
     renderWeatherList();
+    renderAdmin();
     setInterval(function () {
       if (!window.ChronikenWeather) return;
       el("countdown").textContent = ChronikenWeather.format(ChronikenWeather.msNext());
