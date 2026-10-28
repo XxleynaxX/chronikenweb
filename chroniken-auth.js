@@ -283,6 +283,14 @@
     nav.insertBefore(box, nav.firstChild);
   }
 
+  // Menüpunkte mit data-admin-only (Wetter, Admin) sind nur für Admins sichtbar
+  function syncAdminNav() {
+    const admin = !isLogoutBlocked() && flag(ADMIN_KEY);
+    document.querySelectorAll("[data-admin-only]").forEach(function (el) {
+      el.style.display = admin ? "" : "none";
+    });
+  }
+
   // Alle Knöpfe mit data-discord-login starten die Anmeldung
   function bind() {
     document.querySelectorAll("[data-discord-login]").forEach(function (b) {
@@ -304,8 +312,9 @@
     }
   });
 
-  global.ChronikenAuth = { login: login, clear: clear, logout: logout, name: name };
+  global.ChronikenAuth = { syncAdminNav: syncAdminNav, login: login, clear: clear, logout: logout, name: name };
   function start() {
+    syncAdminNav();
     navWidget();
     bind();
     handleReturn();

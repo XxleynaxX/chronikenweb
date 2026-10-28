@@ -7,8 +7,22 @@
 .records{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:1rem}.record{background:var(--bg-card);border:1px solid var(--border);border-radius:14px;padding:1.2rem;position:relative}.record h3{color:var(--purple-bright);margin:0 0 .35rem}.badge{display:inline-block;padding:.2rem .55rem;border:1px solid var(--border);border-radius:999px;font-size:.78rem;color:var(--text-muted);margin:.25rem 0}.record p{line-height:1.55}.record-meta{font-size:.78rem;color:var(--text-muted);margin-top:.8rem}.record-actions{display:flex;gap:.45rem;margin-top:1rem}.locked{text-align:center;padding:3rem;background:var(--bg-card);border:1px solid var(--border);border-radius:14px}
 @media(max-width:700px){.form-grid{grid-template-columns:1fr}.full{grid-column:auto}.toolbar{flex-direction:column;align-items:stretch}}
 </style></head><body><div class="bg-overlay"></div><header><div class="logo-wrap"><div class="logo">Chroniken</div></div><nav>
-<a href="index.html">Start</a><a href="news.html">News</a><a href="events.html">Events</a><a href="kalender.html">Kalender</a><a href="wiki.html">Wiki</a><a href="bibliothek.html">Bibliothek</a><a href="berufe.html">Berufe</a><a href="kreaturen.html">Kreaturen</a><a href="regeln.html">Regeln</a><a href="goetter.html">Götter</a><a href="charakterbogen.html">Charakterbogen</a><a href="heilerakte.html" class="active">Heilerakte</a><a href="admin.html">Admin</a>
-</nav></header>
+      <a href="index.html">Start</a>
+      <a href="news.html">News</a>
+      <a href="events.html">Events</a>
+      <a href="kalender.html">Kalender</a>
+      <a href="wiki.html">Wiki</a>
+      <a href="bibliothek.html">Bibliothek</a>
+      <a href="voelker.html">Völker</a>
+      <a href="berufe.html">Berufe</a>
+      <a href="kreaturen.html">Kreaturen</a>
+      <a href="regeln.html">Regeln</a>
+      <a href="goetter.html">Götter</a>
+      <a href="charakterbogen.html">Charakterbogen</a>
+      <a href="heilerakte.html" class="active">Heilerakte</a>
+      <a href="wetter.html" id="navWetter" data-admin-only style="display:none;">Wetter</a>
+      <a href="admin.html" id="navAdmin" data-admin-only style="display:none;">Admin</a>
+    </nav></header>
 <main class="healer-wrap"><section class="healer-hero"><h1>🩺 Heilerakte</h1><p>Medizinische RP-Aufzeichnungen der Chroniken. Die Akten werden zentral in einem eigenen JSONBin gespeichert.</p></section>
 <div id="locked" class="locked" style="display:none"><h2>🔒 Kein Zugriff</h2><p>Diese Seite ist nur für Heiler und Admins vorgesehen.</p><p><button type="button" class="btn btn-discord btn-discord-lg" data-discord-login><svg class="discord-logo" viewBox="0 0 127.14 96.36" aria-hidden="true"><path fill="currentColor" d="M107.7 8.07A105.15 105.15 0 0 0 81.47 0a72.06 72.06 0 0 0-3.36 6.83 97.68 97.68 0 0 0-29.11 0A72.37 72.37 0 0 0 45.64 0a105.89 105.89 0 0 0-26.25 8.09C2.79 32.65-1.71 56.6.54 80.21a105.73 105.73 0 0 0 32.17 16.15 77.7 77.7 0 0 0 6.89-11.11 68.42 68.42 0 0 1-10.85-5.18c.91-.66 1.8-1.34 2.66-2a75.57 75.57 0 0 0 64.32 0c.87.71 1.76 1.39 2.66 2a68.68 68.68 0 0 1-10.87 5.19 77 77 0 0 0 6.89 11.1 105.25 105.25 0 0 0 32.19-16.14c2.64-27.38-4.51-51.11-18.9-72.15ZM42.45 65.69C36.18 65.69 31 60 31 53s5-12.74 11.43-12.74S54 46 53.89 53s-5.05 12.69-11.44 12.69Zm42.24 0C78.41 65.69 73.25 60 73.25 53s5-12.74 11.44-12.74S96.23 46 96.12 53s-5.04 12.69-11.43 12.69Z"/></svg><span>Mit Discord anmelden</span></button></p></div>
 <div id="app" style="display:none">

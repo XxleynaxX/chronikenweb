@@ -6,6 +6,18 @@
   <title>Chroniken – Admin · Charakterverwaltung</title>
   <link rel="stylesheet" href="style.css">
   <style>
+    .sheet-modal{position:fixed;inset:0;z-index:100000;background:rgba(5,3,12,.88);overflow:auto;padding:2rem 1rem}
+    .sheet-box{max-width:820px;margin:0 auto;background:#150e29;border:1px solid var(--border);border-radius:14px;padding:1.4rem 1.6rem;box-shadow:0 0 30px rgba(124,92,255,.25)}
+    #tableWrap{overflow-x:auto}
+    .actions-cell{white-space:nowrap}
+    .sheet-head{display:flex;justify-content:space-between;align-items:center;gap:1rem;margin-bottom:1rem;border-bottom:1px solid var(--border);padding-bottom:.8rem}
+    .sheet-head h2{margin:0}
+    .sheet-row{display:grid;grid-template-columns:190px 1fr;gap:.8rem;padding:.45rem 0;border-bottom:1px dashed rgba(122,98,214,.3)}
+    .sheet-row .k{color:var(--accent-soft,#a48cf0);font-weight:600}
+    .sheet-row .v{white-space:pre-wrap;word-break:break-word}
+    .sheet-section{margin:1rem 0 .2rem;font-weight:700;letter-spacing:.5px;color:#d9c8ff}
+    .sheet-foot{margin-top:1rem;display:flex;gap:.8rem;align-items:center}
+    @media(max-width:600px){.sheet-row{grid-template-columns:1fr}}
     .admin-layout{max-width:1100px;margin:0 auto;padding:0 1.5rem 3rem}
     .admin-bar{display:flex;flex-wrap:wrap;gap:.8rem;align-items:center;margin-bottom:1.5rem;padding:1rem 1.2rem;background:var(--bg-card);border:1px solid var(--border);border-radius:10px}
     .admin-bar .status-ok{color:var(--success);font-weight:600}
@@ -44,11 +56,22 @@
 <header>
   <div class="logo-wrap"><div class="logo">Chroniken</div></div>
   <nav>
-    <a href="index.html">Start</a><a href="news.html">News</a><a href="events.html">Events</a><a href="kalender.html">Kalender</a>
-    <a href="wiki.html">Wiki</a><a href="bibliothek.html">Bibliothek</a><a href="berufe.html">Berufe</a><a href="kreaturen.html">Kreaturen</a>
-    <a href="regeln.html">Regeln</a><a href="goetter.html">Götter</a><a href="charakterbogen.html">Charakterbogen</a><a href="heilerakte.html">Heilerakte</a>
-    <a href="admin.html" class="active" id="navAdmin">Admin</a>
-  </nav>
+      <a href="index.html">Start</a>
+      <a href="news.html">News</a>
+      <a href="events.html">Events</a>
+      <a href="kalender.html">Kalender</a>
+      <a href="wiki.html">Wiki</a>
+      <a href="bibliothek.html">Bibliothek</a>
+      <a href="voelker.html">Völker</a>
+      <a href="berufe.html">Berufe</a>
+      <a href="kreaturen.html">Kreaturen</a>
+      <a href="regeln.html">Regeln</a>
+      <a href="goetter.html">Götter</a>
+      <a href="charakterbogen.html">Charakterbogen</a>
+      <a href="heilerakte.html">Heilerakte</a>
+      <a href="wetter.html" id="navWetter" data-admin-only style="display:none;">Wetter</a>
+      <a href="admin.html" id="navAdmin" class="active" data-admin-only style="display:none;">Admin</a>
+    </nav>
 </header>
 
 <main class="admin-layout">
@@ -125,6 +148,14 @@
   </div>
 </main>
 
+<div id="sheetModal" class="sheet-modal" style="display:none" role="dialog" aria-modal="true">
+  <div class="sheet-box">
+    <div class="sheet-head"><h2 id="sheetTitle">Charakterbogen</h2><button type="button" class="btn secondary" id="sheetClose">Schließen</button></div>
+    <div id="sheetBody"></div>
+    <div class="sheet-foot"><button type="button" class="btn" id="sheetCopy">📋 Als Text kopieren</button><span id="sheetCopyMsg" class="small"></span></div>
+  </div>
+</div>
+
 <footer><p>© Kiyasha</p></footer>
 
 
@@ -186,13 +217,14 @@ function renderTable(){
   empty.style.display="none";table.style.display="table";
   tbody.innerHTML=list.map(c=>{
     const w=Number(c.warnings)||0;
-    return `<tr><td class="char-id">${escapeHtml(c.id)}</td><td><strong>${escapeHtml(c.name)}</strong>${c.race?`<div class="topic-meta">${escapeHtml(c.race)}</div>`:""}</td><td>${escapeHtml(c.player||"—")}</td><td>${escapeHtml(c.steamId||"—")}</td><td><span class="warn-badge ${w===0?"zero":""}">${w}</span></td><td><div class="violation-preview" title="${escapeHtml(c.violation||"")}">${escapeHtml(c.violation||"—")}</div></td><td>${escapeHtml(c.status||"aktiv")}</td><td class="actions-cell"><button type="button" class="btn secondary" data-edit="${escapeHtml(c.id)}">Bearbeiten</button><button type="button" class="btn danger" data-del="${escapeHtml(c.id)}">Löschen</button></td></tr>`
+    return `<tr><td class="char-id">${escapeHtml(c.id)}</td><td><strong>${escapeHtml(c.name)}</strong>${c.race?`<div class="topic-meta">${escapeHtml(c.race)}</div>`:""}</td><td>${escapeHtml(c.player||"—")}</td><td>${escapeHtml(c.steamId||"—")}</td><td><span class="warn-badge ${w===0?"zero":""}">${w}</span></td><td><div class="violation-preview" title="${escapeHtml(c.violation||"")}">${escapeHtml(c.violation||"—")}</div></td><td>${escapeHtml(c.status||"aktiv")}</td><td class="actions-cell"><button type="button" class="btn" data-sheet="${escapeHtml(c.id)}">Bogen ansehen</button><button type="button" class="btn secondary" data-edit="${escapeHtml(c.id)}">Bearbeiten</button><button type="button" class="btn danger" data-del="${escapeHtml(c.id)}">Löschen</button></td></tr>`
   }).join("");
+  tbody.querySelectorAll("[data-sheet]").forEach(b=>b.addEventListener("click",()=>openSheet(b.dataset.sheet)));
   tbody.querySelectorAll("[data-edit]").forEach(b=>b.addEventListener("click",()=>startEdit(b.dataset.edit)));
   tbody.querySelectorAll("[data-del]").forEach(b=>b.addEventListener("click",async()=>{
     const id=b.dataset.del;if(!confirm("Charakter "+id+" wirklich löschen?"))return;
     const list=loadChars(),char=list.find(c=>c.id===id);if(!char)return;
-    saveChars(list.filter(c=>c.id!==id));if(document.getElementById("editId").value===id)resetForm();renderTable();await notifyCharEvent("deleted",char);
+    saveChars(list.filter(c=>c.id!==id));if(document.getElementById("editId").value===id)resetForm();renderTable();try{await ChronikenSync.removeCharacter(id)}catch(e){alert("Zentral löschen fehlgeschlagen: "+e.message)}await notifyCharEvent("deleted",char);
   }));
 }
 function resetForm(){document.getElementById("charForm").reset();document.getElementById("editId").value="";document.getElementById("charIdDisplay").value="";document.getElementById("warnings").value="0";document.getElementById("formTitle").textContent="Neuer Charakterbogen";document.getElementById("btnSave").textContent="Speichern";document.getElementById("btnCancel").style.display="none"}
@@ -212,12 +244,57 @@ document.getElementById("charForm").addEventListener("submit",async e=>{
     const idx=list.findIndex(c=>c.id===editId);if(idx<0)return;list[idx]={...list[idx],...payload};saved=list[idx];
     const violationChanged=(payload.violation||"")!==(old?.violation||""),warningsUp=payload.warnings>(Number(old?.warnings)||0);
     eventType=(payload.violation&&violationChanged)||warningsUp?"violation":"updated";
-  }else{saved={id:nextId(),createdAt:new Date().toISOString(),...payload};list.push(saved)}
+  }else{
+    try{saved=await ChronikenSync.addCharacter(payload)}catch(e){saved={id:nextId(),createdAt:new Date().toISOString(),...payload};alert("Zentral speichern fehlgeschlagen, nur lokal gespeichert: "+e.message)}
+    list.push(saved)
+  }
   saveChars(list);
+  if(editId){try{await ChronikenSync.saveCharacter(saved)}catch(e){alert("Zentral speichern fehlgeschlagen: "+e.message)}}
   await notifyCharEvent(eventType,saved,{note:eventType==="violation"?(payload.warnings>(Number(old?.warnings)||0)?"Verwarnungen erhöht ("+(old?.warnings??0)+" → "+payload.warnings+")":"Regelverstoß aktualisiert"):null});
   resetForm();renderTable();
 });
 document.getElementById("btnCancel").addEventListener("click",resetForm);
+
+/* ===== Bogen-Kopie ansehen (was der Spieler eingetragen hat) ===== */
+const SHEET_FIELDS=[
+  ["Allgemein",[["Charaktername","name"],["Discord","discordName"],["Steam-ID","steamId"],["Geburtstag","@birthday"],["Alter","age"],["Geschlecht","gender"],["Größe","size"],["Gesinnung","alignment"],["Gott/Göttin","god"]]],
+  ["Volk & Beruf",[["Volk","race"],["Unterarten","subraces"],["Hauptberuf","mainJob"],["Nebenberuf","subJob"]]],
+  ["Verwandlung & Magie",[["Verwandlung","transformInput"],["Magieschulen","magicSchools"],["Magie-Details","magicDetails"],["Magieregeln akzeptiert","@magicRules"]]],
+  ["Aussehen & Anhängsel",[["Haare","hairInput"],["Augen","eyesInput"],["Aussehen","appearanceInput"],["Ohren","earsInput"],["Flügel","wingsInput"],["Schwanz","tailInput"],["Sonstiges","otherInput"]]],
+  ["Hintergrund",[["Hintergrund","background"],["Ziele & Vorhaben","goalsInput"],["Fähigkeiten","abilities"],["Eigenschaften","traits"]]],
+  ["OOC",[["Größen-Sonderfreigabe","@sizeOk"],["Fesseln & Versklavung akzeptiert","@consent"],["OOC-Phobien / Grenzen","phobias"]]]
+];
+function sheetValue(d,key){
+  if(key==="@birthday"){if(d.birthdayDay===undefined&&d.birthdayMonth===undefined&&!d.birthdayYear)return"";const m=d.birthdayMonth!==undefined&&d.birthdayMonth!==""?ADMIN_MONTHS[Number(d.birthdayMonth)]||"":"";return[d.birthdayDay?d.birthdayDay+".":"",m,d.birthdayYear||""].filter(Boolean).join(" ")}
+  if(key==="@magicRules")return d.magicRulesAccepted?"Ja"+(d.verifiedUsername?" – von "+d.verifiedUsername:""):"";
+  if(key==="@sizeOk")return d.sizeConfirmed?"Ja"+(d.sizeVerifiedUsername?" – von "+d.sizeVerifiedUsername:""):"";
+  if(key==="@consent")return d.consentAccepted?"Ja"+(d.consentVerifiedUsername?" – von "+d.consentVerifiedUsername:""):"";
+  const v=d[key];return Array.isArray(v)?v.join(", "):(v==null?"":String(v));
+}
+let sheetText="";
+async function openSheet(id){
+  const modal=document.getElementById("sheetModal"),body=document.getElementById("sheetBody");
+  document.getElementById("sheetTitle").textContent="Charakterbogen · "+id;document.getElementById("sheetCopyMsg").textContent="";
+  body.innerHTML='<p class="small">Lade Bogen …</p>';modal.style.display="block";sheetText="";
+  let sheets=[];try{sheets=await ChronikenSync.loadShared("characterSheets")}catch(e){}
+  const sh=sheets.find(x=>x.id===id),c=loadChars().find(x=>x.id===id)||{};
+  if(!sh||!sh.data){body.innerHTML='<p class="small">Für <strong>'+escapeHtml(id)+'</strong> ist keine Bogen-Kopie gespeichert. Das passiert bei Einträgen, die von Hand in der Verwaltung angelegt oder vor diesem Update erstellt wurden. Sobald der Spieler den Bogen erneut fertigstellt, erscheint sie hier.</p>';return}
+  document.getElementById("sheetTitle").textContent="Charakterbogen · "+id+" · "+(sh.name||c.name||"");
+  let html="",txt=id+" – "+(sh.name||c.name||"")+"\n";
+  SHEET_FIELDS.forEach(([sec,fields])=>{
+    const rows=fields.map(([label,key])=>[label,sheetValue(sh.data,key)]).filter(r=>r[1]);
+    if(!rows.length)return;
+    html+='<div class="sheet-section">'+escapeHtml(sec)+'</div>'+rows.map(r=>'<div class="sheet-row"><span class="k">'+escapeHtml(r[0])+'</span><span class="v">'+escapeHtml(r[1])+'</span></div>').join("");
+    txt+="\n["+sec+"]\n"+rows.map(r=>r[0]+": "+r[1]).join("\n")+"\n";
+  });
+  if(sh.savedAt){const t="Abgegeben/aktualisiert: "+new Date(sh.savedAt).toLocaleString("de-DE");html+='<p class="small" style="margin-top:1rem">'+escapeHtml(t)+'</p>';txt+="\n"+t+"\n"}
+  body.innerHTML=html||'<p class="small">Der Bogen enthält keine Angaben.</p>';sheetText=txt;
+}
+document.getElementById("sheetClose").addEventListener("click",()=>{document.getElementById("sheetModal").style.display="none"});
+document.getElementById("sheetModal").addEventListener("click",e=>{if(e.target.id==="sheetModal")e.target.style.display="none"});
+document.addEventListener("keydown",e=>{if(e.key==="Escape")document.getElementById("sheetModal").style.display="none"});
+document.getElementById("sheetCopy").addEventListener("click",async()=>{try{await navigator.clipboard.writeText(sheetText);document.getElementById("sheetCopyMsg").textContent="✓ Kopiert"}catch(e){document.getElementById("sheetCopyMsg").textContent="Kopieren nicht möglich"}});
+
 
 const ADMIN_MONTHS=["Frostmond","Eismond","Tauwind","Blütenmond","Sonnenhain","Glutmond","Erntemond","Goldlaub","Nebelmond","Dunkelmond","Sternenfall","Nachtfrost"];
 const ADMIN_FIXED_HOLIDAYS=[[0,1,"Nacht der ersten Flamme"],[2,15,"Fest der drei Winde"],[3,20,"Blütensegen"],[5,15,"Sonnenwende der Krone"],[6,30,"Danktag der Ernte"],[8,13,"Nacht des Schleiers"],[10,30,"Sternennacht"],[11,15,"Fuchsfeuer"]];
@@ -280,7 +357,7 @@ function doLogout(){setAdmin(false);try{sessionStorage.removeItem("portal_biblio
 document.getElementById("btnLogout").addEventListener("click",doLogout);
 
 updateLoginUI();
-document.addEventListener("chroniken-synced",()=>{if(isAdmin())renderAdminEventManager()});
+document.addEventListener("chroniken-synced",()=>{if(isAdmin()){renderAdminEventManager();renderTable()}});
 </script>
 </body>
 </html>

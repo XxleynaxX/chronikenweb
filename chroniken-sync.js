@@ -13,7 +13,7 @@
   const MASTER_KEY = "$2a$10$UtTY0igLD.IvUKF5WDV89uC7/zf7h2HP3R3jXC/mghWJDo20hRpqO";
   const API = "https://api.jsonbin.io/v3/b/" + EVENTS_BIN_ID;
 
-  const LS = { events: "portal_events", birthdays: "portal_birthdays", calendar: "chroniken_calendar_entries", disabledHolidays: "chroniken_disabled_holidays" };
+  const LS = { events: "portal_events", birthdays: "portal_birthdays", calendar: "chroniken_calendar_entries", disabledHolidays: "chroniken_disabled_holidays", characters: "portal_char_registry", characterSheets: "portal_char_sheets" };
   const KEYS = Object.keys(LS);
   const AUTH_KEY = "portal_admin_auth";
 
@@ -228,7 +228,126 @@
     return value;
   }
 
+
+  // ---------- Charakter-Verwaltung (gemeinsam für Spieler & Admins) ----------
+  function charIdNum(id) { const m = /^CH-(\d+)$/.exec(String(id || "")); return m ? parseInt(m[1], 10) : 0; }
+  function nextCharId(list) {
+    let n = 0;
+    list.forEach(function (c) { n = Math.max(n, charIdNum(c.id)); });
+    return "CH-" + String(n + 1).padStart(4, "0");
+  }
+  function sameName(a, b) { return String(a.name || "").trim().toLowerCase() === String(b.name || "").trim().toLowerCase(); }
+
+  // Leere Felder weglassen, damit die Kopie im Bin klein bleibt
+  function compactSheet(d) {
+    const out = {};
+    Object.keys(d || {}).forEach(function (k) {
+      const v = d[k];
+      if (v === "" || v === false || v == null || (Array.isArray(v) && !v.length)) return;
+      out[k] = v;
+    });
+    return out;
+  }
+  function putSheet(list, id, name, data) {
+    const rec = { id: id, name: name, savedAt: new Date().toISOString(), data: compactSheet(data) };
+    const i = list.findIndex(function (x) { return x.id === id; });
+    if (i >= 0) list[i] = rec; else list.push(rec);
+    return list;
+  }
+
+  /** Vom Charakterbogen: Eintrag anlegen oder aktualisieren. Die ID wird frisch vergeben,
+   *  damit sich Einträge verschiedener Spieler nie überschneiden. Admin-Felder bleiben erhalten. */
+  async function upsertRegistryEntry(entry) {
+    const slim = Object.assign({}, entry);
+    const sheetData = slim.characterData;
+    delete slim.characterData;
+    let result = null;
+    await mutate({
+      characters: function (list) {
+        let i = list.findIndex(function (c) { return c.id === slim.id && sameName(c, slim); });
+        if (i < 0) i = list.findIndex(function (c) {
+          return sameName(c, slim) && (!slim.steamId || String(c.steamId || "").trim() === String(slim.steamId).trim());
+        });
+        if (i >= 0) {
+          const old = list[i];
+          list[i] = Object.assign({}, old, slim, {
+            id: old.id, createdAt: old.createdAt || slim.createdAt,
+            status: old.status || slim.status, warnings: old.warnings,
+            violation: old.violation, notes: old.notes
+          });
+          result = list[i];
+        } else {
+          slim.id = nextCharId(list);
+          list.push(slim);
+          result = slim;
+        }
+        return list;
+      },
+      characterSheets: function (list) {
+        return result && sheetData ? putSheet(list, result.id, result.name, sheetData) : list;
+      }
+    });
+    return result;
+  }
+
+  /** Admin: neuen Eintrag anlegen (ID wird frisch vergeben). */
+  async function addCharacter(payload) {
+    let result = null;
+    await mutate({
+      characters: function (list) {
+        result = Object.assign({ id: nextCharId(list), createdAt: new Date().toISOString() }, payload);
+        list.push(result);
+        return list;
+      }
+    });
+    return result;
+  }
+
+  /** Admin: bestehenden Eintrag ersetzen. */
+  async function saveCharacter(rec) {
+    await mutate({
+      characters: function (list) {
+        const i = list.findIndex(function (c) { return c.id === rec.id; });
+        if (i >= 0) list[i] = rec; else list.push(rec);
+        return list;
+      }
+    });
+    return rec;
+  }
+
+  async function removeCharacter(id) {
+    await mutate({
+      characters: function (list) { return list.filter(function (c) { return c.id !== id; }); },
+      characterSheets: function (list) { return list.filter(function (x) { return x.id !== id; }); }
+    });
+  }
+
+  /** Admin: ältere Einträge mit eingebetteten Bogen-Daten in die Kopien-Liste überführen. */
+  async function migrateEmbeddedSheets() {
+    if (!readLocal("characters").some(function (c) { return c.characterData; })) return;
+    const pending = [];
+    await mutate({
+      characters: function (list) {
+        return list.map(function (c) {
+          if (!c.characterData) return c;
+          pending.push(c);
+          const copy = Object.assign({}, c); delete copy.characterData; return copy;
+        });
+      },
+      characterSheets: function (list) {
+        pending.forEach(function (c) {
+          if (!list.some(function (x) { return x.id === c.id; })) putSheet(list, c.id, c.name, c.characterData);
+        });
+        return list;
+      }
+    });
+  }
+
   global.ChronikenSync = {
+    upsertRegistryEntry: upsertRegistryEntry,
+    addCharacter: addCharacter,
+    saveCharacter: saveCharacter,
+    removeCharacter: removeCharacter,
     EVENTS_BIN_ID: EVENTS_BIN_ID,
     isAdmin: isAdmin,
     pull: pull,
@@ -253,7 +372,7 @@
     }
   };
 
-  function start() { pull().catch(function (e) { console.warn("[Chroniken-Sync]", e); emit(false); }); }
+  function start() { pull().then(function () { if (isAdmin()) return migrateEmbeddedSheets(); }).catch(function (e) { console.warn("[Chroniken-Sync]", e); emit(false); }); }
   if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", start);
   else start();
 })(typeof window !== "undefined" ? window : globalThis);

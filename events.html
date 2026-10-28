@@ -4,8 +4,22 @@
 .wrap{max-width:1100px;margin:auto;padding:2rem 1.2rem 4rem}.hero{text-align:center;margin-bottom:2rem}.hero h1{color:var(--purple-bright)}
 .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:1rem}.cardx{background:var(--bg-card);border:1px solid var(--border);border-radius:14px;padding:1.1rem}.cardx h3{color:var(--purple-bright);margin:.2rem 0 .5rem}.meta{color:var(--text-muted);font-size:.9rem}.form{margin:1.5rem 0;padding:1.3rem;background:var(--bg-card);border:1px solid var(--border);border-radius:14px}.row{display:grid;grid-template-columns:1fr 1fr;gap:1rem}.field{margin-bottom:.9rem}.field label{display:block;color:var(--text-muted);margin-bottom:.3rem}.field input,.field textarea{width:100%;box-sizing:border-box;padding:.65rem;border-radius:7px;border:1px solid var(--border);background:var(--bg-input);color:var(--text)}.field textarea{min-height:90px}.actions{display:flex;gap:.5rem;flex-wrap:wrap}@media(max-width:700px){.row{grid-template-columns:1fr}}
 </style></head><body><div class="bg-overlay"></div><header><div class="logo-wrap"><div class="logo">Chroniken</div></div><nav>
-<a href="index.html">Start</a><a href="news.html">News</a><a href="events.html" class="active">Events</a><a href="kalender.html">Kalender</a><a href="wiki.html">Wiki</a><a href="bibliothek.html">Bibliothek</a><a href="berufe.html">Berufe</a><a href="kreaturen.html">Kreaturen</a><a href="regeln.html">Regeln</a><a href="goetter.html">Götter</a><a href="charakterbogen.html">Charakterbogen</a><a href="heilerakte.html">Heilerakte</a>
-</nav></header><main class="wrap"><section class="hero"><h1>📅 Events & Geburtstage</h1><p class="meta">Zentrale Daten aus JSONBin.</p></section>
+      <a href="index.html">Start</a>
+      <a href="news.html">News</a>
+      <a href="events.html" class="active">Events</a>
+      <a href="kalender.html">Kalender</a>
+      <a href="wiki.html">Wiki</a>
+      <a href="bibliothek.html">Bibliothek</a>
+      <a href="voelker.html">Völker</a>
+      <a href="berufe.html">Berufe</a>
+      <a href="kreaturen.html">Kreaturen</a>
+      <a href="regeln.html">Regeln</a>
+      <a href="goetter.html">Götter</a>
+      <a href="charakterbogen.html">Charakterbogen</a>
+      <a href="heilerakte.html">Heilerakte</a>
+      <a href="wetter.html" id="navWetter" data-admin-only style="display:none;">Wetter</a>
+      <a href="admin.html" id="navAdmin" data-admin-only style="display:none;">Admin</a>
+    </nav></header><main class="wrap"><section class="hero"><h1>📅 Events & Geburtstage</h1><p class="meta">Zentrale Daten aus JSONBin.</p></section>
 <section class="form" id="adminForm" style="display:none"><h2 id="formTitle">Neues Event</h2><div class="row"><div class="field"><label>Titel</label><input id="title"></div><div class="field"><label>Datum</label><input id="date" type="date"></div></div><div class="field"><label>Beschreibung</label><textarea id="description"></textarea></div><div class="actions"><button class="btn" id="save">Speichern</button><button class="btn secondary" id="cancel" style="display:none">Abbrechen</button><span id="status" class="meta"></span></div></section>
 <section><h2 class="page-title">Kommende Events</h2><div id="events" class="grid"></div></section></main><footer><p>© 2026 Kiyasha · Chroniken</p></footer>
 <script src="chroniken-auth.js"></script>

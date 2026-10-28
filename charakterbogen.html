@@ -263,101 +263,70 @@ textarea { min-height: 120px; resize: vertical; }
 }
 .success h2 { color: #8ee7a5; }
 
-/* BILD-EXPORT VORLAGE */
+/* BILD-EXPORT VORLAGE (Stil: dunkles Violett, Zierrahmen, Portrait) */
 .hidden-card { position: absolute; left: -10000px; top: 0; }
 .character-image {
-    width: 980px;
-    padding: 40px;
-    background: radial-gradient(circle at top, #1a1a22 0%, #121216 60%, #0e0e10 100%);
-    color: #e2d7f5;
-    border: 3px solid #a855f7;
-    border-radius: 20px;
-    position: relative;
-    box-shadow: inset 0 0 50px rgba(168, 85, 247, 0.15);
+    width: 980px; padding: 52px 52px 40px; position: relative;
+    background: radial-gradient(ellipse at top, #1b1233 0%, #0f0b1f 55%, #080612 100%);
+    color: #ddd0f7;
+    font-family: "Palatino Linotype", "Book Antiqua", Palatino, Georgia, "Times New Roman", serif;
+    border: 2px solid #4a3a86; border-radius: 22px;
+    box-shadow: inset 0 0 0 7px #0b0818, inset 0 0 0 8px #3a2d6e, inset 0 0 60px rgba(124, 92, 255, 0.18);
 }
-.img-header-title { text-align: center; margin-bottom: 22px; }
-.img-header-title h1 {
-    color: #e4e4e8;
-    font-size: 40px;
-    margin: 0;
-    letter-spacing: 2px;
-    text-shadow: 0 0 15px rgba(168, 85, 247, 0.4);
+.img-corner { position: absolute; font-size: 32px; line-height: 1; color: #7a62d6; text-shadow: 0 0 10px rgba(124,92,255,.6); }
+.img-corner.tl { top: 14px; left: 20px; }
+.img-corner.tr { top: 14px; right: 20px; transform: scaleX(-1); }
+.img-corner.bl { bottom: 14px; left: 20px; transform: scaleY(-1); }
+.img-corner.br { bottom: 14px; right: 20px; transform: scale(-1, -1); }
+.img-sheet-title {
+    text-align: center; font-size: 34px; font-weight: bold; letter-spacing: 3px; color: #d9c8ff;
+    text-shadow: 0 0 18px rgba(150,110,255,.6); padding-bottom: 16px; margin-bottom: 26px;
+    border-bottom: 1px solid #3a2d6e;
 }
-.img-header-title p {
-    color: #c084fc;
-    margin: 6px 0 0;
-    font-size: 14px;
-    text-transform: uppercase;
-    letter-spacing: 3px;
+.img-hero { display: flex; gap: 28px; align-items: stretch; margin-bottom: 26px; padding-bottom: 26px; border-bottom: 1px solid #3a2d6e; }
+.img-portrait {
+    width: 280px; height: 320px; flex: 0 0 280px; border-radius: 16px; overflow: hidden;
+    border: 2px solid #6b54c9; background: linear-gradient(180deg, #4a3a96, #2b2063);
+    box-shadow: 0 0 22px rgba(124,92,255,.35), inset 0 0 30px rgba(0,0,0,.35);
+    display: flex; align-items: flex-end; justify-content: center;
 }
-.img-grid-layout {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 16px;
+.img-portrait img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.img-portrait svg { width: 82%; height: 92%; display: block; }
+.img-hero-info { flex: 1; display: flex; flex-direction: column; justify-content: center; gap: 14px; }
+.img-name-bar {
+    display: flex; align-items: center; gap: 14px; padding: 10px 18px; margin-bottom: 8px;
+    background: rgba(70, 56, 120, 0.55); border: 1px solid #6b54c9; border-radius: 12px;
 }
+.img-name-icon { font-size: 30px; color: #b79cff; line-height: 1; }
+.img-name-bar h1 { margin: 0; font-size: 36px; color: #efe6ff; letter-spacing: 1px; text-shadow: 0 0 14px rgba(150,110,255,.5); word-break: break-word; }
+.img-hero-row { display: flex; gap: 14px; align-items: baseline; font-size: 18px; padding-bottom: 8px; border-bottom: 1px dashed rgba(122,98,214,.4); }
+.img-hero-row .img-field-label { flex: 0 0 150px; }
+.img-hero-val { color: #efe6ff; }
+.img-grid-layout { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; }
 .img-box {
-    background: rgba(23, 14, 36, 0.85);
-    border: 1px solid #2a2a32;
-    border-radius: 8px;
-    padding: 16px;
-    box-shadow: 0 4px 15px rgba(0,0,0,0.3);
+    background: linear-gradient(180deg, rgba(34,22,62,.85), rgba(18,12,36,.92));
+    border: 1px solid #3a2d6e; border-radius: 14px; padding: 18px 22px 20px;
+    box-shadow: 0 4px 16px rgba(0,0,0,.45), inset 0 0 22px rgba(124,92,255,.06);
 }
 .img-box.full-width { grid-column: 1 / -1; }
 .img-box-title {
-    color: #e4cfff;
-    font-size: 15px;
-    font-weight: bold;
-    text-transform: uppercase;
-    border-bottom: 1px solid #2a2a32;
-    padding-bottom: 7px;
-    margin-bottom: 11px;
-    display: flex;
-    align-items: center;
-    gap: 7px;
+    display: inline-flex; align-items: center; gap: 8px; margin-bottom: 16px; padding: 7px 18px;
+    font-size: 17px; font-weight: bold; letter-spacing: 1px; color: #f3ecff;
+    background: linear-gradient(180deg, #5b3fd1, #4429a8); border: 1px solid #8b73ff; border-radius: 10px;
+    box-shadow: 0 0 12px rgba(124,92,255,.35);
 }
+.img-fields-2col { display: grid; grid-template-columns: 1fr 1fr; column-gap: 36px; }
 .img-field-row {
-    display: flex;
-    justify-content: space-between;
-    margin-bottom: 7px;
-    font-size: 14px;
+    display: flex; justify-content: space-between; gap: 14px; margin-bottom: 9px; padding-bottom: 6px;
+    font-size: 15px; border-bottom: 1px dashed rgba(122,98,214,.35);
 }
-.img-field-label { color: #c084fc; font-weight: bold; }
-.img-badge {
-    display: inline-block;
-    background: #2a1741;
-    border: 1px solid #a855f7;
-    color: #e4e4e8;
-    padding: 3px 9px;
-    border-radius: 6px;
-    font-size: 12px;
-    margin-right: 4px;
-    margin-bottom: 4px;
-}
-.img-status-badge {
-    background: rgba(46, 125, 50, 0.2);
-    border: 1px solid #4caf50;
-    color: #81c784;
-    padding: 5px 9px;
-    border-radius: 6px;
-    font-size: 12px;
-    margin-top: 8px;
-    display: inline-block;
-}
-.img-text-content {
-    font-size: 13px;
-    line-height: 1.5;
-    color: #c0c0c8;
-    white-space: pre-wrap;
-}
+.img-field-label { color: #a48cf0; font-weight: bold; }
+.img-badge { display: inline-block; background: #3b2a8c; border: 1px solid #7a62d6; color: #efe6ff; padding: 4px 11px; border-radius: 8px; font-size: 13px; margin: 0 5px 5px 0; }
+.img-status-badge { background: rgba(46,125,50,.2); border: 1px solid #4caf50; color: #81c784; padding: 5px 10px; border-radius: 8px; font-size: 12px; margin-top: 8px; display: inline-block; }
+.img-text-content { font-size: 14px; line-height: 1.55; color: #c9bfe6; white-space: pre-wrap; }
 .watermark-copyright {
-    margin-top: 22px;
-    padding-top: 14px;
-    border-top: 1px solid #2a2a32;
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    font-size: 12px;
-    color: #a89cc8;
+    margin-top: 26px; padding-top: 14px; border-top: 1px solid #3a2d6e; display: flex;
+    justify-content: space-between; align-items: center; font-size: 13px; letter-spacing: 1px; color: #9a88d6;
 }
 
 @media(max-width: 700px) {
@@ -379,12 +348,15 @@ textarea { min-height: 120px; resize: vertical; }
       <a href="kalender.html">Kalender</a>
       <a href="wiki.html">Wiki</a>
       <a href="bibliothek.html">Bibliothek</a>
+      <a href="voelker.html">Völker</a>
       <a href="berufe.html">Berufe</a>
       <a href="kreaturen.html">Kreaturen</a>
       <a href="regeln.html">Regeln</a>
       <a href="goetter.html">Götter</a>
       <a href="charakterbogen.html" class="active">Charakterbogen</a>
       <a href="heilerakte.html">Heilerakte</a>
+      <a href="wetter.html" id="navWetter" data-admin-only style="display:none;">Wetter</a>
+      <a href="admin.html" id="navAdmin" data-admin-only style="display:none;">Admin</a>
     </nav>
   </header>
 
@@ -413,6 +385,11 @@ textarea { min-height: 120px; resize: vertical; }
                 <div class="field">
                     <label>Name *</label>
                     <input id="name" type="text" placeholder="Name des Charakters">
+                </div>
+                <div class="field full">
+                    <label>🖼️ Charakterbild (optional, erscheint im Bild)</label>
+                    <input id="portraitInput" type="file" accept="image/*">
+                    <div style="margin-top:6px;"><button type="button" class="secondary-button" id="portraitClear" style="display:none;">Bild entfernen</button></div>
                 </div>
                 <div class="field">
                     <label>Discord-Name *</label>
@@ -911,31 +888,34 @@ textarea { min-height: 120px; resize: vertical; }
 <!-- ===================== VERSTECKTE BILDVORLAGE ===================== -->
 <div class="hidden-card">
     <div id="characterCard" class="character-image">
-        <div class="img-header-title">
-            <h1 id="imgName">Charaktername</h1>
-            <p id="imgRaceSub">Rasse & Unterart</p>
+        <span class="img-corner tl">❦</span><span class="img-corner tr">❦</span><span class="img-corner bl">❦</span><span class="img-corner br">❦</span>
+        <div class="img-sheet-title">Charakterbogen</div>
+
+        <div class="img-hero">
+            <div class="img-portrait" id="imgPortrait"></div>
+            <div class="img-hero-info">
+                <div class="img-name-bar"><span class="img-name-icon">⚜</span><h1 id="imgName">Charaktername</h1></div>
+                <div class="img-hero-row"><span class="img-field-label">Rasse:</span><span class="img-hero-val" id="imgRaceSub">Rasse &amp; Unterart</span></div>
+                <div class="img-hero-row"><span class="img-field-label">Hauptberuf:</span><span class="img-hero-val" id="imgMainJob">-</span></div>
+                <div class="img-hero-row"><span class="img-field-label">Nebenberuf:</span><span class="img-hero-val" id="imgSubJob">Keiner</span></div>
+                <div class="img-hero-row"><span class="img-field-label">Gott/Göttin:</span><span class="img-hero-val" id="imgGod">-</span></div>
+            </div>
         </div>
 
         <div class="img-grid-layout">
-            <!-- Allgemeine Daten -->
-            <div class="img-box">
-                <div class="img-box-title">👤 Allgemeine Daten</div>
-                <div class="img-field-row"><span class="img-field-label">Discord:</span> <span id="imgDiscordName">-</span></div>
-                <div class="img-field-row"><span class="img-field-label">Steam-ID:</span> <span id="imgSteamId">-</span></div>
-                <div class="img-field-row"><span class="img-field-label">Geburtstag:</span> <span id="imgBirthday">-</span></div>
-                <div class="img-field-row"><span class="img-field-label">Alter:</span> <span id="imgAge">-</span></div>
-                <div class="img-field-row"><span class="img-field-label">Geschlecht:</span> <span id="imgGender">-</span></div>
-                <div class="img-field-row"><span class="img-field-label">Größe:</span> <span id="imgSize">-</span></div>
-                <div class="img-field-row"><span class="img-field-label">Gesinnung:</span> <span id="imgAlignment">-</span></div>
-                <div class="img-field-row"><span class="img-field-label">Gott/Göttin:</span> <span id="imgGod">-</span></div>
+            <!-- Persönliche Daten -->
+            <div class="img-box full-width">
+                <div class="img-box-title">Persönliche Daten</div>
+                <div class="img-fields-2col">
+                    <div class="img-field-row"><span class="img-field-label">Discord:</span> <span id="imgDiscordName">-</span></div>
+                    <div class="img-field-row"><span class="img-field-label">Steam-ID:</span> <span id="imgSteamId">-</span></div>
+                    <div class="img-field-row"><span class="img-field-label">Geburtstag:</span> <span id="imgBirthday">-</span></div>
+                    <div class="img-field-row"><span class="img-field-label">Alter:</span> <span id="imgAge">-</span></div>
+                    <div class="img-field-row"><span class="img-field-label">Geschlecht:</span> <span id="imgGender">-</span></div>
+                    <div class="img-field-row"><span class="img-field-label">Größe:</span> <span id="imgSize">-</span></div>
+                    <div class="img-field-row"><span class="img-field-label">Gesinnung:</span> <span id="imgAlignment">-</span></div>
+                </div>
                 <div id="imgSizeStatus" class="img-status-badge" style="display:none;"></div>
-            </div>
-
-            <!-- Berufe -->
-            <div class="img-box">
-                <div class="img-box-title">🛠️ Berufe</div>
-                <div class="img-field-row"><span class="img-field-label">Hauptberuf:</span> <span id="imgMainJob">-</span></div>
-                <div class="img-field-row"><span class="img-field-label">Nebenberuf:</span> <span id="imgSubJob">Keiner</span></div>
             </div>
 
             <!-- Verwandlung -->
@@ -969,10 +949,10 @@ textarea { min-height: 120px; resize: vertical; }
             <!-- Hintergrund, Ziele, Eigenschaften -->
             <div class="img-box full-width">
                 <div class="img-box-title">📜 Hintergrund, Ziele & Eigenschaften</div>
-                <div class="img-text-content" style="margin-bottom: 10px;"><strong style="color:#c084fc;">Hintergrund:</strong><br><span id="imgBackground">-</span></div>
-                <div class="img-text-content" style="margin-bottom: 10px;"><strong style="color:#c084fc;">Ziele & Vorhaben:</strong><br><span id="imgGoals">-</span></div>
-                <div class="img-text-content" style="margin-bottom: 10px;"><strong style="color:#c084fc;">Fähigkeiten:</strong><br><span id="imgAbilities">-</span></div>
-                <div class="img-text-content"><strong style="color:#c084fc;">Eigenschaften:</strong><br><span id="imgTraits">-</span></div>
+                <div class="img-text-content" style="margin-bottom: 10px;"><strong style="color:#a48cf0;">Hintergrund:</strong><br><span id="imgBackground">-</span></div>
+                <div class="img-text-content" style="margin-bottom: 10px;"><strong style="color:#a48cf0;">Ziele & Vorhaben:</strong><br><span id="imgGoals">-</span></div>
+                <div class="img-text-content" style="margin-bottom: 10px;"><strong style="color:#a48cf0;">Fähigkeiten:</strong><br><span id="imgAbilities">-</span></div>
+                <div class="img-text-content"><strong style="color:#a48cf0;">Eigenschaften:</strong><br><span id="imgTraits">-</span></div>
             </div>
 
             <!-- OOC -->
@@ -982,7 +962,7 @@ textarea { min-height: 120px; resize: vertical; }
                     <span class="img-status-badge">✓ Fesseln & Versklavung akzeptiert von: <span id="imgConsentUser"></span></span>
                 </div>
                 <div id="imgPhobiasWrapper" style="display:none;">
-                    <div class="img-text-content"><strong style="color:#c084fc;">OOC-Phobien / Grenzen:</strong><br><span id="imgPhobiasText">-</span></div>
+                    <div class="img-text-content"><strong style="color:#a48cf0;">OOC-Phobien / Grenzen:</strong><br><span id="imgPhobiasText">-</span></div>
                 </div>
             </div>
         </div>
@@ -1673,6 +1653,7 @@ function generateCharacterFinal() {
     imgOocBox.style.display = hasOoc ? "block" : "none";
 
     // Datum
+    renderPortrait();
     document.getElementById("imgDate").textContent = new Date().toLocaleDateString("de-DE");
 
     createPNG(name);
@@ -1826,7 +1807,46 @@ async function sendCharacterToDiscordProxy(data) {
   }
 }
 
+
+/* ===================== CHARAKTERBILD (Portrait im Export) ===================== */
+let portraitData = "";
+const PORTRAIT_PLACEHOLDER = '<svg viewBox="0 0 200 240" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><circle cx="100" cy="78" r="46" fill="#cbb9f3" opacity=".85"/><path d="M12 240c0-62 40-96 88-96s88 34 88 96z" fill="#cbb9f3" opacity=".85"/></svg>';
+function renderPortrait() {
+    const box = document.getElementById("imgPortrait");
+    if (!box) return;
+    box.innerHTML = portraitData ? '<img alt="" src="' + portraitData + '">' : PORTRAIT_PLACEHOLDER;
+}
+(function initPortrait() {
+    const input = document.getElementById("portraitInput");
+    const clearBtn = document.getElementById("portraitClear");
+    if (!input) return;
+    input.addEventListener("change", function () {
+        const file = input.files && input.files[0];
+        if (!file) return;
+        const reader = new FileReader();
+        reader.onload = function () {
+            const img = new Image();
+            img.onload = function () {
+                const max = 700, k = Math.min(1, max / Math.max(img.width, img.height));
+                const c = document.createElement("canvas");
+                c.width = Math.round(img.width * k); c.height = Math.round(img.height * k);
+                c.getContext("2d").drawImage(img, 0, 0, c.width, c.height);
+                portraitData = c.toDataURL("image/jpeg", 0.88);
+                clearBtn.style.display = "inline-block";
+                renderPortrait();
+            };
+            img.src = reader.result;
+        };
+        reader.readAsDataURL(file);
+    });
+    clearBtn.addEventListener("click", function () {
+        portraitData = ""; input.value = ""; clearBtn.style.display = "none"; renderPortrait();
+    });
+    renderPortrait();
+})();
+
 function createPNG(name) {
+    renderPortrait();
     const card = document.getElementById("characterCard");
     html2canvas(card, { scale: 2, backgroundColor: null }).then(async canvas => {
         lastCanvas = canvas;
@@ -1835,7 +1855,17 @@ function createPNG(name) {
         link.download = "Chroniken-" + safeName + ".png";
         link.href = canvas.toDataURL("image/png");
         const data = collectCharacterData();
-        registerCharacterInManagement(data);
+        const regEntry = registerCharacterInManagement(data);
+        // Zentral speichern, damit der Eintrag in der Admin-Verwaltung aller Admins erscheint
+        try {
+            if (window.ChronikenSync && regEntry) {
+                const central = await ChronikenSync.upsertRegistryEntry(regEntry);
+                if (central && central.id && central.id !== data.registryId) {
+                    data.registryId = central.id;
+                    localStorage.setItem("chroniken_charakter", JSON.stringify(data));
+                }
+            }
+        } catch (e) { console.warn("Zentrale Speicherung fehlgeschlagen:", e); }
         registerBirthdayForEvents(data);
         createCharacterEvent(data);
         // Alles über den Proxy – kein Webhook im Admin nötig

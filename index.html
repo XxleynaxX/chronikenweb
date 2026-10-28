@@ -166,13 +166,15 @@
       <a href="kalender.html">Kalender</a>
       <a href="wiki.html">Wiki</a>
       <a href="bibliothek.html">Bibliothek</a>
+      <a href="voelker.html">Völker</a>
       <a href="berufe.html">Berufe</a>
       <a href="kreaturen.html">Kreaturen</a>
       <a href="regeln.html">Regeln</a>
       <a href="goetter.html">Götter</a>
       <a href="charakterbogen.html">Charakterbogen</a>
       <a href="heilerakte.html">Heilerakte</a>
-      <a href="wetter.html" id="navWetter" style="display:none;">Wetter</a>
+      <a href="wetter.html" id="navWetter" data-admin-only style="display:none;">Wetter</a>
+      <a href="admin.html" id="navAdmin" data-admin-only style="display:none;">Admin</a>
     </nav>
   </header>
 
@@ -319,6 +321,8 @@
         if (wGate) wGate.style.display = admin ? "" : "none";
         const navW = document.getElementById("navWetter");
         if (navW) navW.style.display = admin ? "" : "none";
+        const navA = document.getElementById("navAdmin");
+        if (navA) navA.style.display = admin ? "" : "none";
         const formWrap = document.getElementById("loginFormWrap");
         const loggedIn = document.getElementById("loginLoggedIn");
         if (formWrap) formWrap.style.display = logged ? "none" : "block";
