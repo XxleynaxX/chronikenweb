@@ -7,84 +7,111 @@
   <link rel="stylesheet" href="style.css">
   <link rel="stylesheet" href="chroniken-admin.css">
   <style>
-    .wrap { max-width: 1400px; margin: auto; padding: 2rem 1.5rem; }
-    .map-layout { display: grid; grid-template-columns: minmax(0, 1fr) 340px; gap: 1.2rem; align-items: start; }
-    @media (max-width: 960px) { .map-layout { grid-template-columns: 1fr; } }
+    .wrap { max-width: 1500px; margin: auto; padding: 1.5rem 1.2rem 2rem; }
+    .map-app { display: grid; grid-template-columns: 320px minmax(0, 1fr); gap: 1rem; align-items: stretch; }
+    @media (max-width: 900px) { .map-app { grid-template-columns: 1fr; } }
 
-    .map-viewport {
-      position: relative; overflow: hidden; height: 74vh; min-height: 420px;
-      border: 1px solid var(--border); border-radius: 14px; background: #1a1424;
-      touch-action: none; cursor: grab; user-select: none; -webkit-user-select: none;
-      box-shadow: 0 0 24px rgba(168, 85, 247, 0.15);
+    /* ---------- Seitenleiste ---------- */
+    .side { background: var(--bg-panel); border: 1px solid var(--border); border-radius: 14px; padding: 1rem; display: flex; flex-direction: column; gap: .9rem; backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); max-height: 80vh; overflow: auto; }
+    @media (max-width: 900px) { .side { max-height: none; } }
+    .side h2 { margin: 0; font-size: .72rem; letter-spacing: .08em; text-transform: uppercase; color: var(--text-muted); font-weight: 700; }
+    .side input[type=search], .field input[type=text], .field select, .field textarea {
+      width: 100%; box-sizing: border-box; padding: .55rem .65rem; border: 1px solid var(--border);
+      background: var(--bg-input); color: var(--text); border-radius: 8px; font: inherit; font-size: .88rem;
     }
+    .side input:focus, .field input:focus, .field select:focus, .field textarea:focus { outline: none; border-color: var(--accent); }
+    .btn-row { display: grid; grid-template-columns: 1fr 1fr; gap: .5rem; }
+    .btn-row .btn { padding: .5rem .6rem; font-size: .82rem; text-align: center; justify-content: center; }
+    .editor-only { display: none !important; }
+    body.can-edit .editor-only { display: inline-flex !important; }
+    body.can-edit .editor-only.block { display: block !important; }
+    .filters { background: rgba(0,0,0,.25); border: 1px solid var(--border); border-radius: 10px; padding: .6rem; }
+    .filters .head { display: flex; justify-content: space-between; align-items: center; margin-bottom: .3rem; }
+    .filters .head button { background: none; border: 0; color: var(--accent-soft); font-size: .72rem; cursor: pointer; }
+    .filters label { display: flex; align-items: center; justify-content: space-between; padding: .28rem .35rem; border-radius: 6px; cursor: pointer; font-size: .84rem; }
+    .filters label:hover { background: var(--bg-hover); }
+    .filters .dot { display: inline-block; width: 11px; height: 11px; border-radius: 50%; margin-right: .5rem; border: 1px solid rgba(255,255,255,.3); vertical-align: -1px; }
+    .filters input { accent-color: var(--accent); }
+    .count-row { display: flex; justify-content: space-between; align-items: center; }
+    .count-row span { color: var(--accent-soft); font-family: monospace; font-size: .85rem; }
+    .loc-list { display: flex; flex-direction: column; gap: .35rem; max-height: 260px; overflow: auto; }
+    .loc { display: flex; align-items: center; gap: .55rem; padding: .45rem .55rem; border-radius: 9px; border: 1px solid var(--border); background: rgba(0,0,0,.22); cursor: pointer; }
+    .loc:hover { border-color: var(--accent-soft); }
+    .loc.sel { border-color: var(--accent); background: var(--bg-card); }
+    .loc .crown { width: 16px; height: 16px; flex: none; }
+    .loc .t { font-size: .85rem; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .loc .s { font-size: .7rem; color: var(--text-muted); font-family: monospace; }
+    .hint { font-size: .78rem; color: var(--text-muted); text-align: center; margin: 0; }
+    .role-line { font-size: .78rem; color: var(--text-muted); }
+    .status { font-size: .82rem; min-height: 1.1em; }
+
+    /* ---------- Karte ---------- */
+    .map-area { position: relative; min-height: 460px; height: 80vh; border: 1px solid var(--border); border-radius: 14px; overflow: hidden; background: #140f1c; box-shadow: 0 0 24px rgba(168,85,247,.15); }
+    @media (max-width: 900px) { .map-area { height: 70vh; } }
+    .map-viewport { position: absolute; inset: 0; overflow: hidden; touch-action: none; cursor: grab; user-select: none; -webkit-user-select: none; }
     .map-viewport.dragging { cursor: grabbing; }
     .map-viewport.placing { cursor: crosshair; }
     .map-stage { position: absolute; left: 0; top: 0; transform-origin: 0 0; will-change: transform; }
     .map-stage img { display: block; width: 1011px; height: 1024px; max-width: none; pointer-events: none; -webkit-user-drag: none; }
 
-    .pin {
-      position: absolute; transform: translate(-50%, -100%) scale(var(--inv, 1)); transform-origin: 50% 100%;
-      font-size: 26px; line-height: 1; cursor: pointer; filter: drop-shadow(0 2px 3px rgba(0,0,0,.7));
-      background: none; border: 0; padding: 0; transition: filter .15s;
-    }
-    .pin:hover, .pin.sel { filter: drop-shadow(0 0 8px #c084fc) drop-shadow(0 2px 3px rgba(0,0,0,.7)); z-index: 5; }
-    .pin.sel { z-index: 6; }
-    .pin .pin-label {
-      position: absolute; left: 50%; top: 100%; transform: translateX(-50%); white-space: nowrap;
-      font-size: 12px; font-weight: 700; color: #fff; background: rgba(14,14,16,.82); border: 1px solid var(--border);
-      padding: 1px 6px; border-radius: 6px; pointer-events: none; margin-top: 1px;
-    }
-    .map-text {
-      position: absolute; transform: translate(-50%, -50%); white-space: pre; text-align: center; cursor: pointer;
-      font-family: "Palatino Linotype", Palatino, "Book Antiqua", Georgia, serif; font-weight: 700; letter-spacing: .06em; line-height: 1.15;
-      background: none; border: 0; padding: 2px 4px; border-radius: 4px;
-    }
+    .pin { position: absolute; transform: translate(-50%, -50%) scale(var(--inv, 1)); transform-origin: 50% 50%; background: none; border: 0; padding: 0; cursor: pointer; transition: filter .15s; }
+    .pin .ring { width: 32px; height: 32px; border-radius: 50%; display: flex; align-items: center; justify-content: center; border: 2px solid var(--c); background: color-mix(in srgb, var(--c) 28%, rgba(10,8,16,.6)); box-shadow: 0 2px 8px rgba(0,0,0,.6); transition: transform .2s cubic-bezier(.175,.885,.32,1.275); }
+    .pin .ring svg { width: 16px; height: 16px; color: var(--c); filter: drop-shadow(0 1px 1px rgba(0,0,0,.6)); }
+    .pin:hover { z-index: 50 !important; }
+    .pin:hover .ring { transform: scale(1.25) translateY(-3px); border-color: #fde68a; }
+    .pin.sel { z-index: 40; }
+    .pin.sel .ring { animation: pulse 2s infinite; }
+    @keyframes pulse { 0% { box-shadow: 0 0 0 0 rgba(234,179,8,.7); } 70% { box-shadow: 0 0 0 11px rgba(234,179,8,0); } 100% { box-shadow: 0 0 0 0 rgba(234,179,8,0); } }
+    .pin .check { position: absolute; top: -4px; right: -4px; width: 14px; height: 14px; border-radius: 50%; background: #10b981; color: #052; font-size: 9px; font-weight: 900; display: flex; align-items: center; justify-content: center; z-index: 2; }
+    .pin .tip { position: absolute; bottom: 100%; left: 50%; transform: translateX(-50%); margin-bottom: 8px; display: none; white-space: nowrap; pointer-events: none; background: rgba(10,8,16,.96); color: #fde68a; border: 1px solid rgba(202,138,4,.5); border-radius: 6px; padding: 3px 8px; font-size: 12px; font-weight: 700; }
+    .pin .tip small { color: #facc15; font-family: monospace; font-weight: 400; }
+    .pin:hover .tip { display: block; }
+    .pin.ghost { opacity: .8; pointer-events: none; }
+
+    .map-text { position: absolute; transform: translate(-50%, -50%); white-space: pre; text-align: center; font-family: "Palatino Linotype", Palatino, "Book Antiqua", Georgia, serif; font-weight: 700; letter-spacing: .06em; line-height: 1.15; background: none; border: 0; padding: 2px 4px; border-radius: 4px; pointer-events: none; }
+    body.can-edit .map-text { pointer-events: auto; cursor: pointer; }
     .map-text.c-ink  { color: #2a1a0c; text-shadow: 0 0 3px rgba(245,232,205,.95), 0 0 6px rgba(245,232,205,.8); }
     .map-text.c-red  { color: #8a1020; text-shadow: 0 0 3px rgba(245,232,205,.95), 0 0 6px rgba(245,232,205,.8); }
     .map-text.c-light{ color: #f6ecd2; text-shadow: 0 0 3px rgba(20,10,30,.95), 0 0 6px rgba(20,10,30,.8); }
     .map-text:hover, .map-text.sel { outline: 1px dashed #a855f7; background: rgba(168,85,247,.12); z-index: 5; }
-    .map-text.ghost { opacity: .7; pointer-events: none; outline: 1px dashed #a855f7; }
-    .pin.ghost { opacity: .75; pointer-events: none; animation: bob .9s ease-in-out infinite alternate; }
-    @keyframes bob { from { margin-top: 0; } to { margin-top: -5px; } }
+    .map-text.ghost { opacity: .75; pointer-events: none; outline: 1px dashed #a855f7; }
 
-    .map-tools { position: absolute; right: 10px; top: 10px; display: flex; flex-direction: column; gap: 6px; z-index: 10; }
-    .map-tools button {
-      width: 38px; height: 38px; border-radius: 9px; border: 1px solid var(--border-light);
-      background: rgba(14,14,16,.85); color: var(--text); font-size: 1.15rem; cursor: pointer;
-    }
-    .map-tools button:hover { background: var(--bg-hover); }
-    .map-hud {
-      position: absolute; left: 10px; bottom: 10px; z-index: 10; padding: .3rem .7rem; border-radius: 8px;
-      background: rgba(14,14,16,.85); border: 1px solid var(--border); font-size: .85rem; color: var(--text-muted);
-      pointer-events: none;
-    }
-    .map-banner {
-      position: absolute; left: 50%; top: 10px; transform: translateX(-50%); z-index: 10; display: none;
-      background: rgba(124,58,237,.92); color: #fff; padding: .4rem .9rem; border-radius: 9px; font-size: .9rem; max-width: 80%; text-align: center;
-    }
+    .tools { position: absolute; right: 12px; top: 12px; z-index: 10; display: flex; flex-direction: column; gap: 2px; background: rgba(14,10,22,.9); border: 1px solid var(--border); border-radius: 10px; padding: 5px; transition: right .3s; }
+    .map-area.panel-open .tools { right: 404px; }
+    @media (max-width: 700px) { .map-area.panel-open .tools { right: 12px; } }
+    .tools button { width: 36px; height: 36px; border: 0; border-radius: 7px; background: none; color: var(--text); font-size: 1.1rem; cursor: pointer; }
+    .tools button:hover { background: var(--bg-hover); }
+    .hud { position: absolute; left: 12px; bottom: 12px; z-index: 10; background: rgba(14,10,22,.9); border: 1px solid var(--border); border-radius: 8px; padding: .3rem .7rem; font-family: monospace; font-size: .78rem; color: var(--text-muted); pointer-events: none; }
+    .hud b { color: #facc15; }
+    .banner { position: absolute; left: 50%; top: 12px; transform: translateX(-50%); z-index: 20; display: none; align-items: center; gap: .6rem; background: rgba(217,119,6,.95); color: #fff; font-weight: 600; padding: .45rem .9rem; border-radius: 999px; border: 1px solid #fde68a; font-size: .85rem; box-shadow: 0 6px 24px rgba(0,0,0,.5); max-width: 90%; }
+    .banner button { background: rgba(0,0,0,.4); color: #fff; border: 0; width: 20px; height: 20px; border-radius: 50%; cursor: pointer; }
 
-    .side-card { background: var(--bg-card); border: 1px solid var(--border); border-radius: 14px; padding: 1.1rem; backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); margin-bottom: 1rem; }
-    .side-card h2 { margin: 0 0 .7rem; color: var(--accent-soft); font-size: 1.1rem; }
-    .side-card input[type=search], .side-card input[type=text], .side-card select, .side-card textarea {
-      width: 100%; padding: .55rem .65rem; border: 1px solid var(--border); background: var(--bg-input);
-      color: var(--text); border-radius: 8px; font: inherit; box-sizing: border-box;
-    }
-    .side-card label { display: block; font-size: .8rem; color: var(--text-muted); font-weight: 600; margin: .6rem 0 .25rem; }
-    .side-card textarea { min-height: 110px; resize: vertical; }
-    .chips { display: flex; flex-wrap: wrap; gap: .35rem; margin-top: .6rem; }
-    .chip { padding: .22rem .6rem; border-radius: 999px; border: 1px solid var(--border); background: transparent; color: var(--text-muted); cursor: pointer; font-size: .82rem; }
-    .chip.on { background: var(--accent-dim); color: #fff; border-color: var(--accent); }
-    .marker-list { list-style: none; margin: .7rem 0 0; padding: 0; max-height: 260px; overflow: auto; }
-    .marker-list li { display: flex; gap: .5rem; align-items: center; padding: .4rem .45rem; border-radius: 8px; cursor: pointer; }
-    .marker-list li:hover, .marker-list li.sel { background: var(--bg-hover); }
-    .marker-list small { color: var(--text-muted); margin-left: auto; }
-    .detail h3 { margin: 0 0 .2rem; color: var(--accent-soft); }
-    .detail .meta { color: var(--text-muted); font-size: .85rem; margin-bottom: .6rem; }
-    .detail .txt { white-space: pre-wrap; line-height: 1.55; font-size: .95rem; }
-    .muted { color: var(--text-muted); font-size: .9rem; }
-    .editor-bar { display: none; margin-bottom: 1rem; gap: .6rem; flex-wrap: wrap; align-items: center; }
-    .editor-bar.on { display: flex; }
-    .map-status { font-size: .85rem; }
+    /* ---------- Detail-Panel (schiebt von rechts rein) ---------- */
+    .panel { position: absolute; top: 0; right: 0; height: 100%; width: 392px; max-width: 100%; z-index: 30; background: rgba(18,12,28,.97); border-left: 1px solid var(--border-light); box-shadow: -10px 0 40px rgba(0,0,0,.5); transform: translateX(105%); transition: transform .3s ease; display: flex; flex-direction: column; }
+    .map-area.panel-open .panel { transform: none; }
+    .panel-head { display: flex; justify-content: space-between; gap: .6rem; padding: .9rem 1rem; border-bottom: 1px solid var(--border); background: rgba(0,0,0,.3); }
+    .panel-head .ico { width: 42px; height: 42px; border-radius: 10px; border: 1px solid var(--c, var(--border)); background: color-mix(in srgb, var(--c, #888) 22%, #120c1c); display: flex; align-items: center; justify-content: center; flex: none; }
+    .panel-head .ico svg { width: 22px; height: 22px; color: var(--c, #ccc); }
+    .panel-head h2 { margin: 0; font-size: 1.1rem; color: #fde68a; line-height: 1.2; font-family: "Palatino Linotype", Palatino, Georgia, serif; letter-spacing: .03em; }
+    .badges { display: flex; gap: .4rem; align-items: center; margin-top: .3rem; flex-wrap: wrap; }
+    .badge { font-family: monospace; font-size: .72rem; padding: 1px 7px; border-radius: 5px; background: rgba(255,255,255,.07); border: 1px solid var(--border); color: #facc15; }
+    .badge.plain { font-family: inherit; color: var(--text-muted); font-style: italic; background: none; border: 0; padding: 0; }
+    .x { background: none; border: 0; color: var(--text-muted); font-size: 1.3rem; cursor: pointer; align-self: flex-start; padding: 2px 6px; border-radius: 6px; }
+    .x:hover { color: #fff; background: var(--bg-hover); }
+    .panel-body { flex: 1; overflow: auto; padding: 1rem; display: flex; flex-direction: column; gap: .9rem; }
+    .panel-foot { padding: .8rem 1rem; border-top: 1px solid var(--border); background: rgba(0,0,0,.3); display: flex; gap: .5rem; flex-wrap: wrap; }
+    .panel-foot .btn { flex: 1; padding: .55rem .7rem; font-size: .85rem; justify-content: center; text-align: center; }
+    .field label, .lbl { display: block; font-size: .7rem; letter-spacing: .06em; text-transform: uppercase; color: var(--text-muted); font-weight: 700; margin-bottom: .3rem; }
+    .field textarea { min-height: 96px; resize: vertical; }
+    .box { background: rgba(0,0,0,.28); border: 1px solid var(--border); border-radius: 9px; padding: .7rem .8rem; font-size: .9rem; line-height: 1.6; white-space: pre-wrap; color: var(--text); }
+    .box.empty { color: var(--text-muted); font-style: italic; }
+    .visit { display: flex; justify-content: space-between; align-items: center; background: rgba(0,0,0,.28); border: 1px solid var(--border); border-radius: 9px; padding: .55rem .8rem; font-size: .88rem; }
+    .visit button, .pill { border-radius: 999px; padding: .28rem .8rem; font-size: .8rem; border: 1px solid var(--border); background: rgba(255,255,255,.05); color: var(--text-muted); cursor: pointer; font-weight: 600; }
+    .visit .on, .pill.on { border-color: #10b981; background: rgba(16,185,129,.2); color: #6ee7b7; }
+    .pos-line { font-size: .8rem; color: var(--text-muted); display: flex; justify-content: space-between; align-items: center; gap: .5rem; }
+    .pos-line button { font-size: .78rem; }
+    .saved { color: #facc15; font-size: .78rem; opacity: 0; transition: opacity .3s; }
+    .saved.on { opacity: 1; }
   </style>
 </head>
 <body>
@@ -113,64 +140,46 @@
 
   <main class="wrap">
     <h1 class="page-title">Weltkarte</h1>
-    <p class="page-desc">Scrollen zum Zoomen, ziehen zum Verschieben. Klicke einen Marker für Details. Das Raster (A–P / 1–17) hilft bei der Ortsangabe.</p>
 
-    <div class="editor-bar" id="editorBar">
-      <button class="btn" id="btnPlace" data-testid="karte-place-btn">📍 Marker setzen</button>
-      <button class="btn secondary" id="btnText" data-testid="karte-text-btn">✍️ Text auf Karte schreiben</button>
-      <span class="map-status" id="status"></span>
-      <span class="muted" id="roleInfo"></span>
-    </div>
+    <div class="map-app">
+      <aside class="side">
+        <input type="search" id="search" placeholder="Suchen nach Name oder Raster (z. B. A14, H8) …" data-testid="karte-search">
 
-    <div class="map-layout">
-      <div class="map-viewport" id="viewport" data-testid="karte-viewport">
-        <div class="map-banner" id="banner"></div>
-        <div class="map-stage" id="stage">
-          <img src="karte.jpg" alt="Weltkarte der Chroniken" id="mapImg" draggable="false">
+        <div class="btn-row">
+          <button class="btn secondary" id="btnReset">⤢ Kamera Reset</button>
+          <button class="btn editor-only" id="btnPlace" data-testid="karte-place-btn">＋ Marker setzen</button>
         </div>
-        <div class="map-tools">
-          <button id="zIn" title="Hineinzoomen" aria-label="Hineinzoomen">＋</button>
-          <button id="zOut" title="Herauszoomen" aria-label="Herauszoomen">－</button>
-          <button id="zReset" title="Ansicht zurücksetzen" aria-label="Ansicht zurücksetzen">⤢</button>
-        </div>
-        <div class="map-hud" id="hud">–</div>
-      </div>
+        <button class="btn secondary editor-only block" id="btnText" data-testid="karte-text-btn">✍️ Text auf Karte schreiben</button>
 
-      <aside>
-        <div class="side-card" id="formCard" style="display:none;">
-          <h2 id="formTitle">Neuer Marker</h2>
-          <label for="fTitle" id="lTitle">Name *</label>
-          <input type="text" id="fTitle" maxlength="80" data-testid="karte-input-title" placeholder="z. B. Hafenstadt Nebelwacht">
-          <div id="markerFields">
-            <label for="fCat">Art</label>
-            <select id="fCat" data-testid="karte-input-cat"></select>
-            <label for="fText">Beschreibung</label>
-            <textarea id="fText" maxlength="3000" data-testid="karte-input-text"></textarea>
-          </div>
-          <div id="textFields" style="display:none;">
-            <label for="fSize">Schriftgröße</label>
-            <select id="fSize"><option value="s">Klein</option><option value="m" selected>Mittel</option><option value="l">Groß</option><option value="xl">Sehr groß (Reiche, Meere)</option></select>
-            <label for="fColor">Farbe</label>
-            <select id="fColor"><option value="ink">Tinte (dunkel)</option><option value="red">Rot</option><option value="light">Hell</option></select>
-          </div>
-          <p class="muted" id="fPos" style="margin:.6rem 0 0;"></p>
-          <div class="admin-actions">
-            <button class="btn" id="btnSave" data-testid="karte-save-btn">Speichern</button>
-            <button class="btn secondary" id="btnMove" style="display:none;">Verschieben</button>
-            <button class="btn secondary" id="btnCancel">Abbrechen</button>
-          </div>
+        <div class="filters">
+          <div class="head"><h2>Filter nach Farbe</h2><button id="filterAll">Alle umschalten</button></div>
+          <div id="filterBoxes"></div>
         </div>
 
-        <div class="side-card detail" id="detailCard" style="display:none;"></div>
-
-        <div class="side-card">
-          <h2>Orte</h2>
-          <input type="search" id="search" placeholder="Suchen …" data-testid="karte-search">
-          <div class="chips" id="chips"></div>
-          <ul class="marker-list" id="list"></ul>
-          <p class="muted" id="emptyMsg" style="display:none;margin:.7rem 0 0;">Noch keine Marker vorhanden.</p>
+        <div>
+          <div class="count-row"><h2>Kartenpunkte</h2><span id="count">0/0</span></div>
+          <div class="loc-list" id="list" style="margin-top:.5rem;"></div>
+          <p class="hint" id="emptyMsg" style="display:none;margin-top:.6rem;"></p>
         </div>
+
+        <p class="hint">Klicke auf eine Krone für Details.</p>
+        <div class="role-line" id="roleInfo"></div>
+        <div class="status" id="status"></div>
       </aside>
+
+      <section class="map-area" id="area">
+        <div class="map-viewport" id="viewport" data-testid="karte-viewport">
+          <div class="map-stage" id="stage"><img src="karte.jpg" alt="Weltkarte der Chroniken" id="mapImg" draggable="false"></div>
+        </div>
+        <div class="banner" id="banner"><span id="bannerText"></span><button id="bannerX" aria-label="Abbrechen">✕</button></div>
+        <div class="tools">
+          <button id="zIn" title="Heranzoomen" aria-label="Heranzoomen">＋</button>
+          <button id="zOut" title="Herauszoomen" aria-label="Herauszoomen">－</button>
+        </div>
+        <div class="hud">Grid: <b id="hudGrid">--</b> &nbsp;|&nbsp; Pos: <span id="hudPos">X: 0%, Y: 0%</span></div>
+
+        <aside class="panel" id="panel" aria-live="polite"></aside>
+      </section>
     </div>
   </main>
 
@@ -181,350 +190,341 @@
   <script>
   (function () {
     "use strict";
-    // ===== Karte: Anzeige für alle, Bearbeiten nur mit Admin- ODER Bibliothek-Rolle =====
+    // Ansehen: alle (Infos im Panel, nur lesen) · Schreiben/Bearbeiten: Admin- ODER Bibliothek-Rolle
     const IMG_W = 1011, IMG_H = 1024;
-    // Raster der Kartengrafik (vermessen): Spalten A–P, Zeilen 17 (oben) bis 1 (unten)
-    const GRID = { x0: 32, y0: 47, cw: 58.07, ch: 58.1, cols: 16, rows: 17 };
-    const CATS = {
-      stadt:   { icon: "🏰", name: "Stadt / Siedlung" },
-      dorf:    { icon: "🏘️", name: "Dorf" },
-      hafen:   { icon: "⚓", name: "Hafen" },
-      gebiet:  { icon: "🌲", name: "Gebiet / Natur" },
-      ruine:   { icon: "🏚️", name: "Ruine / Dungeon" },
-      gefahr:  { icon: "⚠️", name: "Gefahr" },
-      tempel:  { icon: "⛩️", name: "Tempel / Heiligtum" },
-      sonstig: { icon: "📍", name: "Sonstiges" }
+    const GRID = { x0: 32, y0: 47, cw: 58.07, ch: 58.1, cols: 16, rows: 17 }; // Raster der Kartengrafik
+    const COLORS = {
+      blue:   { label: "Blau",             color: "#3b82f6" },
+      purple: { label: "Violett",          color: "#a855f7" },
+      grey:   { label: "Dunkelgrau",       color: "#94a3b8" },
+      yellow: { label: "Gelb",             color: "#facc15" },
+      pink:   { label: "Rosa",             color: "#ec4899" },
+      gold:   { label: "Gold",             color: "#eab308" },
+      brown:  { label: "Bronze",           color: "#d97706" },
+      custom: { label: "Grün (Eigene Punkte)", color: "#10b981" }
     };
-
-    const TEXT_CAT = { icon: "✍️", name: "Texte auf der Karte" };
+    const TAGS = ["Stadt / Siedlung", "Dorf", "Hafen", "Hauptbasis", "Außenposten", "Ressourcen Hub", "Ruine / Dungeon", "Tempel / Heiligtum", "Gebiet / Natur", "Gefahr", "Raid-Ziel", "Unbekannt"];
+    const OLD_CATS = { stadt: "Stadt / Siedlung", dorf: "Dorf", hafen: "Hafen", gebiet: "Gebiet / Natur", ruine: "Ruine / Dungeon", gefahr: "Gefahr", tempel: "Tempel / Heiligtum", sonstig: "Unbekannt" };
     const SIZES = { s: 14, m: 20, l: 30, xl: 46 };
-    const isText = m => m && m.kind === "text";
-    const catOf = m => isText(m) ? "text" : (m.cat in CATS ? m.cat : "sonstig");
-    const iconOf = m => isText(m) ? TEXT_CAT.icon : (CATS[m.cat] || CATS.sonstig).icon;
+    const CROWN = '<svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M3 19h18v2H3zM3 7l4.5 4L12 4l4.5 7L21 7l-2 10H5z"/></svg>';
+
     const $ = id => document.getElementById(id);
     const esc = s => String(s == null ? "" : s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
     const flag = k => { try { return sessionStorage.getItem(k) === "1"; } catch (e) { return false; } };
     const canEdit = () => flag("portal_admin_auth") || flag("portal_bibliothek_auth");
+    const isText = m => m && m.kind === "text";
+    const catOf = m => isText(m) ? "text" : (COLORS[m.category] ? m.category : "custom");
+    const colorOf = m => (COLORS[catOf(m)] || COLORS.custom).color;
 
-    const vp = $("viewport"), stage = $("stage");
+    const vp = $("viewport"), stage = $("stage"), area = $("area"), panel = $("panel");
     let markers = [];
-    let view = { k: 1, tx: 0, ty: 0 };
-    let minK = 0.3;
-    let activeCats = new Set(Object.keys(CATS).concat("text"));
-    let selectedId = null;
-    let mode = null;           // null | "place" | "move"
-    let draft = null;          // {id|null, x, y, kind} aktuell bearbeiteter Marker
+    let view = { k: 1, tx: 0, ty: 0 }, minK = 0.3;
+    let activeCats = new Set(Object.keys(COLORS).concat("text"));
+    let selectedId = null, mode = null, placeKind = "marker";
+    let draft = null;     // { isNew, m } – Bearbeitungskopie (nur Editoren)
     let busy = false;
-    let placeKind = "marker";
 
-    // ---------- Hilfen ----------
+    // alte Marker (früheres Format) abwärtskompatibel lesen
+    function normalize(m) {
+      if (isText(m)) return m;
+      const o = Object.assign({}, m);
+      if (!o.category || !COLORS[o.category]) o.category = "custom";
+      if (!o.tag) o.tag = OLD_CATS[o.cat] || "Unbekannt";
+      if (o.description == null) o.description = o.text || "";
+      o.notes = o.notes || ""; o.biome = o.biome || ""; o.visited = !!o.visited; o.kind = "marker";
+      return o;
+    }
     function gridRef(x, y) {
-      const px = x * IMG_W, py = y * IMG_H;
-      const c = Math.min(GRID.cols - 1, Math.max(0, Math.floor((px - GRID.x0) / GRID.cw)));
-      const r = Math.min(GRID.rows - 1, Math.max(0, Math.floor((py - GRID.y0) / GRID.ch)));
+      const c = Math.min(GRID.cols - 1, Math.max(0, Math.floor((x * IMG_W - GRID.x0) / GRID.cw)));
+      const r = Math.min(GRID.rows - 1, Math.max(0, Math.floor((y * IMG_H - GRID.y0) / GRID.ch)));
       return String.fromCharCode(65 + c) + (GRID.rows - r);
     }
+    const uid = () => "m" + Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
     function setStatus(t, err) { const s = $("status"); s.textContent = t || ""; s.style.color = err ? "#f87171" : "#22c55e"; }
-    function uid() { return "m" + Date.now().toString(36) + Math.random().toString(36).slice(2, 7); }
-    function banner(t) { const b = $("banner"); b.textContent = t || ""; b.style.display = t ? "block" : "none"; }
+    function banner(t) { $("banner").style.display = t ? "flex" : "none"; $("bannerText").textContent = t || ""; }
 
-    // ---------- Ansicht (Zoom/Pan) ----------
-    function applyView() {
-      stage.style.transform = `translate(${view.tx}px, ${view.ty}px) scale(${view.k})`;
-      stage.style.setProperty("--inv", 1 / view.k);
-    }
+    // ---------- Zoom / Verschieben ----------
+    function applyView() { stage.style.transform = `translate(${view.tx}px, ${view.ty}px) scale(${view.k})`; stage.style.setProperty("--inv", 1 / view.k); }
     function clampView() {
       const w = vp.clientWidth, h = vp.clientHeight, m = 80;
-      const sw = IMG_W * view.k, sh = IMG_H * view.k;
-      view.tx = Math.min(w - m, Math.max(m - sw, view.tx));
-      view.ty = Math.min(h - m, Math.max(m - sh, view.ty));
+      view.tx = Math.min(w - m, Math.max(m - IMG_W * view.k, view.tx));
+      view.ty = Math.min(h - m, Math.max(m - IMG_H * view.k, view.ty));
     }
     function fit() {
       const w = vp.clientWidth, h = vp.clientHeight;
       minK = Math.min(w / IMG_W, h / IMG_H);
-      view.k = minK;
-      view.tx = (w - IMG_W * view.k) / 2;
-      view.ty = (h - IMG_H * view.k) / 2;
-      applyView();
+      view.k = minK; view.tx = (w - IMG_W * view.k) / 2; view.ty = (h - IMG_H * view.k) / 2; applyView();
     }
-    function zoomAt(cx, cy, factor) {
-      const nk = Math.min(6, Math.max(minK * 0.9, view.k * factor));
-      const f = nk / view.k;
-      view.tx = cx - (cx - view.tx) * f;
-      view.ty = cy - (cy - view.ty) * f;
-      view.k = nk;
-      clampView(); applyView();
+    function zoomAt(cx, cy, f) {
+      const nk = Math.min(6, Math.max(minK * 0.9, view.k * f)), r = nk / view.k;
+      view.tx = cx - (cx - view.tx) * r; view.ty = cy - (cy - view.ty) * r; view.k = nk; clampView(); applyView();
     }
-    function toImg(clientX, clientY) {
-      const r = vp.getBoundingClientRect();
-      return { x: (clientX - r.left - view.tx) / view.k / IMG_W, y: (clientY - r.top - view.ty) / view.k / IMG_H };
-    }
+    const toImg = (cx, cy) => { const r = vp.getBoundingClientRect(); return { x: (cx - r.left - view.tx) / view.k / IMG_W, y: (cy - r.top - view.ty) / view.k / IMG_H }; };
     function focusMarker(m) {
-      const w = vp.clientWidth, h = vp.clientHeight;
-      view.k = Math.max(view.k, Math.min(2, minK * 2.5));
-      view.tx = w / 2 - m.x * IMG_W * view.k;
-      view.ty = h / 2 - m.y * IMG_H * view.k;
+      view.k = Math.max(view.k, Math.min(2.2, minK * 2.5));
+      const off = area.classList.contains("panel-open") && window.innerWidth > 700 ? 196 : 0;
+      view.tx = (vp.clientWidth - off) / 2 - m.x * IMG_W * view.k; view.ty = vp.clientHeight / 2 - m.y * IMG_H * view.k;
       clampView(); applyView();
     }
-
-    vp.addEventListener("wheel", e => {
-      e.preventDefault();
-      const r = vp.getBoundingClientRect();
-      zoomAt(e.clientX - r.left, e.clientY - r.top, e.deltaY < 0 ? 1.18 : 1 / 1.18);
-    }, { passive: false });
+    vp.addEventListener("wheel", e => { e.preventDefault(); const r = vp.getBoundingClientRect(); zoomAt(e.clientX - r.left, e.clientY - r.top, e.deltaY < 0 ? 1.18 : 1 / 1.18); }, { passive: false });
     $("zIn").onclick = () => zoomAt(vp.clientWidth / 2, vp.clientHeight / 2, 1.4);
     $("zOut").onclick = () => zoomAt(vp.clientWidth / 2, vp.clientHeight / 2, 1 / 1.4);
-    $("zReset").onclick = fit;
+    $("btnReset").onclick = fit;
 
-    // Zeiger: 1 Finger/Maus = Verschieben (oder Klick), 2 Finger = Zoom
-    const ptrs = new Map();
-    let dragStart = null, pinch = null;
+    const ptrs = new Map(); let dragStart = null, pinch = null;
     vp.addEventListener("pointerdown", e => {
-      if (e.target.closest(".map-tools")) return;
       ptrs.set(e.pointerId, { x: e.clientX, y: e.clientY });
       try { vp.setPointerCapture(e.pointerId); } catch (_) {}
-      if (ptrs.size === 1) dragStart = { x: e.clientX, y: e.clientY, tx: view.tx, ty: view.ty, moved: false, onPin: e.target.closest(".pin, .map-text") };
-      if (ptrs.size === 2) {
-        const [a, b] = [...ptrs.values()];
-        pinch = { d: Math.hypot(a.x - b.x, a.y - b.y) };
-        dragStart = null;
-      }
+      if (ptrs.size === 1) dragStart = { x: e.clientX, y: e.clientY, tx: view.tx, ty: view.ty, moved: false, hit: e.target.closest(".pin, .map-text") };
+      if (ptrs.size === 2) { const [a, b] = [...ptrs.values()]; pinch = { d: Math.hypot(a.x - b.x, a.y - b.y) }; dragStart = null; }
     });
     vp.addEventListener("pointermove", e => {
-      if (!ptrs.has(e.pointerId)) { hudUpdate(e); return; }
+      hud(e);
+      if (!ptrs.has(e.pointerId)) return;
       ptrs.set(e.pointerId, { x: e.clientX, y: e.clientY });
       if (ptrs.size === 2 && pinch) {
-        const [a, b] = [...ptrs.values()];
-        const d = Math.hypot(a.x - b.x, a.y - b.y);
-        const r = vp.getBoundingClientRect();
-        zoomAt((a.x + b.x) / 2 - r.left, (a.y + b.y) / 2 - r.top, d / pinch.d);
-        pinch.d = d;
-        return;
+        const [a, b] = [...ptrs.values()], d = Math.hypot(a.x - b.x, a.y - b.y), r = vp.getBoundingClientRect();
+        zoomAt((a.x + b.x) / 2 - r.left, (a.y + b.y) / 2 - r.top, d / pinch.d); pinch.d = d; return;
       }
       if (dragStart) {
         const dx = e.clientX - dragStart.x, dy = e.clientY - dragStart.y;
         if (!dragStart.moved && Math.hypot(dx, dy) > 5) { dragStart.moved = true; vp.classList.add("dragging"); }
         if (dragStart.moved) { view.tx = dragStart.tx + dx; view.ty = dragStart.ty + dy; clampView(); applyView(); }
       }
-      hudUpdate(e);
     });
     function endPtr(e) {
-      const was = dragStart;
-      ptrs.delete(e.pointerId);
+      const was = dragStart; ptrs.delete(e.pointerId);
       if (ptrs.size < 2) pinch = null;
       vp.classList.remove("dragging");
-      if (ptrs.size === 0 && was && !was.moved && e.type === "pointerup") onMapClick(e, was.onPin);
+      if (ptrs.size === 0 && was && !was.moved && e.type === "pointerup") onMapClick(e, was.hit);
       if (ptrs.size === 0) dragStart = null;
     }
-    vp.addEventListener("pointerup", endPtr);
-    vp.addEventListener("pointercancel", endPtr);
-
-    function hudUpdate(e) {
-      const p = toImg(e.clientX, e.clientY);
-      $("hud").textContent = (p.x >= 0 && p.x <= 1 && p.y >= 0 && p.y <= 1) ? "Feld " + gridRef(p.x, p.y) : "–";
+    vp.addEventListener("pointerup", endPtr); vp.addEventListener("pointercancel", endPtr);
+    function hud(e) {
+      const p = toImg(e.clientX, e.clientY), inside = p.x >= 0 && p.x <= 1 && p.y >= 0 && p.y <= 1;
+      $("hudGrid").textContent = inside ? gridRef(p.x, p.y) : "--";
+      $("hudPos").textContent = inside ? `X: ${(p.x * 100).toFixed(1)}%, Y: ${(p.y * 100).toFixed(1)}%` : "Außerhalb";
     }
 
-    function onMapClick(e, pinEl) {
-      if (pinEl && mode === null) { select(pinEl.dataset.id, false); return; }
-      const p = toImg(e.clientX, e.clientY);
-      if (p.x < 0 || p.x > 1 || p.y < 0 || p.y > 1) return;
-      if (mode === "place") {
-        draft = { id: null, x: p.x, y: p.y, kind: placeKind };
-        mode = null; vp.classList.remove("placing"); banner("");
-        openForm(); renderPins();
-      } else if (mode === "move" && draft) {
-        draft.x = p.x; draft.y = p.y;
-        mode = null; vp.classList.remove("placing"); banner("");
-        $("fPos").textContent = "Position: Feld " + gridRef(draft.x, draft.y);
-        renderPins();
-      } else if (!pinEl) {
-        select(null, false);
+    function endMode() { mode = null; vp.classList.remove("placing"); banner(""); }
+    function onMapClick(e, hit) {
+      const p = toImg(e.clientX, e.clientY), inside = p.x >= 0 && p.x <= 1 && p.y >= 0 && p.y <= 1;
+      if (mode && inside && canEdit()) {
+        if (mode === "place") {
+          const base = placeKind === "text"
+            ? { id: uid(), kind: "text", title: "", size: "m", color: "ink" }
+            : { id: uid(), kind: "marker", title: "", biome: "", category: "custom", tag: "Hauptbasis", description: "", notes: "", visited: false };
+          base.x = p.x; base.y = p.y;
+          draft = { isNew: true, m: base }; selectedId = base.id; endMode(); openPanel(); renderAll();
+          const f = $("fTitle"); if (f) f.focus();
+        } else if (mode === "move" && draft) {
+          draft.m.x = p.x; draft.m.y = p.y; endMode(); renderPanel(); renderAll();
+        }
+        return;
       }
+      if (mode) return;
+      if (hit && hit.dataset.id) select(hit.dataset.id, false); else closePanel();
     }
 
-    // ---------- Darstellung ----------
+    // ---------- Anzeige ----------
     function visible() {
       const q = $("search").value.trim().toLowerCase();
-      return markers.filter(m => activeCats.has(catOf(m)) &&
-        (!q || (m.title || "").toLowerCase().includes(q) || (m.text || "").toLowerCase().includes(q)));
+      return markers.filter(m => activeCats.has(catOf(m)) && (!q ||
+        (m.title || "").toLowerCase().includes(q) || gridRef(m.x, m.y).toLowerCase().includes(q) ||
+        (m.biome || "").toLowerCase().includes(q) || (m.tag || "").toLowerCase().includes(q)));
     }
     function renderPins() {
       stage.querySelectorAll(".pin, .map-text").forEach(n => n.remove());
+      let list = visible();
+      if (draft) { list = list.filter(m => m.id !== draft.m.id); list.push(draft.m); }
       const frag = document.createDocumentFragment();
-      visible().forEach(m => {
-        if (draft && draft.id === m.id) return;
-        const b = document.createElement("button");
-        b.dataset.id = m.id;
-        b.style.left = (m.x * IMG_W) + "px"; b.style.top = (m.y * IMG_H) + "px";
-        b.title = m.title || "";
+      list.forEach(m => {
+        const sel = m.id === selectedId, b = document.createElement("button");
+        b.dataset.id = m.id; b.style.left = (m.x * IMG_W) + "px"; b.style.top = (m.y * IMG_H) + "px";
         if (isText(m)) {
-          b.className = "map-text c-" + (m.color || "ink") + (m.id === selectedId ? " sel" : "");
-          b.style.fontSize = (SIZES[m.size] || SIZES.m) + "px";
-          b.textContent = m.title;
+          b.className = "map-text c-" + (m.color || "ink") + (sel ? " sel" : "") + (draft && draft.m.id === m.id && draft.isNew ? " ghost" : "");
+          b.style.fontSize = (SIZES[m.size] || SIZES.m) + "px"; b.textContent = m.title || "Text …";
         } else {
-          b.className = "pin" + (m.id === selectedId ? " sel" : "");
-          b.innerHTML = iconOf(m) + '<span class="pin-label">' + esc(m.title) + "</span>";
+          b.className = "pin" + (sel ? " sel" : "") + (draft && draft.m.id === m.id && draft.isNew ? " ghost" : "");
+          b.style.setProperty("--c", colorOf(m)); b.style.zIndex = sel ? 40 : 20;
+          b.innerHTML = (m.visited ? '<span class="check">✓</span>' : "") + `<div class="ring">${CROWN}</div>` +
+            `<div class="tip">${esc(m.title || "Neuer Marker")} <small>(${gridRef(m.x, m.y)})</small></div>`;
         }
         frag.appendChild(b);
       });
-      if (draft) {
-        const g = document.createElement("div");
-        if (draft.kind === "text") { g.className = "map-text ghost c-ink"; g.style.fontSize = SIZES.m + "px"; g.textContent = $("fTitle").value || "Text …"; }
-        else { g.className = "pin ghost"; g.textContent = "📌"; }
-        g.style.left = (draft.x * IMG_W) + "px"; g.style.top = (draft.y * IMG_H) + "px";
-        frag.appendChild(g);
-      }
       stage.appendChild(frag);
     }
-    function renderChips() {
-      $("chips").innerHTML = Object.entries(Object.assign({}, CATS, { text: TEXT_CAT })).map(([k, c]) =>
-        `<button class="chip ${activeCats.has(k) ? "on" : ""}" data-cat="${k}">${c.icon} ${esc(c.name)}</button>`).join("");
-      $("chips").querySelectorAll(".chip").forEach(b => b.onclick = () => {
-        const k = b.dataset.cat;
-        activeCats.has(k) ? activeCats.delete(k) : activeCats.add(k);
-        renderChips(); renderAll();
+    function renderFilters() {
+      const all = Object.assign({}, COLORS, { text: { label: "Texte auf der Karte", color: "#e4e4e8" } });
+      $("filterBoxes").innerHTML = Object.entries(all).map(([k, c]) =>
+        `<label><span><span class="dot" style="background:${c.color}"></span>${esc(c.label)}</span><input type="checkbox" value="${k}" ${activeCats.has(k) ? "checked" : ""}></label>`).join("");
+      $("filterBoxes").querySelectorAll("input").forEach(cb => cb.onchange = () => {
+        cb.checked ? activeCats.add(cb.value) : activeCats.delete(cb.value); renderAll();
       });
     }
+    $("filterAll").onclick = () => {
+      const all = Object.keys(COLORS).concat("text");
+      activeCats = activeCats.size === all.length ? new Set() : new Set(all);
+      renderFilters(); renderAll();
+    };
     function renderList() {
       const list = visible().sort((a, b) => (a.title || "").localeCompare(b.title || "", "de"));
-      $("list").innerHTML = list.map(m =>
-        `<li data-id="${esc(m.id)}" class="${m.id === selectedId ? "sel" : ""}">${iconOf(m)} <span>${esc(m.title)}</span><small>${gridRef(m.x, m.y)}</small></li>`).join("");
-      $("list").querySelectorAll("li").forEach(li => li.onclick = () => select(li.dataset.id, true));
-      $("emptyMsg").style.display = markers.length ? "none" : "block";
-      $("emptyMsg").textContent = "Noch keine Marker vorhanden.";
+      $("count").textContent = `${list.length}/${markers.length}`;
+      $("list").innerHTML = list.map(m => `<div class="loc ${m.id === selectedId ? "sel" : ""}" data-id="${esc(m.id)}" style="--c:${colorOf(m)}">
+          <span class="crown" style="color:${colorOf(m)}">${isText(m) ? "✍️" : CROWN}</span>
+          <div style="min-width:0"><div class="t">${esc(m.title)}</div><div class="s">Raster: ${gridRef(m.x, m.y)} • ${esc(isText(m) ? "Text" : (m.tag || "Allgemein"))}</div></div></div>`).join("");
+      $("list").querySelectorAll(".loc").forEach(el => el.onclick = () => select(el.dataset.id, true));
+      const e = $("emptyMsg");
+      e.style.display = list.length ? "none" : "block";
+      e.textContent = markers.length ? "Keine Treffer." : "Noch keine Marker vorhanden.";
     }
-    function renderDetail() {
-      const m = markers.find(x => x.id === selectedId), card = $("detailCard");
-      if (!m || draft) { card.style.display = "none"; return; }
-      const c = isText(m) ? { icon: TEXT_CAT.icon, name: "Text auf der Karte" } : (CATS[m.cat] || CATS.sonstig);
-      card.style.display = "block";
-      card.innerHTML = `<h3>${c.icon} ${esc(m.title)}</h3>
-        <div class="meta">${esc(c.name)} · Feld ${gridRef(m.x, m.y)}</div>
-        ${isText(m) ? "" : `<div class="txt">${esc(m.text) || '<span class="muted">Keine Beschreibung.</span>'}</div>`}
-        ${canEdit() ? `<div class="tile-actions">
-          <button class="btn secondary" id="dEdit" data-testid="karte-edit-btn">Bearbeiten</button>
-          <button class="btn danger" id="dDel" data-testid="karte-delete-btn">Löschen</button></div>` : ""}`;
-      if (canEdit()) {
-        $("dEdit").onclick = () => { draft = { id: m.id, x: m.x, y: m.y, kind: isText(m) ? "text" : "marker" }; openForm(m); renderPins(); renderDetail(); };
-        $("dDel").onclick = () => removeMarker(m.id);
-      }
-    }
-    function renderAll() { renderPins(); renderList(); renderDetail(); }
+    function renderAll() { renderPins(); renderList(); }
 
+    // ---------- Panel ----------
+    function openPanel() { area.classList.add("panel-open"); renderPanel(); }
+    function closePanel() { selectedId = null; draft = null; endMode(); area.classList.remove("panel-open"); renderAll(); }
     function select(id, focus) {
-      selectedId = id;
-      const m = markers.find(x => x.id === id);
-      if (m && focus) focusMarker(m);
-      renderAll();
+      const m = markers.find(x => x.id === id); if (!m) return;
+      endMode(); selectedId = id;
+      draft = canEdit() ? { isNew: false, m: JSON.parse(JSON.stringify(m)) } : null;
+      openPanel(); if (focus) focusMarker(m); renderAll();
+    }
+    function headHtml(m, title, sub) {
+      return `<div class="panel-head"><div style="display:flex;gap:.7rem;align-items:center;min-width:0">
+        <div class="ico" style="--c:${colorOf(m)}">${isText(m) ? "✍️" : CROWN}</div>
+        <div style="min-width:0"><h2>${esc(title)}</h2><div class="badges">${sub}</div></div></div>
+        <button class="x" id="pClose" aria-label="Schließen">✕</button></div>`;
+    }
+    function renderPanel() {
+      const ed = canEdit() && draft, src = ed ? draft.m : markers.find(x => x.id === selectedId);
+      if (!src) { panel.innerHTML = ""; return; }
+      const g = gridRef(src.x, src.y);
+      let html = "";
+      if (!ed) {
+        // ---- Nur lesen (nicht angemeldet) ----
+        html = headHtml(src, src.title, `<span class="badge">Raster ${g}</span><span class="badge plain">${esc(src.biome || "Unbekannte Region")}</span>`) +
+          `<div class="panel-body">
+            <div><span class="lbl">Kategorie / Zweck</span><div class="box">${esc(src.tag || "Allgemein")}</div></div>
+            <div class="visit"><span>Erkundet / Übernommen</span><span class="pill ${src.visited ? "on" : ""}">${src.visited ? "✓ Erkundet" : "Offen"}</span></div>
+            <div><span class="lbl">Region &amp; Details</span><div class="box ${src.description ? "" : "empty"}">${esc(src.description || "Keine spezifische Beschreibung hinterlegt.")}</div></div>
+            ${src.notes ? `<div><span class="lbl">Notizen</span><div class="box">${esc(src.notes)}</div></div>` : ""}
+          </div>`;
+      } else if (isText(src)) {
+        html = headHtml(src, draft.isNew ? "Neuer Text auf der Karte" : "Text bearbeiten", `<span class="badge">Raster ${g}</span>`) +
+          `<div class="panel-body">
+            <div class="field"><label for="fTitle">Text *</label><input type="text" id="fTitle" maxlength="80" value="${esc(src.title)}" placeholder="z. B. Das Nebelreich"></div>
+            <div class="field"><label for="fSize">Schriftgröße</label><select id="fSize">${[["s","Klein"],["m","Mittel"],["l","Groß"],["xl","Sehr groß (Reiche, Meere)"]].map(([k,l]) => `<option value="${k}" ${src.size === k ? "selected" : ""}>${l}</option>`).join("")}</select></div>
+            <div class="field"><label for="fColor">Farbe</label><select id="fColor">${[["ink","Tinte (dunkel)"],["red","Rot"],["light","Hell"]].map(([k,l]) => `<option value="${k}" ${src.color === k ? "selected" : ""}>${l}</option>`).join("")}</select></div>
+            <div class="pos-line"><span>Position: Raster ${g}</span><button class="btn secondary" id="pMove" type="button">Verschieben</button></div>
+          </div>` + footHtml();
+      } else {
+        html = headHtml(src, src.title || (draft.isNew ? "Neuer Marker" : "Marker"), `<span class="badge">Raster ${g}</span><span class="badge plain">${esc(src.biome || "Unbekannte Region")}</span>`) +
+          `<div class="panel-body">
+            <div class="field"><label for="fTitle">Name *</label><input type="text" id="fTitle" maxlength="80" value="${esc(src.title)}" placeholder="z. B. Hafenstadt Nebelwacht"></div>
+            <div class="field"><label for="fBiome">Region / Biom</label><input type="text" id="fBiome" maxlength="80" value="${esc(src.biome)}" placeholder="z. B. Nordküste"></div>
+            <div class="field"><label for="fColor">Farbe</label><select id="fColor">${Object.entries(COLORS).map(([k, c]) => `<option value="${k}" ${src.category === k ? "selected" : ""}>${esc(c.label)}</option>`).join("")}</select></div>
+            <div class="field"><label for="fTag">Kategorie / Zweck</label><select id="fTag">${TAGS.map(t => `<option ${src.tag === t ? "selected" : ""}>${esc(t)}</option>`).join("")}</select></div>
+            <div class="visit"><span>Erkundet / Übernommen</span><button type="button" id="fVisited" class="${src.visited ? "on" : ""}">${src.visited ? "✓ Erkundet" : "Offen"}</button></div>
+            <div class="field"><label for="fDesc">Region &amp; Details</label><textarea id="fDesc" maxlength="3000" placeholder="Beschreibung, die jeder beim Klick sieht …">${esc(src.description)}</textarea></div>
+            <div class="field"><label for="fNotes">Notizen</label><textarea id="fNotes" maxlength="3000" placeholder="Zusätzliche Notizen …">${esc(src.notes)}</textarea></div>
+            <div class="pos-line"><span>Position: Raster ${g}</span><button class="btn secondary" id="pMove" type="button">Verschieben</button></div>
+          </div>` + footHtml();
+      }
+      panel.innerHTML = html;
+      $("pClose").onclick = closePanel;
+      if (ed) bindForm();
+    }
+    function footHtml() {
+      return `<div class="panel-foot"><span class="saved" id="savedMsg">✓ Gespeichert!</span>
+        <button class="btn" id="pSave" data-testid="karte-save-btn">💾 Speichern</button>
+        ${draft.isNew ? '<button class="btn secondary" id="pCancel">Abbrechen</button>' : '<button class="btn danger" id="pDel" data-testid="karte-delete-btn">🗑 Löschen</button>'}</div>`;
+    }
+    function bindForm() {
+      const m = draft.m, bind = (id, key, cb) => { const el = $(id); if (el) el.addEventListener("input", () => { m[key] = el.value; if (cb) cb(); }); };
+      bind("fTitle", "title", () => { renderPins(); const h = panel.querySelector("h2"); if (h && !isText(m)) h.textContent = m.title || "Neuer Marker"; });
+      bind("fBiome", "biome"); bind("fDesc", "description"); bind("fNotes", "notes"); bind("fTag", "tag");
+      bind("fSize", "size", renderPins);
+      const col = $("fColor"); if (col) col.addEventListener("input", () => { m[isText(m) ? "color" : "category"] = col.value; renderPins(); renderList(); const i = panel.querySelector(".ico"); if (i) i.style.setProperty("--c", colorOf(m)); });
+      const v = $("fVisited"); if (v) v.onclick = () => { m.visited = !m.visited; v.className = m.visited ? "on" : ""; v.textContent = m.visited ? "✓ Erkundet" : "Offen"; renderPins(); };
+      $("pMove").onclick = () => { mode = "move"; vp.classList.add("placing"); banner("Klicke auf die Karte, um die neue Position zu wählen"); };
+      $("pSave").onclick = saveDraft;
+      const c = $("pCancel"); if (c) c.onclick = closePanel;
+      const d = $("pDel"); if (d) d.onclick = () => removeMarker(m.id);
     }
 
-    // ---------- Formular ----------
-    function openForm(m) {
-      $("formCard").style.display = "block";
-      const t = draft.kind === "text";
-      $("formTitle").textContent = t ? (m ? "Text bearbeiten" : "Neuer Text auf der Karte") : (m ? "Marker bearbeiten" : "Neuer Marker");
-      $("lTitle").textContent = t ? "Text *" : "Name *";
-      $("markerFields").style.display = t ? "none" : "";
-      $("textFields").style.display = t ? "" : "none";
-      $("fTitle").value = m ? (m.title || "") : "";
-      $("fCat").value = m && CATS[m.cat] ? m.cat : "stadt";
-      $("fText").value = m && !isText(m) ? (m.text || "") : "";
-      $("fSize").value = m && m.size ? m.size : "m";
-      $("fColor").value = m && m.color ? m.color : "ink";
-      $("fPos").textContent = "Position: Feld " + gridRef(draft.x, draft.y);
-      $("btnMove").style.display = "inline-block";
-      $("detailCard").style.display = "none";
-      $("fTitle").focus();
-    }
-    function closeForm() {
-      draft = null; mode = null;
-      vp.classList.remove("placing"); banner("");
-      $("formCard").style.display = "none";
-      renderAll();
-    }
-
-    // ---------- Speichern (immer frisch laden, nur den einen Marker ändern) ----------
+    // ---------- Speichern: frisch laden, nur diesen einen Eintrag ändern ----------
     async function mutate(fn, okText) {
-      if (busy) return;
-      if (!canEdit()) { setStatus("Keine Berechtigung.", true); return; }
+      if (busy) return false;
+      if (!canEdit()) { setStatus("Keine Berechtigung.", true); return false; }
       busy = true; setStatus("Speichere …");
       try {
         const latest = (await ChronikenStorage.refresh("map")).slice();
         const next = fn(latest);
         await ChronikenStorage.save("map", next);
-        markers = next;
-        setStatus("✓ " + okText);
-        setTimeout(() => setStatus(""), 2500);
+        markers = next.filter(valid).map(normalize);
+        setStatus("✓ " + okText); setTimeout(() => setStatus(""), 2500);
         return true;
-      } catch (e) {
-        console.error(e);
-        setStatus("Speichern fehlgeschlagen: " + (e.message || e), true);
-        return false;
-      } finally { busy = false; }
+      } catch (e) { console.error(e); setStatus("Speichern fehlgeschlagen: " + (e.message || e), true); return false; }
+      finally { busy = false; }
     }
-    async function saveMarker() {
-      const title = $("fTitle").value.trim();
-      if (!title) { setStatus("Bitte einen Namen eingeben.", true); return; }
-      const entry = draft.kind === "text"
-        ? { kind: "text", title, size: $("fSize").value, color: $("fColor").value, x: draft.x, y: draft.y }
-        : { kind: "marker", title, cat: $("fCat").value, text: $("fText").value.trim(), x: draft.x, y: draft.y };
-      const editId = draft.id;
-      const newId = editId || uid();
+    async function saveDraft() {
+      const m = JSON.parse(JSON.stringify(draft.m));
+      m.title = (m.title || "").trim();
+      if (!m.title) { setStatus(isText(m) ? "Bitte einen Text eingeben." : "Bitte einen Namen eingeben.", true); const f = $("fTitle"); if (f) f.focus(); return; }
+      m.grid = gridRef(m.x, m.y); m.updated = Date.now();
+      if (!isText(m)) { delete m.cat; delete m.text; }
+      const isNew = draft.isNew;
+      if (isNew) { m.created = Date.now(); m.by = (window.ChronikenAuth && ChronikenAuth.name()) || ""; }
       const ok = await mutate(list => {
-        const i = list.findIndex(m => m.id === editId);
-        if (editId && i >= 0) list[i] = Object.assign({}, list[i], entry, { updated: Date.now() });
-        else list.push(Object.assign({ id: newId, created: Date.now(), by: ChronikenAuth.name() || "" }, entry));
+        const i = list.findIndex(x => x.id === m.id);
+        if (i >= 0) list[i] = Object.assign({}, list[i], m); else list.push(m);
         return list;
       }, "Gespeichert");
-      if (ok) { selectedId = newId; closeForm(); }
+      if (ok) {
+        selectedId = m.id; draft = { isNew: false, m: JSON.parse(JSON.stringify(markers.find(x => x.id === m.id) || m)) };
+        renderPanel(); renderAll();
+        const s = $("savedMsg"); if (s) { s.classList.add("on"); setTimeout(() => s.classList.remove("on"), 2000); }
+      }
     }
     async function removeMarker(id) {
       const m = markers.find(x => x.id === id);
       if (!m || !confirm("„" + (m.title || "Marker") + "“ wirklich löschen?")) return;
-      const ok = await mutate(list => list.filter(x => x.id !== id), "Gelöscht");
-      if (ok) { selectedId = null; renderAll(); }
+      if (await mutate(list => list.filter(x => x.id !== id), "Gelöscht")) closePanel();
     }
 
-    $("btnSave").onclick = saveMarker;
-    $("btnCancel").onclick = closeForm;
-    $("btnMove").onclick = () => { mode = "move"; vp.classList.add("placing"); banner("Klicke auf die Karte, um die neue Position zu wählen"); };
-    function startPlace(kind) {
-      if (!canEdit()) return;
-      closeForm(); selectedId = null; mode = "place"; placeKind = kind;
-      vp.classList.add("placing");
-      banner(kind === "text" ? "Klicke auf die Karte, wo der Text stehen soll" : "Klicke auf die Karte, um den Marker zu platzieren");
-    }
     $("btnPlace").onclick = () => startPlace("marker");
     $("btnText").onclick = () => startPlace("text");
-    $("fTitle").addEventListener("input", () => { if (draft && draft.kind === "text") renderPins(); });
+    function startPlace(kind) {
+      if (!canEdit()) return;
+      closePanel(); mode = "place"; placeKind = kind; vp.classList.add("placing");
+      banner(kind === "text" ? "Klicke auf die Karte, wo der Text stehen soll" : "Klicke auf die Karte, um einen neuen Marker zu setzen!");
+    }
+    $("bannerX").onclick = () => { endMode(); if (draft && draft.isNew) closePanel(); };
     $("search").addEventListener("input", renderAll);
-    document.addEventListener("keydown", e => { if (e.key === "Escape" && (mode || draft)) closeForm(); });
-    $("fCat").innerHTML = Object.entries(CATS).map(([k, c]) => `<option value="${k}">${c.icon} ${esc(c.name)}</option>`).join("");
+    document.addEventListener("keydown", e => { if (e.key === "Escape") { if (mode) endMode(); else if (selectedId) closePanel(); } });
 
     function syncRole() {
       const ed = canEdit();
-      $("editorBar").classList.toggle("on", ed);
-      $("roleInfo").textContent = ed ? (flag("portal_admin_auth") ? "Angemeldet als Admin" : "Angemeldet als Bibliothek") : "";
-      if (!ed && (draft || mode)) closeForm();
-      renderDetail();
-    }
-
-    // ---------- Start ----------
-    async function init() {
-      renderChips(); fit(); syncRole();
-      try {
-        const data = await ChronikenStorage.load("map");
-        markers = (Array.isArray(data) ? data : []).filter(m => m && typeof m.x === "number" && typeof m.y === "number");
-      } catch (e) {
-        console.error(e);
-        $("emptyMsg").style.display = "block";
-        $("emptyMsg").textContent = "Marker konnten nicht geladen werden.";
+      document.body.classList.toggle("can-edit", ed);
+      $("roleInfo").textContent = ed ? (flag("portal_admin_auth") ? "Angemeldet als Admin – du kannst Marker setzen und bearbeiten." : "Angemeldet als Bibliothek – du kannst Marker setzen und bearbeiten.") : "Zum Bearbeiten melde dich (Admin/Bibliothek) oben links an.";
+      if (!ed && (draft || mode)) { draft = null; endMode(); }
+      if (selectedId) {
+        const m = markers.find(x => x.id === selectedId);
+        if (m && ed && !draft) draft = { isNew: false, m: JSON.parse(JSON.stringify(m)) };
+        renderPanel();
       }
       renderAll();
     }
+
+    const valid = m => m && typeof m.x === "number" && typeof m.y === "number";
+    async function init() {
+      renderFilters(); fit(); syncRole();
+      try { markers = ((await ChronikenStorage.load("map")) || []).filter(valid).map(normalize); }
+      catch (e) { console.error(e); $("emptyMsg").style.display = "block"; $("emptyMsg").textContent = "Marker konnten nicht geladen werden."; }
+      renderAll();
+    }
     window.addEventListener("resize", () => { if (view.k <= minK * 1.001) fit(); else { clampView(); applyView(); } });
-    window.addEventListener("storage", syncRole);
-    window.addEventListener("pageshow", syncRole);
+    window.addEventListener("storage", syncRole); window.addEventListener("pageshow", syncRole);
     window.addEventListener("message", () => setTimeout(syncRole, 300));
     $("mapImg").addEventListener("error", init, { once: true });
     $("mapImg").complete && $("mapImg").naturalWidth ? init() : $("mapImg").addEventListener("load", init, { once: true });
