@@ -31,10 +31,32 @@
 
   function pageUrl() { return location.origin + location.pathname; }
 
+  const LOGOUT_KEY = "chroniken_logout";
+
   function clear() {
     try {
-      [ADMIN_KEY, LIB_KEY, HEALER_KEY, TOKEN_KEY, NAME_KEY].forEach(function (k) { sessionStorage.removeItem(k); });
+      [ADMIN_KEY, LIB_KEY, HEALER_KEY, TOKEN_KEY, NAME_KEY,
+       "chroniken_discord_roles", "discord_roles", "discord_username", "portal_discord_user"
+      ].forEach(function (k) { sessionStorage.removeItem(k); });
     } catch (e) {}
+    try { localStorage.removeItem(HANDOFF_KEY); } catch (e) {}
+  }
+
+  function goHome() {
+    const home = location.pathname.replace(/[^/]*$/, "") + "index.html";
+    if (location.pathname === home && !location.search && !location.hash) location.reload();
+    else location.replace(home);
+  }
+
+  // Abmelden: alles löschen, andere offene Tabs mit abmelden, zur Startseite
+  function logout() {
+    clear();
+    try { localStorage.setItem(LOGOUT_KEY, String(Date.now())); } catch (e) {}
+    goHome();
+  }
+
+  function loggedOutAfter(t) {
+    try { return Number(localStorage.getItem(LOGOUT_KEY) || 0) >= t; } catch (e) { return false; }
   }
 
   function name() { try { return sessionStorage.getItem(NAME_KEY) || ""; } catch (e) { return ""; } }
@@ -184,13 +206,52 @@
     finish(e.data.kind, e.data.val);
   });
   global.addEventListener("storage", function (e) {
+    if (e.key === LOGOUT_KEY && e.newValue) {
+      const was = !!(sessionStorage.getItem(ADMIN_KEY) || sessionStorage.getItem(LIB_KEY) || sessionStorage.getItem(HEALER_KEY) || sessionStorage.getItem(TOKEN_KEY));
+      clear();
+      if (was) goHome();
+      return;
+    }
     if (e.key !== HANDOFF_KEY || !e.newValue) return;
     try {
       const d = JSON.parse(e.newValue);
-      if (d && d.type === "chroniken-auth" && Date.now() - d.t < 60000) finish(d.kind, d.val);
+      if (d && d.type === "chroniken-auth" && Date.now() - d.t < 60000 && !loggedOutAfter(d.t)) finish(d.kind, d.val);
     } catch (x) {}
     try { localStorage.removeItem(HANDOFF_KEY); } catch (x) {}
   });
+
+  // ---------- Login in der Menüleiste (vor „Start“) ----------
+  const LOGO = "<svg class=\"discord-logo\" viewBox=\"0 0 127.14 96.36\" aria-hidden=\"true\"><path fill=\"currentColor\" d=\"M107.7 8.07A105.15 105.15 0 0 0 81.47 0a72.06 72.06 0 0 0-3.36 6.83 97.68 97.68 0 0 0-29.11 0A72.37 72.37 0 0 0 45.64 0a105.89 105.89 0 0 0-26.25 8.09C2.79 32.65-1.71 56.6.54 80.21a105.73 105.73 0 0 0 32.17 16.15 77.7 77.7 0 0 0 6.89-11.11 68.42 68.42 0 0 1-10.85-5.18c.91-.66 1.8-1.34 2.66-2a75.57 75.57 0 0 0 64.32 0c.87.71 1.76 1.39 2.66 2a68.68 68.68 0 0 1-10.87 5.19 77 77 0 0 0 6.89 11.1 105.25 105.25 0 0 0 32.19-16.14c2.64-27.38-4.51-51.11-18.9-72.15ZM42.45 65.69C36.18 65.69 31 60 31 53s5-12.74 11.43-12.74S54 46 53.89 53s-5.05 12.69-11.44 12.69Zm42.24 0C78.41 65.69 73.25 60 73.25 53s5-12.74 11.44-12.74S96.23 46 96.12 53s-5.04 12.69-11.43 12.69Z\"/></svg>";
+  function flag(k) { try { return sessionStorage.getItem(k) === "1"; } catch (e) { return false; } }
+  function escHtml(v) { return String(v == null ? "" : v).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;"); }
+  function navWidget() {
+    const nav = document.querySelector("header nav") || document.querySelector("nav");
+    if (!nav || nav.querySelector(".nav-auth")) return;
+    const admin = flag(ADMIN_KEY), lib = flag(LIB_KEY), healer = flag(HEALER_KEY);
+    let token = "";
+    try { token = sessionStorage.getItem(TOKEN_KEY) || ""; } catch (e) {}
+    const box = document.createElement("div");
+    box.className = "nav-auth";
+    if (!(admin || lib || healer || token)) {
+      box.innerHTML = '<button type="button" class="btn btn-discord nav-discord" data-discord-login>' + LOGO + '<span>Mit Discord anmelden</span></button>';
+    } else {
+      const role = admin ? "Admin" : [healer && "Heiler", lib && "Bibliothek"].filter(Boolean).join(" · ") || "Mitglied";
+      let links = "";
+      if (admin) links += '<a href="admin.html">🛡️ Verwaltung</a><a href="wetter.html">🌦️ Wetter</a>';
+      if (admin || healer) links += '<a href="heilerakte.html">🩺 Heilerakte</a>';
+      if (admin || lib) links += '<a href="bibliothek.html">📚 Bibliothek</a>';
+      box.innerHTML = '<button type="button" class="nav-user" aria-haspopup="true" aria-expanded="false">' + LOGO +
+        '<span class="nav-user-name">' + escHtml(name() || "Angemeldet") + '</span><small>' + role + '</small><span class="nav-caret">▾</span></button>' +
+        '<div class="nav-menu" hidden>' + links + '<button type="button" data-logout>🚪 Abmelden</button></div>';
+      const btn = box.querySelector(".nav-user"), menu = box.querySelector(".nav-menu");
+      const toggle = function (open) { menu.hidden = !open; btn.setAttribute("aria-expanded", open ? "true" : "false"); };
+      btn.addEventListener("click", function (e) { e.stopPropagation(); toggle(menu.hidden); });
+      document.addEventListener("click", function (e) { if (!box.contains(e.target)) toggle(false); });
+      document.addEventListener("keydown", function (e) { if (e.key === "Escape") toggle(false); });
+      box.querySelector("[data-logout]").addEventListener("click", logout);
+    }
+    nav.insertBefore(box, nav.firstChild);
+  }
 
   // Alle Knöpfe mit data-discord-login starten die Anmeldung
   function bind() {
@@ -204,8 +265,9 @@
     try { fetch(proxyBase() + "/auth/ping", { cache: "no-store" }).catch(function () {}); } catch (e) {}
   }
 
-  global.ChronikenAuth = { login: login, clear: clear, name: name };
+  global.ChronikenAuth = { login: login, clear: clear, logout: logout, name: name };
   function start() {
+    navWidget();
     bind();
     handleReturn();
     if (document.querySelector("[data-discord-login]") && !sessionStorage.getItem(TOKEN_KEY)) warmUp();

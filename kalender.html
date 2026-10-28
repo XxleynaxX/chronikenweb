@@ -37,6 +37,7 @@
 </section></main>
 <footer><p>© 2026 Kiyasha · Chroniken</p></footer>
 
+<script src="chroniken-auth.js"></script>
 <script src="jsonbin-storage.js"></script>
 <script src="chroniken-sync.js" data-reload-on-change></script>
 <script>
@@ -49,7 +50,7 @@ const isAdmin=()=>{try{return sessionStorage.getItem('portal_admin_auth')==='1'}
 function getDate(){let realDays=Math.max(0,Math.floor((Date.now()-start.getTime())/86400000)),totalDays=realDays*2,year=1400+Math.floor(totalDays/360),dayOfYear=totalDays%360,mi=Math.floor(dayOfYear/30),day=(dayOfYear%30)+1;return{year,mi,day}};
 function activeHolidays(){return [...holidays.filter((h,i)=>!disabled.includes(i)),...custom.map((h,i)=>({...h,custom:true,customIndex:i}))]};
 function holidayFor(mi,day){return activeHolidays().find(h=>h.m===mi&&h.d===day)}
-async function loadData(){custom=await ChronikenStorage.load('calendar');birthdays=await ChronikenStorage.load('birthdays');if(window.ChronikenSync){const known=new Set(birthdays.map(b=>b.name));ChronikenSync.load('birthdays').forEach(b=>{if(b&&b.name&&!known.has(b.name)){known.add(b.name);birthdays.push(b)}})}characterEvents=(await ChronikenStorage.load('characterEvents')).filter(e=>e.eventType==='Geburtstag'&&Number.isInteger(e.birthdayMonth)&&Number.isInteger(e.birthdayDay));disabled=await ChronikenStorage.load('disabledHolidays');}
+async function loadData(){custom=await ChronikenSync.loadShared('calendar');birthdays=await ChronikenStorage.load('birthdays');if(window.ChronikenSync){const known=new Set(birthdays.map(b=>b.name));ChronikenSync.load('birthdays').forEach(b=>{if(b&&b.name&&!known.has(b.name)){known.add(b.name);birthdays.push(b)}})}characterEvents=(await ChronikenStorage.load('characterEvents')).filter(e=>e.eventType==='Geburtstag'&&Number.isInteger(e.birthdayMonth)&&Number.isInteger(e.birthdayDay));disabled=await ChronikenSync.loadShared('disabledHolidays');}
 function render(){
  const d=getDate(),h=holidayFor(d.mi,d.day);document.getElementById('gameDate').textContent=`${d.day}. ${months[d.mi][0]} ${d.year}`;
  const tb=birthdays.filter(b=>b.month===d.mi&&b.day===d.day),te=characterEvents.filter(e=>e.birthdayMonth===d.mi&&e.birthdayDay===d.day);
@@ -63,9 +64,9 @@ function render(){
 function renderAdmin(){const box=document.getElementById('adminCalendarTools');if(!box)return;box.style.display=isAdmin()?'block':'none';if(!isAdmin())return;document.getElementById('calendarMonth').innerHTML=months.map((m,i)=>`<option value="${i}">${i+1}. ${m[0]}</option>`).join('');document.getElementById('adminCalendarList').innerHTML=custom.map((h,i)=>`<div class="holiday-item"><strong>📅 ${esc(h.n)}</strong><br>${h.d}. ${months[h.m][0]}<br><span class="calc">${esc(h.t||'')}</span><div class="tile-actions"><button class="btn secondary" data-edit="${i}">Bearbeiten</button><button class="btn danger" data-del="${i}">Löschen</button></div></div>`).join('')||'<p class="calc">Keine eigenen Einträge.</p>';document.querySelectorAll('[data-edit]').forEach(b=>b.onclick=()=>editEntry(+b.dataset.edit));document.querySelectorAll('[data-del]').forEach(b=>b.onclick=()=>deleteEntry(+b.dataset.del))}
 function resetForm(){calendarEditIndex=null;calendarName.value='';calendarMonth.value='0';calendarDay.value='1';calendarDesc.value='';calendarFormTitle.textContent='Neuen Kalendereintrag anlegen';calendarSave.textContent='Speichern';calendarCancel.style.display='none'}
 function editEntry(i){const h=custom[i];if(!h)return;calendarEditIndex=i;calendarName.value=h.n;calendarMonth.value=h.m;calendarDay.value=h.d;calendarDesc.value=h.t||'';calendarFormTitle.textContent='Kalendereintrag bearbeiten';calendarSave.textContent='Änderungen speichern';calendarCancel.style.display='inline-block';scrollTo({top:0,behavior:'smooth'})}
-calendarSave.onclick=async()=>{const name=calendarName.value.trim(),m=+calendarMonth.value,d=+calendarDay.value;if(!name||d<1||d>30){calendarStatus.textContent='Bitte Name und gültigen Tag eingeben.';return}const entry={n:name,m,d,t:calendarDesc.value.trim()};if(calendarEditIndex===null)custom.push(entry);else custom[calendarEditIndex]=entry;await ChronikenStorage.save('calendar',custom);calendarStatus.textContent='✓ In JSONBin gespeichert';resetForm();await loadData();render()};
+calendarSave.onclick=async()=>{const name=calendarName.value.trim(),m=+calendarMonth.value,d=+calendarDay.value;if(!name||d<1||d>30){calendarStatus.textContent='Bitte Name und gültigen Tag eingeben.';return}const entry={n:name,m,d,t:calendarDesc.value.trim()};if(calendarEditIndex===null)custom.push(entry);else custom[calendarEditIndex]=entry;await ChronikenSync.saveShared('calendar',custom);calendarStatus.textContent='✓ In JSONBin gespeichert';resetForm();await loadData();render()};
 calendarCancel.onclick=resetForm;
-async function deleteEntry(i){if(!confirm('Diesen Kalendereintrag wirklich löschen?'))return;custom.splice(i,1);await ChronikenStorage.save('calendar',custom);await loadData();render()}
+async function deleteEntry(i){if(!confirm('Diesen Kalendereintrag wirklich löschen?'))return;custom.splice(i,1);await ChronikenSync.saveShared('calendar',custom);await loadData();render()}
 (async()=>{try{await loadData();render()}catch(e){document.getElementById('holidayNow').textContent='Kalender konnte nicht geladen werden: '+e.message}})();
 </script>
 <script src="legal-notice.js"></script>

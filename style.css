@@ -947,3 +947,27 @@ footer {
   font-size: 0.88rem;
   color: var(--text-muted, #a0a0a8);
 }
+
+/* ===== Login in der Menüleiste (vor „Start“) ===== */
+nav .nav-auth { position: relative; display: flex; align-items: center; padding: 0 0.6rem; border-left: 1px solid var(--border); }
+nav .nav-auth + a { border-left: 1px solid var(--border); }
+nav .nav-auth .btn.btn-discord.nav-discord { width: auto; padding: 0.38rem 0.85rem; font-size: 0.8rem; border-radius: 8px; gap: 0.45rem; white-space: nowrap; }
+nav .nav-auth .nav-discord .discord-logo { width: 18px; height: 14px; }
+nav .nav-auth .btn.btn-discord.nav-discord:hover { transform: translateY(-1px); }
+.nav-user { display: inline-flex; align-items: center; gap: 0.45rem; background: linear-gradient(135deg, rgba(88, 101, 242, 0.28), rgba(124, 58, 237, 0.28)); border: 1px solid rgba(168, 85, 247, 0.5); color: #fff; border-radius: 8px; padding: 0.36rem 0.75rem; font: inherit; font-size: 0.82rem; cursor: pointer; white-space: nowrap; transition: background 0.2s; }
+.nav-user:hover, .nav-user[aria-expanded="true"] { background: linear-gradient(135deg, rgba(88, 101, 242, 0.45), rgba(124, 58, 237, 0.45)); }
+.nav-user .discord-logo { width: 16px; height: 12px; }
+.nav-user .nav-user-name { font-weight: 600; max-width: 140px; overflow: hidden; text-overflow: ellipsis; }
+.nav-user small { color: var(--accent-soft); font-size: 0.7rem; padding: 0.05rem 0.4rem; border-radius: 999px; background: rgba(168, 85, 247, 0.22); }
+.nav-user .nav-caret { font-size: 0.7rem; opacity: 0.8; }
+.nav-menu { position: absolute; top: calc(100% + 6px); left: 0.6rem; min-width: 200px; background: rgba(20, 12, 34, 0.97); border: 1px solid var(--border); border-radius: 10px; padding: 0.35rem; box-shadow: 0 12px 32px rgba(0, 0, 0, 0.55); z-index: 700; display: flex; flex-direction: column; }
+.nav-menu[hidden] { display: none; }
+nav .nav-menu a, nav .nav-menu button { display: block; text-align: left; padding: 0.55rem 0.75rem; border: 0; border-radius: 6px; background: none; box-shadow: none; color: var(--text); font: inherit; font-size: 0.85rem; cursor: pointer; white-space: nowrap; }
+nav .nav-menu a:first-child { border-left: 0; }
+nav .nav-menu a:hover, nav .nav-menu button:hover { background: rgba(168, 85, 247, 0.18); box-shadow: none; color: #fff; }
+nav .nav-menu button[data-logout] { color: #fda4af; border-top: 1px solid var(--border); border-radius: 0 0 6px 6px; margin-top: 0.2rem; }
+@media (max-width: 700px) {
+  nav .nav-auth { width: 100%; justify-content: center; padding: 0.4rem; border-left: 0; border-bottom: 1px solid var(--border); }
+  nav .nav-auth + a { border-left: 0; }
+  .nav-menu { left: 50%; transform: translateX(-50%); }
+}

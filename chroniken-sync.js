@@ -190,6 +190,44 @@
     } catch (e) { console.warn("[Chroniken-Sync]", e); return false; }
   }
 
+  // ---------- Kalender / ausgeblendete Feiertage (liegen im Events-Bin) ----------
+  // Ältere Einträge aus dem Haupt-Bin (ChronikenStorage) werden angezeigt, bis
+  // zum ersten Speichern, und dann in den Events-Bin übernommen.
+  async function legacyLoad(name) {
+    try {
+      if (!global.ChronikenStorage) return [];
+      const old = await global.ChronikenStorage.load(name);
+      return Array.isArray(old) ? old : [];
+    } catch (e) { return []; }
+  }
+  async function loadShared(name) {
+    let list;
+    try {
+      const rec = await fetchRemote();
+      list = Array.isArray(rec[name]) ? rec[name] : [];
+      writeLocal(name, list);
+    } catch (e) {
+      console.warn("[Chroniken-Sync]", e);
+      list = readLocal(name);
+    }
+    if (!list.length) {
+      const old = await legacyLoad(name);
+      if (old.length) return old;
+    }
+    return list;
+  }
+  async function saveShared(name, list) {
+    const value = Array.isArray(list) ? list : [];
+    const fns = {};
+    fns[name] = function () { return value; };
+    await mutate(fns);
+    const old = await legacyLoad(name);
+    if (old.length) {
+      try { await global.ChronikenStorage.save(name, []); } catch (e) { console.warn("[Chroniken-Sync]", e); }
+    }
+    return value;
+  }
+
   global.ChronikenSync = {
     EVENTS_BIN_ID: EVENTS_BIN_ID,
     isAdmin: isAdmin,
@@ -200,8 +238,10 @@
     saveBirthday: saveBirthday,
     removeBirthday: removeBirthday,
     upsertCharacter: upsertCharacter,
-    saveCalendar: function (list) { return mutate({ calendar: function () { return list; } }); },
-    saveDisabledHolidays: function (list) { return mutate({ disabledHolidays: function () { return list; } }); },
+    loadShared: loadShared,
+    saveShared: saveShared,
+    saveCalendar: function (list) { return saveShared("calendar", list); },
+    saveDisabledHolidays: function (list) { return saveShared("disabledHolidays", list); },
     /** Lokale Daten komplett in den Bin schreiben (Admin-Button). */
     async pushLocal() {
       let rec = {};
