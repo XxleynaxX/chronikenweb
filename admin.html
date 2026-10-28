@@ -134,7 +134,7 @@
                   <div class="form-card" id="weatherConfigCard">
         <h2>🌦️ Wetter-Konfiguration</h2>
         <p style="color:var(--text-muted);font-size:0.9rem;margin-bottom:1rem;">
-          <strong>Webseite:</strong> Speichern → gilt sofort (localStorage).<br>
+          <strong>Webseite:</strong> Speichern → zentral bei JSONBin (für alle Admins sichtbar).<br>
           <strong>Discord:</strong> Exportieren → Inhalt in <code>weather-config.js</code> ersetzen → committen.
         </p>
 
@@ -347,6 +347,69 @@
     const AUTH_KEY = "portal_admin_auth";
     const CHARS_KEY = "portal_char_registry";
     const NEXT_ID_KEY = "portal_char_next_id";
+
+    // ===== Charakter-Speicher über extra JSONBin =====
+    const CHAR_BIN_ID = "6ae17c9cffd5d1605391c27b";
+    const CHAR_MASTER_KEY = "$2a$10$UtTY0igLD.IvUKF5WDV89uC7/zf7h2HP3R3jXC/mghWJDo20hRpqO";
+    const CHAR_API = "https://api.jsonbin.io/v3/b/" + CHAR_BIN_ID;
+
+    let charCache = null; // { characters: [], nextId: 1 }
+    let charLoading = null;
+
+    async function fetchCharBin() {
+      const res = await fetch(CHAR_API + "/latest", {
+        headers: { "X-Master-Key": CHAR_MASTER_KEY }
+      });
+      if (!res.ok) throw new Error("Char-Bin lesen: " + res.status);
+      const data = await res.json();
+      const rec = data.record || {};
+      return {
+        characters: Array.isArray(rec.characters) ? rec.characters : [],
+        nextId: Number.isFinite(rec.nextId) && rec.nextId >= 1 ? rec.nextId : 1
+      };
+    }
+
+    async function saveCharBin(data) {
+      const res = await fetch(CHAR_API, {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+          "X-Master-Key": CHAR_MASTER_KEY
+        },
+        body: JSON.stringify(data)
+      });
+      if (!res.ok) throw new Error("Char-Bin speichern: " + res.status);
+      return res.json();
+    }
+
+    async function ensureCharCache() {
+      if (charCache) return charCache;
+      if (charLoading) return charLoading;
+      charLoading = fetchCharBin()
+        .then(data => {
+          charCache = data;
+          // localStorage als schneller Fallback / Offline-Kopie
+          try {
+            localStorage.setItem(CHARS_KEY, JSON.stringify(data.characters));
+            localStorage.setItem(NEXT_ID_KEY, String(data.nextId));
+          } catch (e) {}
+          return charCache;
+        })
+        .catch(err => {
+          console.warn("Char-Bin nicht erreichbar, nutze localStorage:", err);
+          // Fallback localStorage
+          let characters = [];
+          let nextId = 1;
+          try {
+            characters = JSON.parse(localStorage.getItem(CHARS_KEY) || "[]") || [];
+            nextId = parseInt(localStorage.getItem(NEXT_ID_KEY) || "1", 10) || 1;
+          } catch (e) {}
+          charCache = { characters, nextId };
+          return charCache;
+        })
+        .finally(() => { charLoading = null; });
+      return charLoading;
+    }
 
     const PROXY_URL_KEY = "chroniken_discord_proxy_url";
     /** Gleicher Webhook wie GitHub-Secret DISCORD_WEATHER_WEBHOOK – nur für Admin-Klicks */
@@ -599,17 +662,35 @@
     }
 
     function loadChars() {
+      // Synchron aus Cache (wird beim Start befüllt)
+      if (charCache && Array.isArray(charCache.characters)) {
+        return charCache.characters.slice();
+      }
       try { return JSON.parse(localStorage.getItem(CHARS_KEY)) || []; }
       catch { return []; }
     }
-    function saveChars(list) {
-      localStorage.setItem(CHARS_KEY, JSON.stringify(list));
+
+    async function saveChars(list) {
+      const data = await ensureCharCache();
+      data.characters = Array.isArray(list) ? list : [];
+      charCache = data;
+      try {
+        localStorage.setItem(CHARS_KEY, JSON.stringify(data.characters));
+        localStorage.setItem(NEXT_ID_KEY, String(data.nextId));
+      } catch (e) {}
+      await saveCharBin(data);
     }
-    function nextId() {
-      let n = parseInt(localStorage.getItem(NEXT_ID_KEY) || "1", 10);
+
+    async function nextId() {
+      const data = await ensureCharCache();
+      let n = data.nextId || 1;
       if (!Number.isFinite(n) || n < 1) n = 1;
-      localStorage.setItem(NEXT_ID_KEY, String(n + 1));
-      return "CH-" + String(n).padStart(4, "0");
+      const id = "CH-" + String(n).padStart(4, "0");
+      data.nextId = n + 1;
+      charCache = data;
+      try { localStorage.setItem(NEXT_ID_KEY, String(data.nextId)); } catch (e) {}
+      // nextId wird zusammen mit dem nächsten saveChars persistiert
+      return id;
     }
 
     function escapeHtml(s) {
@@ -618,13 +699,14 @@
         .replace(/"/g, "&quot;");
     }
 
-    function updateLoginUI() {
+    async function updateLoginUI() {
       const logged = isAdmin();
       document.getElementById("loginFormWrap").style.display = logged ? "none" : "block";
       document.getElementById("loginLoggedIn").style.display = logged ? "block" : "none";
       document.getElementById("lockedView").style.display = logged ? "none" : "block";
       document.getElementById("adminView").style.display = logged ? "block" : "none";
       if (logged) {
+        try { await ensureCharCache(); } catch (e) { console.warn(e); }
         renderTable();
       }
     }
@@ -671,10 +753,15 @@
           const list = loadChars();
           const char = list.find(c => c.id === id);
           if (!char) return;
-          saveChars(list.filter(c => c.id !== id));
-          if (document.getElementById("editId").value === id) resetForm();
-          renderTable();
-          await notifyCharDeleted(char);
+          try {
+            await saveChars(list.filter(c => c.id !== id));
+            if (document.getElementById("editId").value === id) resetForm();
+            renderTable();
+            await notifyCharDeleted(char);
+          } catch (err) {
+            console.error(err);
+            alert("Löschen fehlgeschlagen. Bitte erneut versuchen.");
+          }
         });
       });
     }
@@ -727,29 +814,41 @@
         updatedAt: new Date().toISOString()
       };
 
-      if (editId) {
-        const idx = list.findIndex(c => c.id === editId);
-        if (idx >= 0) {
-          const updated = { ...list[idx], ...payload };
-          list[idx] = updated;
-          saveChars(list);
+      const btn = document.getElementById("btnSave");
+      const oldBtnText = btn.textContent;
+      btn.disabled = true;
+      btn.textContent = "Speichere…";
+
+      try {
+        if (editId) {
+          const idx = list.findIndex(c => c.id === editId);
+          if (idx >= 0) {
+            const updated = { ...list[idx], ...payload };
+            list[idx] = updated;
+            await saveChars(list);
+            resetForm();
+            renderTable();
+            await notifyCharUpdated(old, updated);
+          }
+        } else {
+          const newId = await nextId();
+          const created = {
+            id: newId,
+            createdAt: new Date().toISOString(),
+            ...payload
+          };
+          list.push(created);
+          await saveChars(list);
           resetForm();
           renderTable();
-          await notifyCharUpdated(old, updated);
-        } else {
-          return;
+          await notifyCharCreated(created);
         }
-      } else {
-        const created = {
-          id: nextId(),
-          createdAt: new Date().toISOString(),
-          ...payload
-        };
-        list.push(created);
-        saveChars(list);
-        resetForm();
-        renderTable();
-        await notifyCharCreated(created);
+      } catch (err) {
+        console.error(err);
+        alert("Speichern fehlgeschlagen. Bitte erneut versuchen.");
+      } finally {
+        btn.disabled = false;
+        btn.textContent = oldBtnText;
       }
     });
 

@@ -41,20 +41,27 @@
     return res.json();
   }
 
+  function normalizeKreaturen(val) {
+    // Kreaturen ist ein Objekt mit Kategorien, kein Array
+    if (val && typeof val === "object" && !Array.isArray(val)) {
+      return val;
+    }
+    return null; // leer / ungültig → wird später mit Defaults befüllt
+  }
+
   async function ensureCache() {
     if (cache) return cache;
     if (loadingPromise) return loadingPromise;
 
     loadingPromise = fetchBin()
       .then(record => {
-        // Sicherstellen, dass alle erwarteten Keys existieren
         cache = {
           wiki: Array.isArray(record.wiki) ? record.wiki : [],
           bibliothek: Array.isArray(record.bibliothek) ? record.bibliothek : [],
           voelker: Array.isArray(record.voelker) ? record.voelker : [],
           berufe: Array.isArray(record.berufe) ? record.berufe : [],
           goetter: Array.isArray(record.goetter) ? record.goetter : [],
-          kreaturen: Array.isArray(record.kreaturen) ? record.kreaturen : []
+          kreaturen: normalizeKreaturen(record.kreaturen)
         };
         return cache;
       })
@@ -66,47 +73,51 @@
   }
 
   /**
-   * Lädt eine Collection (z.B. "wiki", "bibliothek", "voelker" ...)
-   * @returns {Promise<Array>}
+   * Lädt eine Collection.
+   * wiki/bibliothek/voelker/berufe/goetter → Array
+   * kreaturen → Objekt oder null
    */
   async function loadCollection(name) {
     const data = await ensureCache();
+    if (name === "kreaturen") {
+      return data.kreaturen; // Objekt oder null
+    }
     return Array.isArray(data[name]) ? data[name] : [];
   }
 
   /**
    * Speichert eine Collection und schreibt den gesamten Bin zurück.
-   * @returns {Promise<void>}
    */
   async function saveCollection(name, items) {
     const data = await ensureCache();
-    data[name] = Array.isArray(items) ? items : [];
+
+    if (name === "kreaturen") {
+      // Objekt erlauben
+      data.kreaturen = (items && typeof items === "object" && !Array.isArray(items))
+        ? items
+        : null;
+    } else {
+      data[name] = Array.isArray(items) ? items : [];
+    }
+
     cache = data;
     await saveBin(data);
   }
 
-  /**
-   * Kompletten Cache manuell aktualisieren (z.B. nach Admin-Änderungen)
-   */
   function setCache(newCache) {
     cache = newCache;
   }
 
-  /**
-   * Cache leeren (z.B. für erzwungenes Neuladen)
-   */
   function clearCache() {
     cache = null;
   }
 
-  // Öffentliche API
   global.ChronikenStorage = {
     load: loadCollection,
     save: saveCollection,
     ensureCache,
     clearCache,
     setCache,
-    // Direktzugriff für spezielle Fälle
     BIN_ID,
     MASTER_KEY
   };

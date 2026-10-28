@@ -259,13 +259,34 @@
       document.querySelectorAll("[data-del]").forEach(b=>b.onclick=e=>{e.stopPropagation();const [c,i]=b.dataset.del.split(":");remove(c,+i);});
       document.querySelectorAll(".god-card").forEach(c=>{ if(c.dataset.bound) return; c.dataset.bound="1"; c.onclick=e=>{if(e.target.closest("button"))return;c.classList.toggle("expanded");}; });
     }
-    function save(){
+    async function save(){
       const name=el("fName").value.trim(); if(!name){el("status").textContent="Bitte einen Namen eingeben.";return;}
       const item={name,domain:el("fDomain").value.trim(),short:el("fShort").value.trim(),full:el("fFull").value.trim()};
       const d=loadData(); const category=el("fCategory").value;
-      if(editCategory!==null && d[editCategory][editIndex]) d[editCategory].splice(editIndex,1);
-      d[category].push(item); saveData(d); resetForm(); el("status").style.color="#22c55e"; el("status").textContent="✓ Gespeichert"; render();
-      setTimeout(()=>el("status").textContent="",2500);
+      if(editCategory!==null && d[editCategory] && d[editCategory][editIndex]) d[editCategory].splice(editIndex,1);
+      if(!d[category]) d[category]=[];
+      d[category].push(item);
+      el("status").style.color="#aaa"; el("status").textContent="Speichere…";
+      try {
+        await new Promise((resolve, reject) => {
+          window._kreaturenCache = d;
+          localStorage.setItem(STORAGE_KEY, JSON.stringify(d));
+          if (window.ChronikenStorage) {
+            ChronikenStorage.save("kreaturen", d).then(resolve).catch(reject);
+          } else {
+            resolve();
+          }
+        });
+        resetForm();
+        el("status").style.color="#22c55e";
+        el("status").textContent="✓ Gespeichert";
+        render();
+        setTimeout(()=>el("status").textContent="",2500);
+      } catch(e) {
+        console.error(e);
+        el("status").style.color="#e74c3c";
+        el("status").textContent="Fehler beim Speichern";
+      }
     }
     el("btnSave").onclick=save; el("btnCancel").onclick=resetForm;
 
@@ -274,11 +295,14 @@
       if (!window.ChronikenStorage) { render(); return; }
       try {
         const remote = await ChronikenStorage.load("kreaturen");
-        if (remote && typeof remote === "object" && !Array.isArray(remote) && Object.keys(remote).length > 0) {
+        // Gültiges Objekt mit mindestens einer Kategorie?
+        const hasData = remote && typeof remote === "object" && !Array.isArray(remote) &&
+          Object.keys(remote).some(k => Array.isArray(remote[k]) && remote[k].length > 0);
+        if (hasData) {
           window._kreaturenCache = remote;
           localStorage.setItem(STORAGE_KEY, JSON.stringify(remote));
         } else {
-          // Remote leer → Defaults hochladen
+          // Remote leer oder kaputt → lokale Daten (Defaults) hochladen
           const local = loadData();
           await ChronikenStorage.save("kreaturen", local);
         }
