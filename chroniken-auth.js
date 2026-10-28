@@ -128,20 +128,39 @@
     setLoading(true);
     const pop = openPopup();
     if (!pop) { redirectLogin(); return; }
+
+    const returnUrl = pageUrl() + "?" + POPUP_PARAM + "=1";
+    let timer = null;
     try {
-      const res = await fetch(proxyBase() + "/auth/start?return=" + encodeURIComponent(pageUrl() + "?" + POPUP_PARAM + "=1"), { cache: "no-store" });
+      // Der bisherige fetch() konnte bei einem schlafenden/gestörten Render-
+      // Server unbegrenzt warten. Nach 12 Sekunden wird auf die normale
+      // Weiterleitung zurückgefallen, statt den Login-Popup ewig laden zu lassen.
+      const controller = typeof AbortController !== "undefined" ? new AbortController() : null;
+      if (controller) timer = setTimeout(function () { controller.abort(); }, 12000);
+
+      const options = { cache: "no-store" };
+      if (controller) options.signal = controller.signal;
+
+      const res = await fetch(proxyBase() + "/auth/start?return=" + encodeURIComponent(returnUrl), options);
       const data = await res.json().catch(function () { return {}; });
       if (!res.ok || !data.ok || !data.url) throw new Error(data.error || ("Status " + res.status));
       if (pop.closed) { setLoading(false); return; }
       pop.location.href = data.url;
       setLoading(true, "Warte auf Discord …");
     } catch (e) {
+      // Bei Timeout/Netzwerkfehler nicht endlos im Popup hängen bleiben.
       try { pop.close(); } catch (x) {}
-      // Alter Proxy ohne /auth/start → klassische Weiterleitung
-      if (/Status 404/.test(e.message)) { redirectLogin(); return; }
+      if (e && e.name === "AbortError") {
+        showError("Der Login-Server antwortet zu langsam. Die Anmeldung wird direkt geöffnet …");
+        redirectLogin();
+        return;
+      }
+      if (/Status 404/.test(e.message || "")) { redirectLogin(); return; }
       setLoading(false);
-      showError("Server nicht erreichbar (" + e.message + "). Bitte gleich nochmal versuchen.");
+      showError("Server nicht erreichbar (" + (e.message || "unbekannter Fehler") + "). Bitte gleich nochmal versuchen.");
       return;
+    } finally {
+      if (timer) clearTimeout(timer);
     }
     clearInterval(popupWatch);
     popupWatch = setInterval(function () {
