@@ -32,7 +32,6 @@
   function pageUrl() { return location.origin + location.pathname; }
 
   const LOGOUT_KEY = "chroniken_logout";
-  const LOGIN_START_KEY = "chroniken_login_start";
 
   function clear() {
     try {
@@ -51,18 +50,19 @@
 
   // Abmelden: alles löschen, andere offene Tabs mit abmelden, zur Startseite
   function logout() {
-    const stamp = Date.now();
     clear();
-    try {
-      localStorage.removeItem(HANDOFF_KEY);
-      localStorage.setItem(LOGOUT_KEY, String(stamp));
-      localStorage.removeItem(LOGIN_START_KEY);
-    } catch (e) {}
+    try { localStorage.setItem(LOGOUT_KEY, String(Date.now())); } catch (e) {}
     goHome();
   }
 
   function loggedOutAfter(t) {
     try { return Number(localStorage.getItem(LOGOUT_KEY) || 0) >= t; } catch (e) { return false; }
+  }
+
+  // Nach einem echten Logout bleibt der Browser in diesem Zustand,
+  // bis eine neue Discord-Anmeldung erfolgreich abgeschlossen wurde.
+  function isLogoutBlocked() {
+    try { return !!localStorage.getItem(LOGOUT_KEY); } catch (e) { return false; }
   }
 
   function name() { try { return sessionStorage.getItem(NAME_KEY) || ""; } catch (e) { return ""; } }
@@ -125,7 +125,6 @@
 
   async function login() {
     if (finishing) return;
-    try { localStorage.setItem(LOGIN_START_KEY, String(Date.now())); } catch (e) {}
     setLoading(true);
     const pop = openPopup();
     if (!pop) { redirectLogin(); return; }
@@ -157,18 +156,6 @@
   // ---------- Token übernehmen ----------
   async function finish(kind, val) {
     if (finishing) return;
-    // Eine laufende/alte Discord-Rückgabe darf eine inzwischen erfolgte Abmeldung
-    // niemals wieder anmelden. Eine neue Anmeldung nach dem Logout bleibt möglich.
-    let logoutAt = 0, loginStartedAt = 0;
-    try {
-      logoutAt = Number(localStorage.getItem(LOGOUT_KEY) || 0);
-      loginStartedAt = Number(localStorage.getItem(LOGIN_START_KEY) || 0);
-    } catch (e) {}
-    if (logoutAt && (!loginStartedAt || logoutAt >= loginStartedAt)) {
-      clear();
-      setLoading(false);
-      return;
-    }
     if (kind === "auth_error") { setLoading(false); showError(val); return; }
     finishing = true;
     setLoading(true, "Anmeldung wird geprüft …");
@@ -176,19 +163,13 @@
       const res = await fetch(proxyBase() + "/auth/me", { headers: { Authorization: "Bearer " + val } });
       const info = await res.json();
       if (!res.ok || !info.ok) throw new Error("Token ungültig");
-      // Noch einmal direkt vor dem Schreiben prüfen, falls während /auth/me abgemeldet wurde.
-      try {
-        const lo = Number(localStorage.getItem(LOGOUT_KEY) || 0);
-        if (lo && loginStartedAt && lo >= loginStartedAt) throw new Error("Anmeldung nach Abmeldung verworfen");
-      } catch (guardError) {
-        if (guardError && guardError.message === "Anmeldung nach Abmeldung verworfen") throw guardError;
-      }
+      // Eine erfolgreiche neue Anmeldung hebt den Logout-Schutz wieder auf.
+      try { localStorage.removeItem(LOGOUT_KEY); } catch (e) {}
       sessionStorage.setItem(TOKEN_KEY, val);
       sessionStorage.setItem(NAME_KEY, info.name || "");
       if (info.admin) sessionStorage.setItem(ADMIN_KEY, "1"); else sessionStorage.removeItem(ADMIN_KEY);
       if (info.admin || info.lib) sessionStorage.setItem(LIB_KEY, "1"); else sessionStorage.removeItem(LIB_KEY);
       if (info.admin || info.healer) sessionStorage.setItem(HEALER_KEY, "1"); else sessionStorage.removeItem(HEALER_KEY);
-      try { localStorage.removeItem(LOGIN_START_KEY); } catch (e) {}
       location.reload();
     } catch (e) {
       finishing = false;
@@ -254,9 +235,12 @@
   function navWidget() {
     const nav = document.querySelector("header nav") || document.querySelector("nav");
     if (!nav || nav.querySelector(".nav-auth")) return;
-    const admin = flag(ADMIN_KEY), lib = flag(LIB_KEY), healer = flag(HEALER_KEY);
+    const logoutBlocked = isLogoutBlocked();
+    const admin = logoutBlocked ? false : flag(ADMIN_KEY);
+    const lib = logoutBlocked ? false : flag(LIB_KEY);
+    const healer = logoutBlocked ? false : flag(HEALER_KEY);
     let token = "";
-    try { token = sessionStorage.getItem(TOKEN_KEY) || ""; } catch (e) {}
+    try { token = logoutBlocked ? "" : (sessionStorage.getItem(TOKEN_KEY) || ""); } catch (e) {}
     const box = document.createElement("div");
     box.className = "nav-auth";
     if (!(admin || lib || healer || token)) {
@@ -291,6 +275,15 @@
   function warmUp() {
     try { fetch(proxyBase() + "/auth/ping", { cache: "no-store" }).catch(function () {}); } catch (e) {}
   }
+
+  // Browser-Back/Forward-Cache kann eine alte, bereits angemeldete Seite
+  // wiederherstellen, ohne die Scripts neu auszuführen. Nach Logout laden wir
+  // eine solche Seite einmal frisch, damit wirklich überall "abgemeldet" gilt.
+  global.addEventListener("pageshow", function (event) {
+    if (event.persisted && isLogoutBlocked()) {
+      global.location.reload();
+    }
+  });
 
   global.ChronikenAuth = { login: login, clear: clear, logout: logout, name: name };
   function start() {

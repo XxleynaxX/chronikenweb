@@ -1,7 +1,7 @@
 /**
  * Chroniken – Wetter-Kern (Browser)
  *
- * Gemeinsamer Zustand liegt im zentralen Events-Bin unter "weather" (als Array mit einem Zustandsobjekt):
+ * Gemeinsamer Zustand liegt im Haupt-Bin unter "weather":
  *   { intervalMinutes, weather:[{name,icon,description,weight}], anchor, seed,
  *     forced:{name,icon,description}|null, forcedSlot, title, text, updatedAt }
  * Ohne gespeicherten Zustand gilt weather-config.js (gleiche Auswahl wie früher).
