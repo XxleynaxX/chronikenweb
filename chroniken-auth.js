@@ -32,6 +32,7 @@
   function pageUrl() { return location.origin + location.pathname; }
 
   const LOGOUT_KEY = "chroniken_logout";
+  const LOGIN_START_KEY = "chroniken_login_start";
 
   function clear() {
     try {
@@ -50,8 +51,13 @@
 
   // Abmelden: alles löschen, andere offene Tabs mit abmelden, zur Startseite
   function logout() {
+    const stamp = Date.now();
     clear();
-    try { localStorage.setItem(LOGOUT_KEY, String(Date.now())); } catch (e) {}
+    try {
+      localStorage.removeItem(HANDOFF_KEY);
+      localStorage.setItem(LOGOUT_KEY, String(stamp));
+      localStorage.removeItem(LOGIN_START_KEY);
+    } catch (e) {}
     goHome();
   }
 
@@ -119,6 +125,7 @@
 
   async function login() {
     if (finishing) return;
+    try { localStorage.setItem(LOGIN_START_KEY, String(Date.now())); } catch (e) {}
     setLoading(true);
     const pop = openPopup();
     if (!pop) { redirectLogin(); return; }
@@ -150,6 +157,18 @@
   // ---------- Token übernehmen ----------
   async function finish(kind, val) {
     if (finishing) return;
+    // Eine laufende/alte Discord-Rückgabe darf eine inzwischen erfolgte Abmeldung
+    // niemals wieder anmelden. Eine neue Anmeldung nach dem Logout bleibt möglich.
+    let logoutAt = 0, loginStartedAt = 0;
+    try {
+      logoutAt = Number(localStorage.getItem(LOGOUT_KEY) || 0);
+      loginStartedAt = Number(localStorage.getItem(LOGIN_START_KEY) || 0);
+    } catch (e) {}
+    if (logoutAt && (!loginStartedAt || logoutAt >= loginStartedAt)) {
+      clear();
+      setLoading(false);
+      return;
+    }
     if (kind === "auth_error") { setLoading(false); showError(val); return; }
     finishing = true;
     setLoading(true, "Anmeldung wird geprüft …");
@@ -157,11 +176,19 @@
       const res = await fetch(proxyBase() + "/auth/me", { headers: { Authorization: "Bearer " + val } });
       const info = await res.json();
       if (!res.ok || !info.ok) throw new Error("Token ungültig");
+      // Noch einmal direkt vor dem Schreiben prüfen, falls während /auth/me abgemeldet wurde.
+      try {
+        const lo = Number(localStorage.getItem(LOGOUT_KEY) || 0);
+        if (lo && loginStartedAt && lo >= loginStartedAt) throw new Error("Anmeldung nach Abmeldung verworfen");
+      } catch (guardError) {
+        if (guardError && guardError.message === "Anmeldung nach Abmeldung verworfen") throw guardError;
+      }
       sessionStorage.setItem(TOKEN_KEY, val);
       sessionStorage.setItem(NAME_KEY, info.name || "");
       if (info.admin) sessionStorage.setItem(ADMIN_KEY, "1"); else sessionStorage.removeItem(ADMIN_KEY);
       if (info.admin || info.lib) sessionStorage.setItem(LIB_KEY, "1"); else sessionStorage.removeItem(LIB_KEY);
       if (info.admin || info.healer) sessionStorage.setItem(HEALER_KEY, "1"); else sessionStorage.removeItem(HEALER_KEY);
+      try { localStorage.removeItem(LOGIN_START_KEY); } catch (e) {}
       location.reload();
     } catch (e) {
       finishing = false;
