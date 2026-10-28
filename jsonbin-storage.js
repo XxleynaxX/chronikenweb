@@ -1,32 +1,35 @@
 /* ============================================================
-   Chroniken – zentrale Speicherung über JSONBin
-   Bin-ID und Master-Key hier pflegen.
+   Chroniken – zentrale JSONBin-Speicherung
+   Haupt-Bin + separater Heiler-Bin
    ============================================================ */
 (function (global) {
-  const BIN_ID = "6ae177efffd5d1605391bc4e";
+  const MAIN_BIN_ID = "6ae177efffd5d1605391bc4e";
+  const HEALER_BIN_ID = "6ae20785ac6210605a595590";
+
   const MASTER_KEY = "$2a$10$UtTY0igLD.IvUKF5WDV89uC7/zf7h2HP3R3jXC/mghWJDo20hRpqO";
-  const API_BASE = "https://api.jsonbin.io/v3/b/" + BIN_ID;
 
-  // In-Memory Cache, damit die UI schnell bleibt
-  let cache = null;
-  let loadingPromise = null;
+  const MAIN_API = "https://api.jsonbin.io/v3/b/" + MAIN_BIN_ID;
+  const HEALER_API = "https://api.jsonbin.io/v3/b/" + HEALER_BIN_ID;
 
-  async function fetchBin() {
-    const res = await fetch(API_BASE + "/latest", {
-      headers: {
-        "X-Master-Key": MASTER_KEY
-      }
+  const mainCollections = [
+    "wiki","bibliothek","voelker","berufe","goetter","calendar",
+    "birthdays","characterEvents","disabledHolidays"
+  ];
+
+  let mainCache = null;
+  let healerCache = null;
+
+  async function fetchBin(api) {
+    const res = await fetch(api + "/latest", {
+      headers: {"X-Master-Key": MASTER_KEY}
     });
-    if (!res.ok) {
-      const err = await res.text();
-      throw new Error("JSONBin lesen fehlgeschlagen: " + res.status + " " + err);
-    }
+    if (!res.ok) throw new Error("JSONBin lesen fehlgeschlagen: " + res.status);
     const data = await res.json();
     return data.record || {};
   }
 
-  async function saveBin(record) {
-    const res = await fetch(API_BASE, {
+  async function putBin(api, record) {
+    const res = await fetch(api, {
       method: "PUT",
       headers: {
         "Content-Type": "application/json",
@@ -35,95 +38,76 @@
       body: JSON.stringify(record)
     });
     if (!res.ok) {
-      const err = await res.text();
-      throw new Error("JSONBin speichern fehlgeschlagen: " + res.status + " " + err);
+      const body = await res.text();
+      throw new Error("JSONBin speichern fehlgeschlagen: " + res.status + " " + body);
     }
     return res.json();
   }
 
-  function normalizeKreaturen(val) {
-    // Kreaturen ist ein Objekt mit Kategorien, kein Array
-    if (val && typeof val === "object" && !Array.isArray(val)) {
-      return val;
+  function defaults(record) {
+    const out = {};
+    mainCollections.forEach(name => {
+      out[name] = Array.isArray(record[name]) ? record[name] : [];
+    });
+    out.kreaturen = record.kreaturen && typeof record.kreaturen === "object" && !Array.isArray(record.kreaturen)
+      ? record.kreaturen : null;
+    return out;
+  }
+
+  async function ensureMain() {
+    if (mainCache) return mainCache;
+    mainCache = defaults(await fetchBin(MAIN_API));
+    return mainCache;
+  }
+
+  async function ensureHealer() {
+    if (healerCache) return healerCache;
+    const record = await fetchBin(HEALER_API);
+    healerCache = {
+      heiler: Array.isArray(record.heiler) ? record.heiler : []
+    };
+    return healerCache;
+  }
+
+  async function load(name) {
+    if (name === "heiler") {
+      return (await ensureHealer()).heiler;
     }
-    return null; // leer / ungültig → wird später mit Defaults befüllt
+    const data = await ensureMain();
+    return name === "kreaturen" ? data.kreaturen : (Array.isArray(data[name]) ? data[name] : []);
   }
 
-  async function ensureCache() {
-    if (cache) return cache;
-    if (loadingPromise) return loadingPromise;
-
-    loadingPromise = fetchBin()
-      .then(record => {
-        cache = {
-          wiki: Array.isArray(record.wiki) ? record.wiki : [],
-          bibliothek: Array.isArray(record.bibliothek) ? record.bibliothek : [],
-          voelker: Array.isArray(record.voelker) ? record.voelker : [],
-          berufe: Array.isArray(record.berufe) ? record.berufe : [],
-          goetter: Array.isArray(record.goetter) ? record.goetter : [],
-          kreaturen: normalizeKreaturen(record.kreaturen)
-        };
-        return cache;
-      })
-      .finally(() => {
-        loadingPromise = null;
-      });
-
-    return loadingPromise;
-  }
-
-  /**
-   * Lädt eine Collection.
-   * wiki/bibliothek/voelker/berufe/goetter → Array
-   * kreaturen → Objekt oder null
-   */
-  async function loadCollection(name) {
-    const data = await ensureCache();
-    if (name === "kreaturen") {
-      return data.kreaturen; // Objekt oder null
-    }
-    return Array.isArray(data[name]) ? data[name] : [];
-  }
-
-  /**
-   * Speichert eine Collection und schreibt den gesamten Bin zurück.
-   */
-  async function saveCollection(name, items) {
-    const data = await ensureCache();
-
-    if (name === "kreaturen") {
-      // Objekt erlauben
-      data.kreaturen = (items && typeof items === "object" && !Array.isArray(items))
-        ? items
-        : null;
-    } else {
-      data[name] = Array.isArray(items) ? items : [];
+  async function save(name, value) {
+    if (name === "heiler") {
+      const latest = await fetchBin(HEALER_API);
+      latest.heiler = Array.isArray(value) ? value : [];
+      healerCache = {heiler: latest.heiler};
+      await putBin(HEALER_API, latest);
+      return healerCache.heiler;
     }
 
-    cache = data;
-    // Frisch lesen und nur diese Collection ersetzen, damit parallele Änderungen
-    // anderer Seiten/Admins (und fremde Schlüssel im Bin) nicht überschrieben werden.
-    let latest = {};
-    try { latest = await fetchBin(); } catch (e) { latest = {}; }
-    latest[name] = data[name];
-    await saveBin(Object.assign({}, latest, { [name]: data[name] }));
+    const data = await ensureMain();
+    const latest = await fetchBin(MAIN_API);
+    latest[name] = name === "kreaturen"
+      ? ((value && typeof value === "object" && !Array.isArray(value)) ? value : null)
+      : (Array.isArray(value) ? value : []);
+    data[name] = latest[name];
+    mainCache = data;
+    await putBin(MAIN_API, latest);
+    return data[name];
   }
 
-  function setCache(newCache) {
-    cache = newCache;
-  }
-
-  function clearCache() {
-    cache = null;
+  async function refresh(name) {
+    if (name === "heiler") {
+      healerCache = null;
+      return load("heiler");
+    }
+    mainCache = null;
+    return load(name);
   }
 
   global.ChronikenStorage = {
-    load: loadCollection,
-    save: saveCollection,
-    ensureCache,
-    clearCache,
-    setCache,
-    BIN_ID,
-    MASTER_KEY
+    load, save, refresh, ensureMain, ensureHealer,
+    MAIN_BIN_ID, HEALER_BIN_ID
   };
 })(typeof window !== "undefined" ? window : globalThis);

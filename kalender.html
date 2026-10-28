@@ -2,185 +2,71 @@
 <html lang="de">
 <head>
 <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Chroniken – Kalender</title><link rel="stylesheet" href="style.css">
+<title>Chroniken – Kalender</title>
+<link rel="stylesheet" href="style.css">
 <link rel="stylesheet" href="chroniken-admin.css">
 <style>
 .calendar-hero{text-align:center;padding:2rem 0 1rem}.calendar-hero h1{color:var(--purple-bright);font-size:2.5rem}.calendar-hero p{color:var(--text-muted)}
 .calendar-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:1rem;margin:1.5rem 0}.month-card{background:var(--bg-card);border:1px solid var(--border);border-radius:14px;padding:1.2rem;transition:.25s}.month-card:hover,.month-card.current{border-color:var(--purple);box-shadow:0 0 18px rgba(168,85,247,.15)}.month-card h3{color:var(--purple-bright);margin-bottom:.3rem}.month-card small{color:var(--text-muted)}.month-card .holiday{margin-top:.7rem;color:var(--text);font-size:.9rem}.calendar-now{display:grid;grid-template-columns:1.2fr 1fr;gap:1rem}.calendar-now .big-date{font-size:2rem;color:var(--purple-bright);font-weight:700}.calc{font-size:.92rem;color:var(--text-muted);line-height:1.7}.holiday-list{display:grid;grid-template-columns:repeat(2,1fr);gap:.8rem}.holiday-item{background:var(--bg-card);border:1px solid var(--border);border-radius:12px;padding:1rem}.holiday-item strong{color:var(--purple-bright)}
 @media(max-width:800px){.calendar-grid,.holiday-list,.calendar-now{grid-template-columns:1fr}}
 </style>
-</head><body><div class="bg-overlay"></div>
-  <header>
-    <div class="logo-wrap">
-      <div class="logo">Chroniken</div>
-    </div>
-    <nav>
-      <a href="index.html">Start</a>
-      <a href="news.html">News</a>
-      <a href="events.html">Events</a>
-      <a href="kalender.html" class="active">Kalender</a>
-      <a href="wiki.html">Wiki</a>
-      <a href="bibliothek.html">Bibliothek</a>
-      <a href="berufe.html">Berufe</a>
-      <a href="kreaturen.html">Kreaturen</a>
-      <a href="regeln.html">Regeln</a>
-      <a href="goetter.html">Götter</a>
-      <a href="charakterbogen.html">Charakterbogen</a>
-    </nav>
-  </header>
+</head>
+<body><div class="bg-overlay"></div>
+<header><div class="logo-wrap"><div class="logo">Chroniken</div></div>
+<nav>
+<a href="index.html">Start</a><a href="news.html">News</a><a href="events.html">Events</a><a href="kalender.html" class="active">Kalender</a>
+<a href="wiki.html">Wiki</a><a href="bibliothek.html">Bibliothek</a><a href="berufe.html">Berufe</a><a href="kreaturen.html">Kreaturen</a>
+<a href="regeln.html">Regeln</a><a href="goetter.html">Götter</a><a href="charakterbogen.html">Charakterbogen</a>
+</nav></header>
 <main>
 <section class="calendar-hero"><h1>📜 Kalender der Chroniken</h1><p>Das Jahr 1400 der Chroniken. 15 reale Tage entsprechen einem Monat der Welt.</p></section>
 <section class="calendar-now">
-  <div class="card">
-    <h3>Aktuelles Datum der Welt</h3>
-    <div class="big-date" id="gameDate">–</div>
-    <p id="holidayNow" class="calc"></p>
-  </div>
-  <div class="card">
-    <h3>Die Rechnung</h3>
-    <div class="calc">
-      <b>1 ingame Monat = 15 reale Tage</b><br>
-      12 Monate = 180 reale Tage pro ingame Jahr<br>
-      30 ingame Tage pro Monat = 2 ingame Tage pro realem Tag<br><br>
-      Der Kalender startet am <b>17.10.2026</b> mit dem <b>1. Tag des Frostmondes 1400</b>.
-    </div>
-  </div>
+<div class="card"><h3>Aktuelles Datum der Welt</h3><div class="big-date" id="gameDate">–</div><p id="holidayNow" class="calc">Lade Kalenderdaten …</p></div>
+<div class="card"><h3>Die Rechnung</h3><div class="calc"><b>1 ingame Monat = 15 reale Tage</b><br>12 Monate = 180 reale Tage pro ingame Jahr<br>30 ingame Tage pro Monat = 2 ingame Tage pro realem Tag<br><br>Der Kalender startet am <b>17.10.2026</b> mit dem <b>1. Tag des Frostmondes 1400</b>.</div></div>
 </section>
 <section><h2 class="page-title">Die zwölf Monde</h2><div class="calendar-grid" id="months"></div></section>
 <section><h2 class="page-title">Feste und Feiertage</h2><div class="holiday-list" id="holidays"></div></section>
 <section class="admin-panel" id="adminCalendarTools" style="display:none">
-  <div class="admin-form">
-    <h2 id="calendarFormTitle">Neuen Kalendereintrag anlegen</h2>
-    <div class="admin-grid">
-      <div class="admin-field"><label>Name *</label><input id="calendarName" placeholder="z. B. Erntefest"></div>
-      <div class="admin-field"><label>Monat</label><select id="calendarMonth"></select></div>
-      <div class="admin-field"><label>Tag</label><input id="calendarDay" type="number" min="1" max="30" value="1"></div>
-      <div class="admin-field full"><label>Beschreibung</label><textarea id="calendarDesc" placeholder="Beschreibung des Kalendereintrags"></textarea></div>
-    </div>
-    <div class="admin-actions">
-      <button class="btn" id="calendarSave">Speichern</button>
-      <button class="btn secondary" id="calendarCancel" style="display:none">Abbrechen</button>
-      <span class="admin-status" id="calendarStatus"></span>
-    </div>
-  </div>
-  <h2 class="admin-sub-title">Vorhandene Kalendereinträge</h2>
-  <div class="holiday-list" id="adminCalendarList"></div>
-</section>
-</main>
-<footer>
-  <p>© 2026 Kiyasha · Chroniken – Alle Rechte vorbehalten · <a href="#" class="legal-link" onclick="openLegalNotice(); return false;">Hinweis</a></p>
-</footer>
-<script>
-const start = new Date('2026-10-17T00:00:00');
-const months = [
-  ['Frostmond','Der Monat des stillen Schnees'],
-  ['Eismond','Zeit der klaren Nächte'],
-  ['Tauwind','Wenn der Winter seinen Griff löst'],
-  ['Blütenmond','Erstes Erwachen der Natur'],
-  ['Sonnenhain','Monat des jungen Lichts'],
-  ['Glutmond','Die Sonne steht hoch'],
-  ['Erntemond','Zeit des Sammelns und Dankens'],
-  ['Goldlaub','Die Wälder färben sich'],
-  ['Nebelmond','Grenzen zwischen den Welten werden dünn'],
-  ['Dunkelmond','Die längsten Schatten'],
-  ['Sternenfall','Die Nächte tragen Wünsche'],
-  ['Nachtfrost','Das Jahr kehrt zur Stille zurück']
-];
-const holidays = [
-  {m:0,d:1,n:'Nacht der ersten Flamme',t:'Die erste Flamme des neuen Jahres wird entzündet.'},
-  {m:2,d:15,n:'Fest der drei Winde',t:'Ein Fest für Freiheit, Reisen und neue Wege.'},
-  {m:3,d:20,n:'Blütensegen',t:'Ein stilles Frühlingsfest zu Ehren des Lebens.'},
-  {m:5,d:15,n:'Sonnenwende der Krone',t:'Ein großer Feiertag mit Feuer, Musik und Märkten.'},
-  {m:6,d:30,n:'Danktag der Ernte',t:'Gemeinschaften teilen ihre Ernte und danken den Göttern.'},
-  {m:8,d:13,n:'Nacht des Schleiers',t:'Magier und Seher erinnern sich an die dünne Grenze zwischen den Welten.'},
-  {m:10,d:30,n:'Sternennacht',t:'Zum Ende des Jahres werden Lichter für Verstorbene und Hoffnungen entzündet.'},
-  {m:11,d:15,n:'Fuchsfeuer',t:'Ein verspieltes Fest der List, Geschichten und kleiner Streiche.'}
-];
+<div class="admin-form"><h2 id="calendarFormTitle">Neuen Kalendereintrag anlegen</h2>
+<div class="admin-grid"><div class="admin-field"><label>Name *</label><input id="calendarName"></div>
+<div class="admin-field"><label>Monat</label><select id="calendarMonth"></select></div>
+<div class="admin-field"><label>Tag</label><input id="calendarDay" type="number" min="1" max="30" value="1"></div>
+<div class="admin-field full"><label>Beschreibung</label><textarea id="calendarDesc"></textarea></div></div>
+<div class="admin-actions"><button class="btn" id="calendarSave">Speichern</button><button class="btn secondary" id="calendarCancel" style="display:none">Abbrechen</button><span class="admin-status" id="calendarStatus"></span></div>
+</div><h2 class="admin-sub-title">Vorhandene Kalendereinträge</h2><div class="holiday-list" id="adminCalendarList"></div>
+</section></main>
+<footer><p>© 2026 Kiyasha · Chroniken</p></footer>
 
-const CAL_KEY = "chroniken_calendar_entries";
-let calendarEditIndex = null;
-function loadCalendarEntries() {
-  try { return JSON.parse(localStorage.getItem(CAL_KEY) || "[]"); } catch { return []; }
-}
-function saveCalendarEntries(list) {
-  localStorage.setItem(CAL_KEY, JSON.stringify(list));
-  if (window.ChronikenSync) return ChronikenSync.saveCalendar(list).catch(e => alert("JSONBin speichern fehlgeschlagen: " + e.message));
-  return Promise.resolve();
-}
-function disabledHolidays() { try { return JSON.parse(localStorage.getItem("chroniken_disabled_holidays") || "[]"); } catch { return []; } }
-function activeHolidays() { return [...holidays.filter((h,i)=>!disabledHolidays().includes(i)), ...loadCalendarEntries().map((h,i)=>({...h, custom:true, customIndex:i}))]; }
-
-function getDate() {
-  let realDays = Math.floor((Date.now() - start.getTime()) / 86400000);
-  if (realDays < 0) realDays = 0;
-  let totalDays = realDays * 2;
-  let year = 1400 + Math.floor(totalDays / 360);
-  let dayOfYear = totalDays % 360;
-  let mi = Math.floor(dayOfYear / 30);
-  let day = (dayOfYear % 30) + 1;
-  return { year, mi, day, realDays };
-}
-function holidayFor(mi, day) { return activeHolidays().find(h => h.m === mi && h.d === day); }
-function loadBirthdays() { try { return JSON.parse(localStorage.getItem('portal_birthdays')) || []; } catch { return []; } }
-function loadCharacterEvents() { try { return JSON.parse(localStorage.getItem('portal_events')) || []; } catch { return []; } }
-const d = getDate();
-const h = holidayFor(d.mi, d.day);
-const birthdays = loadBirthdays();
-const characterEvents = loadCharacterEvents().filter(e => e.eventType === 'Geburtstag' && Number.isInteger(e.birthdayMonth) && Number.isInteger(e.birthdayDay));
-const todayEvents = characterEvents.filter(e => e.birthdayMonth === d.mi && e.birthdayDay === d.day);
-const todayBirthdays = birthdays.filter(b => b.month === d.mi && b.day === d.day);
-document.getElementById('gameDate').textContent = `${d.day}. ${months[d.mi][0]} ${d.year}`;
-let todayHtml = '';
-if (h) todayHtml += `✨ <b>${escapeHtml(h.n)}</b><br>${escapeHtml(h.t)}`;
-if (todayBirthdays.length || todayEvents.length) {
-  if (todayHtml) todayHtml += '<br><br>';
-  const names = todayBirthdays.map(b => b.name).concat(todayEvents.map(e => e.characterName)).filter((v,i,a)=>v && a.indexOf(v)===i);
-  todayHtml += names.map(name => `🎂 <b>Geburtstag von ${escapeHtml(name)}</b>`).join('<br>');
-}
-if (!todayHtml) todayHtml = 'Heute steht kein großer Feiertag im Kalender.';
-document.getElementById('holidayNow').innerHTML = todayHtml;
-document.getElementById('months').innerHTML = months.map((m, i) => {
-  const hs = activeHolidays().filter(h => h.m === i);
-  const bs = birthdays.filter(b => b.month === i);
-  const es = characterEvents.filter(e => e.birthdayMonth === i);
-  let lines = [];
-  if (hs.length) lines = lines.concat(hs.map(h => `🎉 ${h.d}. Tag: ${escapeHtml(h.n)}`));
-  if (bs.length) lines = lines.concat(bs.map(b => `🎂 ${b.day}. Tag: Geburtstag von ${escapeHtml(b.name)}`));
-  if (es.length) lines = lines.concat(es.map(e => `📅 ${e.birthdayDay}. Tag: Event – ${escapeHtml(e.characterName)}`));
-  const content = lines.length ? lines.join('<br>') : 'Keine festgelegten Feiertage oder Geburtstage';
-  return `<div class="month-card ${i === d.mi ? 'current' : ''}"><h3>${i + 1}. ${m[0]}</h3><small>${m[1]}</small><div class="holiday">${content}</div></div>`;
-}).join('');
-document.getElementById('holidays').innerHTML = activeHolidays().map(h => `<div class="holiday-item"><strong>${escapeHtml(h.n)}</strong><br>${h.d}. ${months[h.m][0]}<br><span class="calc">${escapeHtml(h.t)}</span></div>`).join('');
-if (birthdays.length || characterEvents.length) {
-  const section = document.createElement('section');
-  section.innerHTML = `<h2 class="page-title">Charakter-Events & Geburtstage</h2><div class="holiday-list">${birthdays.sort((a,b)=>a.month-b.month||a.day-b.day).map(b=>`<div class="holiday-item"><strong>🎂 ${escapeHtml(b.name)}</strong><br>${b.day}. ${months[b.month][0]}</div>`).join('')}${characterEvents.sort((a,b)=>a.birthdayMonth-b.birthdayMonth||a.birthdayDay-b.birthdayDay).map(e=>`<div class="holiday-item"><strong>📅 Event: ${escapeHtml(e.characterName)}</strong><br>${e.birthdayDay}. ${months[e.birthdayMonth][0]}</div>`).join('')}</div>`;
-  document.querySelector('main').appendChild(section);
-}
-function isAdmin() { try { return sessionStorage.getItem('portal_admin_auth') === '1'; } catch { return false; } }
-function renderAdminCalendarTools() {
-  const box=document.getElementById('adminCalendarTools'); if(!box) return;
-  box.style.display=isAdmin()?'block':'none'; if(!isAdmin()) return;
-  document.getElementById('calendarMonth').innerHTML=months.map((m,i)=>`<option value="${i}">${i+1}. ${m[0]}</option>`).join('');
-  const custom=loadCalendarEntries();
-  const rows=[];
-  holidays.forEach((h,i)=>rows.push(`<div class="holiday-item"><strong>✨ ${escapeHtml(h.n)}</strong><br>${h.d}. ${months[h.m][0]}<br><span class="calc">Fester Systemeintrag</span></div>`));
-  custom.forEach((h,i)=>rows.push(`<div class="holiday-item"><strong>📅 ${escapeHtml(h.n)}</strong><br>${h.d}. ${months[h.m][0]}<br><span class="calc">${escapeHtml(h.t||'')}</span><div class="tile-actions"><button class="btn secondary" data-calendar-edit="${i}">Bearbeiten</button><button class="btn danger" data-calendar-del="${i}">Löschen</button></div></div>`));
-  document.getElementById('adminCalendarList').innerHTML=rows.join('');
-  document.querySelectorAll('[data-calendar-edit]').forEach(b=>b.onclick=()=>editCalendarEntry(+b.dataset.calendarEdit));
-  document.querySelectorAll('[data-calendar-del]').forEach(b=>b.onclick=()=>deleteCalendarEntry(+b.dataset.calendarDel));
-}
-function resetCalendarForm(){calendarEditIndex=null;document.getElementById('calendarName').value='';document.getElementById('calendarMonth').value='0';document.getElementById('calendarDay').value='1';document.getElementById('calendarDesc').value='';document.getElementById('calendarFormTitle').textContent='Neuen Kalendereintrag anlegen';document.getElementById('calendarSave').textContent='Speichern';document.getElementById('calendarCancel').style.display='none';}
-function editCalendarEntry(i){const h=loadCalendarEntries()[i];if(!h)return;calendarEditIndex=i;document.getElementById('calendarName').value=h.n||'';document.getElementById('calendarMonth').value=h.m;document.getElementById('calendarDay').value=h.d;document.getElementById('calendarDesc').value=h.t||'';document.getElementById('calendarFormTitle').textContent='Kalendereintrag bearbeiten';document.getElementById('calendarSave').textContent='Änderungen speichern';document.getElementById('calendarCancel').style.display='inline-block';window.scrollTo({top:0,behavior:'smooth'});}
-async function saveCalendarEntry(){const name=document.getElementById('calendarName').value.trim();const m=Number(document.getElementById('calendarMonth').value);const day=Number(document.getElementById('calendarDay').value);if(!name||day<1||day>30){document.getElementById('calendarStatus').textContent='Bitte Name und gültigen Tag eingeben.';return;}const list=loadCalendarEntries();const entry={n:name,m,d:day,t:document.getElementById('calendarDesc').value.trim()};if(calendarEditIndex!==null&&list[calendarEditIndex])list[calendarEditIndex]=entry;else list.push(entry);await saveCalendarEntries(list);resetCalendarForm();document.getElementById('calendarStatus').textContent='✓ Gespeichert';location.reload();}
-async function deleteCalendarEntry(i){if(!confirm('Diesen Kalendereintrag wirklich löschen?'))return;const list=loadCalendarEntries();list.splice(i,1);await saveCalendarEntries(list);location.reload();}
-function escapeHtml(str){return String(str??'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
-document.getElementById('calendarSave').onclick=saveCalendarEntry;
-document.getElementById('calendarCancel').onclick=resetCalendarForm;
-renderAdminCalendarTools();
-
-</script>
 <script src="jsonbin-storage.js"></script>
 <script src="chroniken-sync.js" data-reload-on-change></script>
+<script>
+const start=new Date('2026-10-17T00:00:00');
+const months=[['Frostmond','Der Monat des stillen Schnees'],['Eismond','Zeit der klaren Nächte'],['Tauwind','Wenn der Winter seinen Griff löst'],['Blütenmond','Erstes Erwachen der Natur'],['Sonnenhain','Monat des jungen Lichts'],['Glutmond','Die Sonne steht hoch'],['Erntemond','Zeit des Sammelns und Dankens'],['Goldlaub','Die Wälder färben sich'],['Nebelmond','Grenzen zwischen den Welten werden dünn'],['Dunkelmond','Die längsten Schatten'],['Sternenfall','Die Nächte tragen Wünsche'],['Nachtfrost','Das Jahr kehrt zur Stille zurück']];
+const holidays=[{m:0,d:1,n:'Nacht der ersten Flamme',t:'Die erste Flamme des neuen Jahres wird entzündet.'},{m:2,d:15,n:'Fest der drei Winde',t:'Ein Fest für Freiheit, Reisen und neue Wege.'},{m:3,d:20,n:'Blütensegen',t:'Ein stilles Frühlingsfest zu Ehren des Lebens.'},{m:5,d:15,n:'Sonnenwende der Krone',t:'Ein großer Feiertag mit Feuer, Musik und Märkten.'},{m:6,d:30,n:'Danktag der Ernte',t:'Gemeinschaften teilen ihre Ernte und danken den Göttern.'},{m:8,d:13,n:'Nacht des Schleiers',t:'Magier und Seher erinnern sich an die dünne Grenze zwischen den Welten.'},{m:10,d:30,n:'Sternennacht',t:'Zum Ende des Jahres werden Lichter für Verstorbene und Hoffnungen entzündet.'},{m:11,d:15,n:'Fuchsfeuer',t:'Ein verspieltes Fest der List, Geschichten und kleiner Streiche.'}];
+let custom=[],birthdays=[],characterEvents=[],disabled=[],calendarEditIndex=null;
+const esc=s=>String(s??'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+const isAdmin=()=>{try{return sessionStorage.getItem('portal_admin_auth')==='1'}catch{return false}};
+function getDate(){let realDays=Math.max(0,Math.floor((Date.now()-start.getTime())/86400000)),totalDays=realDays*2,year=1400+Math.floor(totalDays/360),dayOfYear=totalDays%360,mi=Math.floor(dayOfYear/30),day=(dayOfYear%30)+1;return{year,mi,day}};
+function activeHolidays(){return [...holidays.filter((h,i)=>!disabled.includes(i)),...custom.map((h,i)=>({...h,custom:true,customIndex:i}))]};
+function holidayFor(mi,day){return activeHolidays().find(h=>h.m===mi&&h.d===day)}
+async function loadData(){custom=await ChronikenStorage.load('calendar');birthdays=await ChronikenStorage.load('birthdays');if(window.ChronikenSync){const known=new Set(birthdays.map(b=>b.name));ChronikenSync.load('birthdays').forEach(b=>{if(b&&b.name&&!known.has(b.name)){known.add(b.name);birthdays.push(b)}})}characterEvents=(await ChronikenStorage.load('characterEvents')).filter(e=>e.eventType==='Geburtstag'&&Number.isInteger(e.birthdayMonth)&&Number.isInteger(e.birthdayDay));disabled=await ChronikenStorage.load('disabledHolidays');}
+function render(){
+ const d=getDate(),h=holidayFor(d.mi,d.day);document.getElementById('gameDate').textContent=`${d.day}. ${months[d.mi][0]} ${d.year}`;
+ const tb=birthdays.filter(b=>b.month===d.mi&&b.day===d.day),te=characterEvents.filter(e=>e.birthdayMonth===d.mi&&e.birthdayDay===d.day);
+ let today=h?`✨ <b>${esc(h.n)}</b><br>${esc(h.t)}`:'';const names=tb.map(b=>b.name).concat(te.map(e=>e.characterName)).filter((v,i,a)=>v&&a.indexOf(v)===i);
+ if(names.length)today+=(today?'<br><br>':'')+names.map(n=>`🎂 <b>Geburtstag von ${esc(n)}</b>`).join('<br>');
+ document.getElementById('holidayNow').innerHTML=today||'Heute steht kein großer Feiertag im Kalender.';
+ document.getElementById('months').innerHTML=months.map((m,i)=>{let lines=[];activeHolidays().filter(h=>h.m===i).forEach(h=>lines.push(`🎉 ${h.d}. Tag: ${esc(h.n)}`));birthdays.filter(b=>b.month===i).forEach(b=>lines.push(`🎂 ${b.day}. Tag: Geburtstag von ${esc(b.name)}`));characterEvents.filter(e=>e.birthdayMonth===i).forEach(e=>lines.push(`📅 ${e.birthdayDay}. Tag: Event – ${esc(e.characterName)}`));return `<div class="month-card ${i===d.mi?'current':''}"><h3>${i+1}. ${m[0]}</h3><small>${m[1]}</small><div class="holiday">${lines.length?lines.join('<br>'):'Keine festgelegten Feiertage oder Geburtstage'}</div></div>`}).join('');
+ document.getElementById('holidays').innerHTML=activeHolidays().map(h=>`<div class="holiday-item"><strong>${esc(h.n)}</strong><br>${h.d}. ${months[h.m][0]}<br><span class="calc">${esc(h.t)}</span></div>`).join('');
+ renderAdmin();
+}
+function renderAdmin(){const box=document.getElementById('adminCalendarTools');if(!box)return;box.style.display=isAdmin()?'block':'none';if(!isAdmin())return;document.getElementById('calendarMonth').innerHTML=months.map((m,i)=>`<option value="${i}">${i+1}. ${m[0]}</option>`).join('');document.getElementById('adminCalendarList').innerHTML=custom.map((h,i)=>`<div class="holiday-item"><strong>📅 ${esc(h.n)}</strong><br>${h.d}. ${months[h.m][0]}<br><span class="calc">${esc(h.t||'')}</span><div class="tile-actions"><button class="btn secondary" data-edit="${i}">Bearbeiten</button><button class="btn danger" data-del="${i}">Löschen</button></div></div>`).join('')||'<p class="calc">Keine eigenen Einträge.</p>';document.querySelectorAll('[data-edit]').forEach(b=>b.onclick=()=>editEntry(+b.dataset.edit));document.querySelectorAll('[data-del]').forEach(b=>b.onclick=()=>deleteEntry(+b.dataset.del))}
+function resetForm(){calendarEditIndex=null;calendarName.value='';calendarMonth.value='0';calendarDay.value='1';calendarDesc.value='';calendarFormTitle.textContent='Neuen Kalendereintrag anlegen';calendarSave.textContent='Speichern';calendarCancel.style.display='none'}
+function editEntry(i){const h=custom[i];if(!h)return;calendarEditIndex=i;calendarName.value=h.n;calendarMonth.value=h.m;calendarDay.value=h.d;calendarDesc.value=h.t||'';calendarFormTitle.textContent='Kalendereintrag bearbeiten';calendarSave.textContent='Änderungen speichern';calendarCancel.style.display='inline-block';scrollTo({top:0,behavior:'smooth'})}
+calendarSave.onclick=async()=>{const name=calendarName.value.trim(),m=+calendarMonth.value,d=+calendarDay.value;if(!name||d<1||d>30){calendarStatus.textContent='Bitte Name und gültigen Tag eingeben.';return}const entry={n:name,m,d,t:calendarDesc.value.trim()};if(calendarEditIndex===null)custom.push(entry);else custom[calendarEditIndex]=entry;await ChronikenStorage.save('calendar',custom);calendarStatus.textContent='✓ In JSONBin gespeichert';resetForm();await loadData();render()};
+calendarCancel.onclick=resetForm;
+async function deleteEntry(i){if(!confirm('Diesen Kalendereintrag wirklich löschen?'))return;custom.splice(i,1);await ChronikenStorage.save('calendar',custom);await loadData();render()}
+(async()=>{try{await loadData();render()}catch(e){document.getElementById('holidayNow').textContent='Kalender konnte nicht geladen werden: '+e.message}})();
+</script>
 <script src="legal-notice.js"></script>
-</body>
-</html>
+</body></html>
