@@ -1,6 +1,9 @@
 /* ============================================================
    Chroniken – Events / News / Geburtstage zentral in JSONBin
 
+   Zwei Bins:
+     EVENTS_BIN_ID – Events, News, Geburtstage, Kalender, Feiertage
+     CHARS_BIN_ID  – Charakterbögen (characters + characterSheets)
    Eigener Bin (nur Events): EVENTS_BIN_ID
    localStorage bleibt als schneller Cache (portal_events,
    portal_birthdays), JSONBin ist die gemeinsame Wahrheit.
@@ -11,10 +14,19 @@
 (function (global) {
   const EVENTS_BIN_ID = "6ae18121ffd5d1605391c7c7";
   const MASTER_KEY = "$2a$10$UtTY0igLD.IvUKF5WDV89uC7/zf7h2HP3R3jXC/mghWJDo20hRpqO";
-  const API = "https://api.jsonbin.io/v3/b/" + EVENTS_BIN_ID;
+  const CHARS_BIN_ID = "6ae17c9cffd5d1605391c27b";
+  const APIS = {
+    main: "https://api.jsonbin.io/v3/b/" + EVENTS_BIN_ID,
+    chars: "https://api.jsonbin.io/v3/b/" + CHARS_BIN_ID
+  };
+  const BIN_OF = { events: "main", birthdays: "main", calendar: "main", disabledHolidays: "main", characters: "chars", characterSheets: "chars" };
 
   const LS = { events: "portal_events", birthdays: "portal_birthdays", calendar: "chroniken_calendar_entries", disabledHolidays: "chroniken_disabled_holidays", characters: "portal_char_registry", characterSheets: "portal_char_sheets" };
   const KEYS = Object.keys(LS);
+  const BIN_KEYS = {
+    main: KEYS.filter(function (k) { return BIN_OF[k] === "main"; }),
+    chars: KEYS.filter(function (k) { return BIN_OF[k] === "chars"; })
+  };
   const AUTH_KEY = "portal_admin_auth";
 
   const script = document.currentScript;
@@ -31,15 +43,15 @@
     try { localStorage.setItem(LS[name], JSON.stringify(arr)); } catch (e) {}
   }
 
-  async function fetchRemote() {
-    const res = await fetch(API + "/latest", { headers: { "X-Master-Key": MASTER_KEY, "X-Bin-Meta": "false" } });
+  async function fetchRemote(bin) {
+    const res = await fetch(APIS[bin || "main"] + "/latest", { headers: { "X-Master-Key": MASTER_KEY, "X-Bin-Meta": "false" } });
     if (!res.ok) throw new Error("JSONBin lesen fehlgeschlagen: " + res.status);
     const data = await res.json();
     const rec = (data && data.record !== undefined) ? data.record : data;
     return (rec && typeof rec === "object") ? rec : {};
   }
-  async function putRemote(record) {
-    const res = await fetch(API, {
+  async function putRemote(record, bin) {
+    const res = await fetch(APIS[bin || "main"], {
       method: "PUT",
       headers: { "Content-Type": "application/json", "X-Master-Key": MASTER_KEY },
       body: JSON.stringify(record)
@@ -52,26 +64,50 @@
     try { document.dispatchEvent(new CustomEvent("chroniken-synced", { detail: { changed: !!changed } })); } catch (e) {}
   }
 
-  /** Holt den Bin und überschreibt den lokalen Cache. */
+  /** Charakter-Bin: fehlen dort Listen, werden sie aus dem alten Events-Bin (oder lokal) übernommen. */
+  async function fillCharRecord(rec, allowLocal) {
+    let legacy = null, filled = false;
+    for (const k of BIN_KEYS.chars) {
+      if (Array.isArray(rec[k])) continue;
+      if (legacy === null) { try { legacy = await fetchRemote("main"); } catch (e) { legacy = {}; } }
+      if (Array.isArray(legacy[k]) && legacy[k].length) { rec[k] = legacy[k]; filled = true; }
+      else if (allowLocal && readLocal(k).length) { rec[k] = readLocal(k); filled = true; }
+      else rec[k] = [];
+    }
+    return filled;
+  }
+
+  /** Holt die Bins und überschreibt den lokalen Cache. */
   async function pull() {
-    const rec = await fetchRemote();
     let changed = false;
+    const apply = function (name, arr) {
+      const before = localStorage.getItem(LS[name]);
+      if (before !== JSON.stringify(arr)) { writeLocal(name, arr); changed = true; }
+    };
+
+    // --- Events-Bin ---
+    const rec = await fetchRemote("main");
     let needsMigration = false;
-    KEYS.forEach(function (name) {
-      if (Array.isArray(rec[name])) {
-        const before = localStorage.getItem(LS[name]);
-        const after = JSON.stringify(rec[name]);
-        if (before !== after) { writeLocal(name, rec[name]); changed = true; }
-      } else if (readLocal(name).length) {
-        needsMigration = true;
-      }
+    BIN_KEYS.main.forEach(function (name) {
+      if (Array.isArray(rec[name])) apply(name, rec[name]);
+      else if (readLocal(name).length) needsMigration = true;
     });
     // Erster Start: lokale Daten eines Admins in den leeren Bin übernehmen
     if (needsMigration && isAdmin()) {
       const next = {};
-      KEYS.forEach(function (k) { next[k] = Array.isArray(rec[k]) ? rec[k] : readLocal(k); });
-      await putRemote(Object.assign({}, rec, next));
+      BIN_KEYS.main.forEach(function (k) { next[k] = Array.isArray(rec[k]) ? rec[k] : readLocal(k); });
+      await putRemote(Object.assign({}, rec, next), "main");
     }
+
+    // --- Charakter-Bin ---
+    try {
+      const crec = await fetchRemote("chars");
+      const hadAll = BIN_KEYS.chars.every(function (k) { return Array.isArray(crec[k]); });
+      const filled = hadAll ? false : await fillCharRecord(crec, isAdmin());
+      BIN_KEYS.chars.forEach(function (name) { apply(name, crec[name]); });
+      if (filled) await putRemote(crec, "chars");
+    } catch (e) { console.warn("[Chroniken-Sync] Charakter-Bin:", e); }
+
     emit(changed);
     if (changed && reloadOnChange) location.reload();
     return changed;
@@ -88,19 +124,26 @@
     return run;
   }
   async function doMutate(fns) {
-    let rec;
-    try { rec = await fetchRemote(); }
-    catch (e) { rec = {}; throw e; }
-    const next = Object.assign({}, rec);
-    KEYS.forEach(function (k) { next[k] = Array.isArray(rec[k]) ? rec[k] : readLocal(k); });
-    Object.keys(fns).forEach(function (k) {
-      const out = fns[k](next[k].slice());
-      next[k] = Array.isArray(out) ? out : next[k];
+    const names = Object.keys(fns);
+    const bins = ["main", "chars"].filter(function (b) {
+      return names.some(function (n) { return BIN_OF[n] === b; });
     });
-    await putRemote(next);
-    KEYS.forEach(function (k) { writeLocal(k, next[k]); });
+    let last = null;
+    for (const bin of bins) {
+      const rec = await fetchRemote(bin);
+      const next = Object.assign({}, rec);
+      if (bin === "chars") await fillCharRecord(next, true);
+      else BIN_KEYS.main.forEach(function (k) { next[k] = Array.isArray(rec[k]) ? rec[k] : readLocal(k); });
+      names.filter(function (n) { return BIN_OF[n] === bin; }).forEach(function (k) {
+        const out = fns[k](next[k].slice());
+        next[k] = Array.isArray(out) ? out : next[k];
+      });
+      await putRemote(next, bin);
+      BIN_KEYS[bin].forEach(function (k) { writeLocal(k, next[k]); });
+      last = next;
+    }
     emit(true);
-    return next;
+    return last;
   }
 
   // ---------- Events ----------
@@ -203,8 +246,9 @@
   async function loadShared(name) {
     let list;
     try {
-      const rec = await fetchRemote();
+      const rec = await fetchRemote(BIN_OF[name] || "main");
       list = Array.isArray(rec[name]) ? rec[name] : [];
+      if (BIN_OF[name] === "chars" && !Array.isArray(rec[name])) list = (await fetchRemote("main"))[name] || [];
       writeLocal(name, list);
     } catch (e) {
       console.warn("[Chroniken-Sync]", e);
@@ -349,6 +393,7 @@
     saveCharacter: saveCharacter,
     removeCharacter: removeCharacter,
     EVENTS_BIN_ID: EVENTS_BIN_ID,
+    CHARS_BIN_ID: CHARS_BIN_ID,
     isAdmin: isAdmin,
     pull: pull,
     load: readLocal,
@@ -363,11 +408,13 @@
     saveDisabledHolidays: function (list) { return saveShared("disabledHolidays", list); },
     /** Lokale Daten komplett in den Bin schreiben (Admin-Button). */
     async pushLocal() {
-      let rec = {};
-      try { rec = await fetchRemote(); } catch (e) {}
-      const all = {};
-      KEYS.forEach(function (k) { all[k] = readLocal(k); });
-      await putRemote(Object.assign({}, rec, all));
+      for (const bin of ["main", "chars"]) {
+        let rec = {};
+        try { rec = await fetchRemote(bin); } catch (e) {}
+        const all = {};
+        BIN_KEYS[bin].forEach(function (k) { all[k] = readLocal(k); });
+        await putRemote(Object.assign({}, rec, all), bin);
+      }
       emit(true);
     }
   };

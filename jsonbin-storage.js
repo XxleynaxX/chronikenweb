@@ -5,11 +5,13 @@
 (function (global) {
   const MAIN_BIN_ID = "6ae177efffd5d1605391bc4e";
   const HEALER_BIN_ID = "6ae20785ac6210605a595590";
+  const MAP_BIN_ID = "6ae28568ac6210605a5a8f1b";
 
   const MASTER_KEY = "$2a$10$UtTY0igLD.IvUKF5WDV89uC7/zf7h2HP3R3jXC/mghWJDo20hRpqO";
 
   const MAIN_API = "https://api.jsonbin.io/v3/b/" + MAIN_BIN_ID;
   const HEALER_API = "https://api.jsonbin.io/v3/b/" + HEALER_BIN_ID;
+  const MAP_API = "https://api.jsonbin.io/v3/b/" + MAP_BIN_ID;
 
   const mainCollections = [
     "wiki","bibliothek","voelker","berufe","goetter","calendar",
@@ -18,6 +20,7 @@
 
   let mainCache = null;
   let healerCache = null;
+  let mapCache = null;
 
   async function fetchBin(api) {
     const res = await fetch(api + "/latest", {
@@ -73,7 +76,17 @@
     return healerCache;
   }
 
+  async function ensureMap() {
+    if (mapCache) return mapCache;
+    const record = await fetchBin(MAP_API);
+    mapCache = { map: Array.isArray(record.map) ? record.map : [] };
+    return mapCache;
+  }
+
   async function load(name) {
+    if (name === "map") {
+      return (await ensureMap()).map;
+    }
     if (name === "heiler") {
       return (await ensureHealer()).heiler;
     }
@@ -82,6 +95,13 @@
   }
 
   async function save(name, value) {
+    if (name === "map") {
+      const latest = await fetchBin(MAP_API);
+      latest.map = Array.isArray(value) ? value : [];
+      mapCache = { map: latest.map };
+      await putBin(MAP_API, latest);
+      return mapCache.map;
+    }
     if (name === "heiler") {
       const latest = await fetchBin(HEALER_API);
       latest.heiler = Array.isArray(value) ? value : [];
@@ -102,6 +122,10 @@
   }
 
   async function refresh(name) {
+    if (name === "map") {
+      mapCache = null;
+      return load("map");
+    }
     if (name === "heiler") {
       healerCache = null;
       return load("heiler");
@@ -112,6 +136,6 @@
 
   global.ChronikenStorage = {
     load, save, refresh, ensureMain, ensureHealer,
-    MAIN_BIN_ID, HEALER_BIN_ID
+    MAIN_BIN_ID, HEALER_BIN_ID, MAP_BIN_ID
   };
 })(typeof window !== "undefined" ? window : globalThis);

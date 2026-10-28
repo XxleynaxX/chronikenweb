@@ -91,3 +91,14 @@ Render → Environment: `DISCORD_CLIENT_ID`, `DISCORD_CLIENT_SECRET`, `AUTH_SECR
 ## 📄 Copyright
 
 © Kiyasha · Chroniken
+
+---
+
+## 🗺️ Weltkarte (`karte.html`)
+
+- Karte (`karte.jpg`) fest eingebunden, Zoom/Verschieben, Raster-Anzeige (A–P / 1–17).
+- Marker liegen in einem eigenen JSONBin (`MAP_BIN_ID` in `jsonbin-storage.js`, Format `{"map": [...]}`).
+- Ansehen: alle · Marker setzen/bearbeiten/löschen: Admin- oder Bibliothek-Rolle (Discord-Login).
+
+## 🎭 Charakter-Bin
+Charakterverwaltung und Bogen-Kopien (`characters`, `characterSheets`) liegen in einem eigenen JSONBin (`CHARS_BIN_ID` in `chroniken-sync.js`). Events, Kalender und Geburtstage bleiben im Events-Bin. Vorhandene Charaktere aus dem Events-Bin werden beim ersten Laden automatisch in den neuen Bin übernommen.
