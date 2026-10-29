@@ -353,4 +353,4 @@ function start(publicUrl) {
   }
 }
 
-module.exports = { start, handle, tick, tickMoon, sendCurrentMoon, compute, computeMoon, normalize };
+module.exports = { start, handle, tick, tickMoon, sendCurrentMoon, saveConfig, compute, computeMoon, normalize };
