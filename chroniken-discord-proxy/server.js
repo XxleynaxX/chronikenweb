@@ -5,6 +5,8 @@ const weather = require('./weather');
 const PORT = process.env.PORT || 3000;
 const CHAR_WEBHOOK = process.env.CHAR_WEBHOOK || '';
 const HEILER_WEBHOOK = process.env.HEILER_WEBHOOK || '';
+const MOD_WEBHOOK = process.env.MOD_WEBHOOK || process.env.DISCORD_MOD_WEBHOOK || '';
+const MOD_WATCHER_SECRET = process.env.MOD_WATCHER_SECRET || '';
 
 /* ===== Discord-Login (OAuth2) =====
    Benötigte Umgebungsvariablen (Render → Environment):
@@ -149,6 +151,37 @@ async function handleAuth(req, res, url) {
   res.writeHead(404); res.end('Not found');
 }
 
+/* ===== Mod-Watcher → Discord (MOD_WEBHOOK) =====
+   POST /mod-update { content, updates }
+   Optional security: X-Mod-Watcher-Secret must match MOD_WATCHER_SECRET.
+*/
+function modEmbed(body) {
+  const updates = Array.isArray(body && body.updates) ? body.updates : [];
+  const content = typeof body?.content === 'string' ? body.content.slice(0, 2000) : '';
+  if (!content && !updates.length) return null;
+
+  const fields = updates.slice(0, 10).map(u => ({
+    name: String(u.title || u.id || 'Unbekannte Mod').slice(0, 256),
+    value: [
+      u.id ? 'Steam-ID: ' + String(u.id) : '',
+      u.newTime ? 'Aktualisiert: <t:' + String(Math.floor(Number(u.newTime))) + ':F>' : ''
+    ].filter(Boolean).join('\\n') || 'Mod wurde aktualisiert.',
+    inline: false
+  }));
+
+  return {
+    username: 'Chroniken Mod-Watcher',
+    content: content || undefined,
+    embeds: fields.length ? [{
+      title: '🔧 Conan Exiles Mod-Update',
+      color: 0xa855f7,
+      fields,
+      footer: { text: 'Die Chroniken · Mod-Watcher' },
+      timestamp: new Date().toISOString()
+    }] : undefined
+  };
+}
+
 /* ===== Heilerakte → Discord (HEILER_WEBHOOK) =====
    POST /heiler  { action: 'created'|'updated'|'deleted', record: { id, playerName, illness, duration, description }, by } */
 function clip(v, n) { const t = String(v == null ? '' : v).trim(); return t ? t.slice(0, n) : '—'; }
@@ -202,6 +235,56 @@ const server = http.createServer(async (req, res) => {
     return;
   }
 
+  if (url.pathname === '/mod-update' && req.method === 'GET') {
+    res.writeHead(200, { 'Content-Type': 'application/json', 'Cache-Control': 'no-store' });
+    res.end(JSON.stringify({ ok: true, service: 'mod-watcher-endpoint' }));
+    return;
+  }
+
+  if (req.method === 'POST' && url.pathname === '/mod-update') {
+    const suppliedSecret = String(req.headers['x-mod-watcher-secret'] || '');
+    if (MOD_WATCHER_SECRET && suppliedSecret !== MOD_WATCHER_SECRET) {
+      res.writeHead(401, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ ok: false, error: 'Nicht autorisiert' }));
+      return;
+    }
+    if (!MOD_WEBHOOK) {
+      res.writeHead(500, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ ok: false, error: 'MOD_WEBHOOK fehlt' }));
+      return;
+    }
+
+    let body = '';
+    for await (const chunk of req) {
+      body += chunk;
+      if (body.length > 50000) {
+        res.writeHead(413, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ ok: false, error: 'zu groß' }));
+        return;
+      }
+    }
+
+    try {
+      const payload = modEmbed(JSON.parse(body || '{}'));
+      if (!payload) {
+        res.writeHead(400, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ ok: false, error: 'ungültige Mod-Daten' }));
+        return;
+      }
+      const r = await fetch(MOD_WEBHOOK, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+      res.writeHead(r.ok ? 200 : 502, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ ok: r.ok }));
+    } catch (e) {
+      res.writeHead(500, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ ok: false, error: String(e.message) }));
+    }
+    return;
+  }
+
   if (req.method === 'POST' && url.pathname === '/heiler') {
     const json = (code, obj) => { res.writeHead(code, { 'Content-Type': 'application/json' }); res.end(JSON.stringify(obj)); };
     if (!HEILER_WEBHOOK) return json(500, { ok: false, error: 'HEILER_WEBHOOK fehlt' });
@@ -251,4 +334,13 @@ const server = http.createServer(async (req, res) => {
 server.listen(PORT, () => {
   console.log('Listening on', PORT);
   weather.start(PUBLIC_URL);
+
+  // Mod-Watcher direkt im bestehenden Render-Service starten.
+  // Dadurch wird kein zweiter Render-Service benötigt.
+  try {
+    require('../mod-watcher');
+    console.log('Mod-Watcher eingebunden (mod-watcher/index.js).');
+  } catch (e) {
+    console.error('Mod-Watcher konnte nicht gestartet werden:', e.message);
+  }
 });
