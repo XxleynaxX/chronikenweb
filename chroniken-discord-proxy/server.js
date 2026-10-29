@@ -265,7 +265,7 @@ const server = http.createServer(async (req, res) => {
   }
 
   if (req.method === 'POST' && url.pathname === '/weather/moon-send') {
-    const auth = String(req.headers.authorization || '').replace(/^Bearer\\s+/i, '');
+    const auth = String(req.headers.authorization || '').replace(/^Bearer\s+/i, '');
     const session = verify(auth);
     if (!session || !session.admin) {
       res.writeHead(403, { 'Content-Type': 'application/json', 'Cache-Control': 'no-store' });
