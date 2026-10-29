@@ -9,11 +9,49 @@
   <style>
     .wrap { max-width: 1100px; margin: auto; padding: 2rem 1.5rem; }
     .god-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 1.2rem; }
-    .god-card { background: var(--bg-card); border: 1px solid var(--border); border-radius: 12px; padding: 1.3rem; transition: border-color 0.2s, box-shadow 0.2s, background 0.2s; backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); }
+    .god-card {
+      cursor: pointer;
+      position: relative;
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 1.3rem;
+      transition: border-color 0.2s, box-shadow 0.2s, background 0.2s;
+      backdrop-filter: blur(10px);
+      -webkit-backdrop-filter: blur(10px);
+    }
     .god-card:hover { border-color: var(--accent-soft); background: var(--bg-hover); box-shadow: 0 0 20px rgba(168, 85, 247, 0.22); }
     .god-card h3 { margin: 0 0 0.3rem; color: var(--accent-soft); font-size: 1.25rem; }
     .god-card .domain { font-size: 0.85rem; color: var(--accent); margin-bottom: 0.6rem; font-weight: 600; }
-    .god-card .full-text { font-size: 0.95rem; color: var(--text-muted); line-height: 1.6; }
+    .god-card .short-text {
+      font-size: 0.95rem;
+      color: var(--text-muted);
+      display: -webkit-box;
+      -webkit-line-clamp: 3;
+      -webkit-box-orient: vertical;
+      overflow: hidden;
+      line-height: 1.5;
+    }
+    .god-card .click-hint {
+      font-size: 0.75rem;
+      color: var(--purple);
+      margin-top: 0.6rem;
+    }
+    .god-card.expanded {
+      grid-column: 1 / -1;
+      border-color: var(--purple);
+      box-shadow: 0 0 24px rgba(124, 58, 237, 0.3);
+    }
+    .god-card.expanded .short-text { display: none; }
+    .god-card .full-text {
+      display: none;
+      font-size: 1rem;
+      color: var(--text);
+      line-height: 1.7;
+      margin-top: 0.5rem;
+    }
+    .god-card.expanded .full-text { display: block; }
+    .god-card.expanded .click-hint { display: none; }
   </style>
 </head>
 <body>
@@ -81,17 +119,25 @@
       const list = ChronikenData.load(KEY);
       el("adminPanel").style.display = admin() ? "block" : "none";
       el("tiles").innerHTML = list.map((g, i) => `
-        <div class="god-card">
+        <article class="god-card">
           <h3>${esc(g.name)}</h3>
           <div class="domain">${esc(g.domain || "")}</div>
+          <p class="short-text">${esc(g.short || "")}</p>
           <p class="full-text">${esc(g.full || g.short || "")}</p>
+          <div class="click-hint">Klicken zum Aufklappen →</div>
           ${admin() ? `<div class="tile-actions">
             <button class="btn secondary" data-edit="${i}" data-testid="goetter-edit-${i}">Bearbeiten</button>
             <button class="btn danger" data-del="${i}" data-testid="goetter-delete-${i}">Löschen</button>
           </div>` : ""}
-        </div>`).join("");
-      el("tiles").querySelectorAll("[data-edit]").forEach(b => b.onclick = () => startEdit(+b.dataset.edit));
-      el("tiles").querySelectorAll("[data-del]").forEach(b => b.onclick = () => remove(+b.dataset.del));
+        </article>`).join("");
+      el("tiles").querySelectorAll("[data-edit]").forEach(b => b.onclick = e => { e.stopPropagation(); startEdit(+b.dataset.edit); });
+      el("tiles").querySelectorAll("[data-del]").forEach(b => b.onclick = e => { e.stopPropagation(); remove(+b.dataset.del); });
+      el("tiles").querySelectorAll(".god-card").forEach(card => {
+        card.onclick = e => {
+          if (e.target.closest("button")) return;
+          card.classList.toggle("expanded");
+        };
+      });
     }
 
     function resetForm() {
