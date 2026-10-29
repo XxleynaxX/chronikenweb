@@ -38,7 +38,35 @@
       font-size: 1rem;
       color: var(--text);
       line-height: 1.7;
-      margin-top: 0.5rem;
+      margin-top: 0.8rem;
+    }
+
+    .god-card.expanded .full-text {
+      display: block;
+    }
+
+    .god-card .lore-heading {
+      color: var(--accent-soft);
+      font-size: 1.1rem;
+      font-weight: 700;
+      margin: 1.2rem 0 0.45rem;
+    }
+
+    .god-card .lore-heading:first-child {
+      margin-top: 0;
+    }
+
+    .god-card .lore-paragraph {
+      margin: 0 0 0.9rem;
+    }
+
+    .god-card .lore-list {
+      margin: 0.35rem 0 1rem 1.4rem;
+      padding: 0;
+    }
+
+    .god-card .lore-list li {
+      margin-bottom: 0.35rem;
     }
     .god-card.expanded .full-text { display: block; }
     .god-card.expanded .click-hint { display: none; }
@@ -104,6 +132,64 @@
     const el = id => document.getElementById(id);
     function admin() { return ChronikenData.isAdmin(); }
 
+    function formatLore(text) {
+      if (!text) return "";
+
+      // Echte Zeilenumbrüche und eingefügte \\n werden vereinheitlicht.
+      const normalized = String(text)
+        .replace(/\\r\\n/g, "\n")
+        .replace(/\\n/g, "\n")
+        .replace(/\\r/g, "\n")
+        .replace(/\\\\\n/g, "\n");
+
+      const lines = normalized.split("\n");
+      const parts = [];
+      let listItems = [];
+
+      const flushList = () => {
+        if (!listItems.length) return;
+        parts.push("<ul class=\"lore-list\">" + listItems.map(item => "<li>" + esc(item) + "</li>").join("") + "</ul>");
+        listItems = [];
+      };
+
+      lines.forEach(line => {
+        const trimmed = line.trim();
+
+        if (!trimmed) {
+          flushList();
+          return;
+        }
+
+        // Markdown-ähnliche Aufzählungen: -, *, • oder 1.
+        const bullet = trimmed.match(/^(?:[-*•]|\d+[.)])\s+(.*)$/);
+        if (bullet) {
+          listItems.push(bullet[1]);
+          return;
+        }
+
+        flushList();
+
+        // Zeilen wie "- Die Macht des Blutgedächtnisses -" werden als Überschrift erkannt.
+        const heading = trimmed.match(/^-+\s*(.+?)\s*-+$/);
+        if (heading) {
+          parts.push("<h4 class=\"lore-heading\">" + esc(heading[1]) + "</h4>");
+          return;
+        }
+
+        // Markdown-Überschriften wie ## Blutgedächtnis
+        const markdownHeading = trimmed.match(/^#{1,4}\s+(.+)$/);
+        if (markdownHeading) {
+          parts.push("<h4 class=\"lore-heading\">" + esc(markdownHeading[1]) + "</h4>");
+          return;
+        }
+
+        parts.push("<p class=\"lore-paragraph\">" + esc(trimmed) + "</p>");
+      });
+
+      flushList();
+      return parts.join("");
+    }
+
     function render() {
       const list = ChronikenData.load(KEY);
       el("adminPanel").style.display = admin() ? "block" : "none";
@@ -111,7 +197,7 @@
         <article class="god-card">
           <h3>${esc(g.name)}</h3>
           <div class="domain">${esc(g.domain || "")}</div>
-          <div class="full-text">${esc(g.full || g.short || "")}</div>
+          <div class="full-text">${formatLore(g.full || g.short || "")}</div>
           <div class="click-hint">Klicken zum Aufklappen →</div>
           ${admin() ? `<div class="tile-actions">
             <button class="btn secondary" data-edit="${i}" data-testid="goetter-edit-${i}">Bearbeiten</button>
