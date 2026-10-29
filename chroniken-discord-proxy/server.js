@@ -232,6 +232,36 @@ const server = http.createServer(async (req, res) => {
 
   const url = new URL(req.url, 'http://localhost');
 
+  if (req.method === 'POST' && url.pathname === '/weather/config-save') {
+    const auth = String(req.headers.authorization || '').replace(/^Bearer\\s+/i, '');
+    const session = verify(auth);
+    if (!session || !session.admin) {
+      res.writeHead(403, { 'Content-Type': 'application/json', 'Cache-Control': 'no-store' });
+      res.end(JSON.stringify({ ok: false, error: 'Nur Admins dürfen die Wetter-Config speichern.' }));
+      return;
+    }
+    let body = '';
+    for await (const chunk of req) {
+      body += chunk;
+      if (body.length > 100000) {
+        res.writeHead(413, { 'Content-Type': 'application/json', 'Cache-Control': 'no-store' });
+        res.end(JSON.stringify({ ok: false, error: 'Wetter-Config ist zu groß.' }));
+        return;
+      }
+    }
+    try {
+      const data = JSON.parse(body || '{}');
+      if (!data.state || typeof data.state !== 'object') throw new Error('Ungültige Wetter-Config.');
+      const state = await weather.saveConfig(data.state);
+      res.writeHead(200, { 'Content-Type': 'application/json', 'Cache-Control': 'no-store' });
+      res.end(JSON.stringify({ ok: true, state }));
+    } catch (e) {
+      res.writeHead(500, { 'Content-Type': 'application/json', 'Cache-Control': 'no-store' });
+      res.end(JSON.stringify({ ok: false, error: e.message }));
+    }
+    return;
+  }
+
   if (req.method === 'POST' && url.pathname === '/weather/moon-send') {
     const auth = String(req.headers.authorization || '').replace(/^Bearer\\s+/i, '');
     const session = verify(auth);
