@@ -27,6 +27,18 @@ const JSONBIN_API = (process.env.JSONBIN_API || 'https://api.jsonbin.io/v3/b/').
 const MASTER_KEY = process.env.JSONBIN_MASTER_KEY || '$2a$10$UtTY0igLD.IvUKF5WDV89uC7/zf7h2HP3R3jXC/mghWJDo20hRpqO';
 const WINDOW_MS = (Number(process.env.WEATHER_WINDOW_MIN) || 10) * 60 * 1000;
 const TZ = 'Europe/Berlin';
+const MOON_START = new Date('2026-10-17T00:00:00').getTime();
+const MOON_PHASES = [
+  { name: 'Neumond', icon: '🌑', description: 'Zeit der Stille und des Neubeginns.' },
+  { name: 'Zunehmende Sichel', icon: '🌒', description: 'Das Licht kehrt langsam zurück.' },
+  { name: 'Halbmond', icon: '🌓', description: 'Licht und Dunkelheit halten sich die Waage.' },
+  { name: 'Zunehmender Mond', icon: '🌔', description: 'Die Nächte werden heller.' },
+  { name: 'Vollmond', icon: '🌕', description: 'Der Mond steht vollständig am Himmel.' },
+  { name: 'Blutmond', icon: '🔴', description: 'Ein seltener roter Vollmond. Die Nacht wirkt unheilvoll und magisch.' },
+  { name: 'Abnehmender Mond', icon: '🌖', description: 'Das Mondlicht nimmt langsam ab.' },
+  { name: 'Letzter Halbmond', icon: '🌗', description: 'Die Schatten gewinnen wieder Raum.' },
+  { name: 'Abnehmende Sichel', icon: '🌘', description: 'Nur noch ein schmaler Lichtbogen bleibt.' }
+];
 const DEFAULT_TITLE = '🌦️ Wetter in Chroniken';
 const DEFAULT_TEXT = '%wetter_icon% %wetter% ist jetzt bei Chroniken.\n\n%wetter_beschreibung%\n\nNächster Wechsel: %naechster_wetterwechsel%';
 
@@ -34,7 +46,9 @@ let shared = null;          // normalisierter Zustand
 let source = 'file';        // 'jsonbin' | 'file'
 let loadedAt = 0;
 let lastSentKey = null;
+let lastMoonSentKey = null;
 let lastResult = null;
+let lastMoonResult = null;
 let reloadChain = Promise.resolve();
 
 /* ---------- Config / Normalisieren (wie wetter.js) ---------- */
@@ -85,6 +99,23 @@ function pickWeighted(seed, list) {
   let r = randomIndex(seed, total);
   for (const w of list) { r -= w.weight; if (r < 0) return w; }
   return list[list.length - 1];
+}
+
+function computeMoon(now = Date.now()) {
+  const realDays = Math.max(0, Math.floor((now - MOON_START) / 86400000));
+  const totalDays = realDays * 2;
+  const slot = Math.floor((totalDays % 27) / 3);
+  const phase = MOON_PHASES[slot] || MOON_PHASES[0];
+  return {
+    key: 'moon:' + Math.floor(totalDays / 3),
+    slot,
+    name: phase.name,
+    icon: phase.icon,
+    description: phase.description,
+    totalDays,
+    changedAt: new Date(MOON_START + Math.floor(totalDays / 3) * 3 * 86400000 / 2).toISOString(),
+    nextChangeAt: new Date(MOON_START + (Math.floor(totalDays / 3) + 1) * 3 * 86400000 / 2).toISOString()
+  };
 }
 
 function compute(st, now = Date.now()) {
@@ -165,8 +196,54 @@ async function send(st, w) {
   if (!r.ok) throw new Error('Discord ' + r.status + ': ' + (await r.text()).slice(0, 200));
 }
 
+async function sendMoon(moon) {
+  if (!WEBHOOK) throw new Error('DISCORD_WEATHER_WEBHOOK fehlt');
+  const now = new Date();
+  const r = await fetch(WEBHOOK, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      username: 'Chroniken Wetter',
+      embeds: [{
+        title: moon.icon + ' Mondphase gewechselt: ' + moon.name,
+        description: moon.description + '\\n\\nDer Mondkalender der Chroniken hat eine neue Phase erreicht.',
+        color: moon.name === 'Blutmond' ? 0xef4444 : 0x7c3aed,
+        fields: [
+          { name: 'Neue Mondphase', value: moon.icon + ' **' + moon.name + '**', inline: true },
+          { name: 'Nächster Wechsel', value: '<t:' + Math.floor(new Date(moon.nextChangeAt).getTime() / 1000) + ':F>', inline: true }
+        ],
+        footer: { text: 'Chroniken · Mondkalender · gleicher Wetter-Webhook' },
+        timestamp: now.toISOString()
+      }]
+    })
+  });
+  if (!r.ok) throw new Error('Discord ' + r.status + ': ' + (await r.text()).slice(0, 200));
+}
+
+async function tickMoon() {
+  if (!WEBHOOK) return false;
+  const moon = computeMoon();
+  if (lastMoonSentKey === null) {
+    lastMoonSentKey = moon.key;
+    return false;
+  }
+  if (lastMoonSentKey === moon.key) return false;
+  try {
+    await sendMoon(moon);
+    lastMoonSentKey = moon.key;
+    lastMoonResult = { ok: true, at: new Date().toISOString(), name: moon.name, key: moon.key };
+    console.log('Mondphase gemeldet:', moon.icon, moon.name, '(' + moon.key + ')');
+    return true;
+  } catch (e) {
+    lastMoonResult = { ok: false, at: new Date().toISOString(), error: e.message };
+    console.error('Mondphase-Fehler:', e.message);
+    return false;
+  }
+}
+
 async function tick() {
   if (!shared) await loadState();
+  await tickMoon();
   const st = shared;
   const w = compute(st);
   if (!WEBHOOK || lastSentKey === w.key) return false;
@@ -190,17 +267,17 @@ async function handle(req, res, url, authSecret) {
   try {
     if (!shared) await loadState();
     if (req.method === 'GET' && url.pathname === '/weather') {
-      return json(200, { ok: true, ...compute(shared), source, webhook: !!WEBHOOK, last: lastResult });
+      return json(200, { ok: true, ...compute(shared), moon: computeMoon(), source, webhook: !!WEBHOOK, last: lastResult, lastMoon: lastMoonResult });
     }
     if (req.method === 'GET' && url.pathname === '/weather/state') {
-      return json(200, { ok: true, source, state: shared, current: compute(shared), loadedAt });
+      return json(200, { ok: true, source, state: shared, current: compute(shared), moon: computeMoon(), loadedAt });
     }
     if (req.method === 'POST' && url.pathname === '/weather/reload') {
       // nacheinander abarbeiten, damit schnelle Klicks im Menü keine Meldung verschlucken
       const job = reloadChain.then(async () => { await loadState(); return tick(); });
       reloadChain = job.catch(() => false);
       const sent = await job;
-      return json(200, { ok: true, source, current: compute(shared), sent, webhook: !!WEBHOOK });
+      return json(200, { ok: true, source, current: compute(shared), moon: computeMoon(), sent, webhook: !!WEBHOOK });
     }
     if (req.method === 'GET' && url.pathname === '/weather/send') {
       if (!authSecret || url.searchParams.get('key') !== authSecret) return json(403, { ok: false, error: 'key falsch' });
@@ -231,4 +308,4 @@ function start(publicUrl) {
   }
 }
 
-module.exports = { start, handle, tick, compute, normalize };
+module.exports = { start, handle, tick, tickMoon, compute, computeMoon, normalize };
