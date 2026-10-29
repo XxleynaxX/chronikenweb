@@ -1,27 +1,21 @@
 /**
  * Chroniken – Wetter-Kern (Browser)
  *
- * Gemeinsamer Zustand liegt im Haupt-Bin unter "weather":
- *   { intervalMinutes, weather:[{name,icon,description,weight}], anchor, seed,
- *     forced:{name,icon,description}|null, forcedSlot, title, text, updatedAt }
- * Ohne gespeicherten Zustand gilt weather-config.js (gleiche Auswahl wie früher).
+ * Die Grundkonfiguration kommt aus weather-config.js.
+ * Kein JSONBin und kein GITHUB_TOKEN.
  *
- * Webseite und Render-Proxy (chroniken-discord-proxy/weather.js) berechnen
- * das Wetter mit derselben Formel → überall gleiches Wetter, gleicher Timer.
- * Der Proxy postet jeden Wechsel in Discord (DISCORD_WEATHER_WEBHOOK).
+ * Die Webseite und der Render-Proxy verwenden dieselbe weather-config.js.
+ * Admin-Änderungen werden lokal im Browser zwischengespeichert.
+ * Für dauerhafte Änderungen der gemeinsamen Config muss weather-config.js
+ * selbst geändert und neu deployed werden.
  */
 (function () {
   "use strict";
 
   var PROXY = "https://chronikenweb-1.onrender.com";
-  var CACHE_KEY = "chroniken_weather_shared_v1";
+  var CACHE_KEY = "chroniken_weather_local_v1";
   var DEFAULT_TITLE = "🌦️ Wetter in Chroniken";
   var DEFAULT_TEXT = "%wetter_icon% %wetter% ist jetzt bei Chroniken.\n\n%wetter_beschreibung%\n\nNächster Wechsel: %naechster_wetterwechsel%";
-  var FALLBACK_WEATHER = [
-    { name: "Klarer Himmel", icon: "☀️", description: "Ein ruhiger, heller Tag liegt über dem Land.", weight: 12 },
-    { name: "Bewölkt", icon: "☁️", description: "Wolken ziehen über den Himmel, doch es bleibt trocken.", weight: 12 },
-    { name: "Leichter Regen", icon: "🌦️", description: "Feiner Regen fällt und lässt die Straßen glänzen.", weight: 10 }
-  ];
 
   function proxyBase() {
     try {
@@ -31,7 +25,6 @@
     return PROXY;
   }
 
-  /* ---------- Normalisieren ---------- */
   function cleanWeather(w) {
     w = w || {};
     return {
@@ -44,7 +37,10 @@
 
   function fileConfig() {
     var raw = (typeof globalThis !== "undefined" && globalThis.CHRONIKEN_WEATHER_CONFIG) || null;
-    var list = raw && Array.isArray(raw.weather) && raw.weather.length ? raw.weather : FALLBACK_WEATHER;
+    var list = raw && Array.isArray(raw.weather) && raw.weather.length
+      ? raw.weather
+      : [{ name: "Klarer Himmel", icon: "☀️", description: "", weight: 1 }];
+
     return {
       intervalMinutes: Math.max(1, Number(raw && raw.intervalHours) || 6) * 60,
       weather: list.map(cleanWeather)
@@ -54,10 +50,10 @@
   function normalize(raw) {
     var base = fileConfig();
     raw = raw && typeof raw === "object" ? raw : {};
-    var list = Array.isArray(raw.weather) && raw.weather.length ? raw.weather.map(cleanWeather) : base.weather;
+
     return {
       intervalMinutes: Math.max(1, Math.round(Number(raw.intervalMinutes) || base.intervalMinutes)),
-      weather: list,
+      weather: Array.isArray(raw.weather) && raw.weather.length ? raw.weather.map(cleanWeather) : base.weather,
       anchor: Number(raw.anchor) || 0,
       seed: Math.max(0, Math.floor(Number(raw.seed) || 0)),
       forced: raw.forced && raw.forced.name ? cleanWeather(raw.forced) : null,
@@ -68,7 +64,6 @@
     };
   }
 
-  /* ---------- Auswahl (identisch im Proxy) ---------- */
   function randomIndex(seed, length) {
     if (!length || length < 1) return 0;
     var x = (seed * 1103515245 + 12345) >>> 0;
@@ -77,11 +72,15 @@
   }
 
   function pickWeighted(seed, list) {
-    var total = 0, i;
-    for (i = 0; i < list.length; i++) total += list[i].weight;
+    var total = 0;
+    for (var i = 0; i < list.length; i++) total += list[i].weight;
     if (total <= 0) return list[randomIndex(seed, list.length)] || list[0];
+
     var r = randomIndex(seed, total);
-    for (i = 0; i < list.length; i++) { r -= list[i].weight; if (r < 0) return list[i]; }
+    for (var j = 0; j < list.length; j++) {
+      r -= list[j].weight;
+      if (r < 0) return list[j];
+    }
     return list[list.length - 1];
   }
 
@@ -91,6 +90,7 @@
     var k = Math.max(0, Math.floor((now - st.anchor) / ms));
     var forced = !!(st.forced && k === st.forcedSlot);
     var w = forced ? st.forced : pickWeighted(st.seed + k, st.weather);
+
     return {
       key: st.anchor + ":" + k,
       slot: k,
@@ -106,16 +106,21 @@
     };
   }
 
-  /* ---------- Zustand laden ---------- */
   var shared = (function () {
-    try { var c = JSON.parse(localStorage.getItem(CACHE_KEY) || "null"); if (c) return normalize(c); } catch (e) {}
+    try {
+      var c = JSON.parse(localStorage.getItem(CACHE_KEY) || "null");
+      if (c) return normalize(c);
+    } catch (e) {}
     return normalize(null);
   })();
+
   var lastKey = null;
 
   function emit() {
     var cur = compute(shared);
-    try { window.dispatchEvent(new CustomEvent("chroniken-weather-changed", { detail: cur })); } catch (e) {}
+    try {
+      window.dispatchEvent(new CustomEvent("chroniken-weather-changed", { detail: cur }));
+    } catch (e) {}
     return cur;
   }
 
@@ -123,88 +128,102 @@
     var next = normalize(raw);
     var changed = JSON.stringify(next) !== JSON.stringify(shared);
     shared = next;
-    try { localStorage.setItem(CACHE_KEY, JSON.stringify(raw || null)); } catch (e) {}
-    if (changed) { lastKey = compute(shared).key; emit(); }
+
+    try {
+      localStorage.setItem(CACHE_KEY, JSON.stringify(shared));
+    } catch (e) {}
+
+    if (changed) {
+      lastKey = compute(shared).key;
+      emit();
+    }
   }
 
   function withTimeout(promise, ms) {
-    return Promise.race([promise, new Promise(function (_, rej) { setTimeout(function () { rej(new Error("Zeitüberschreitung")); }, ms); })]);
+    return Promise.race([
+      promise,
+      new Promise(function (_, rej) {
+        setTimeout(function () { rej(new Error("Zeitüberschreitung")); }, ms);
+      })
+    ]);
   }
 
   async function refresh() {
     try {
       var r = await withTimeout(fetch(proxyBase() + "/weather/state", { cache: "no-store" }), 6000);
       var d = await r.json();
-      if (r.ok && d && d.ok && d.state) { apply(d.state); return "config"; }
+
+      if (r.ok && d && d.ok && d.state) {
+        var local;
+        try { local = JSON.parse(localStorage.getItem(CACHE_KEY) || "null"); } catch (e) { local = null; }
+
+        if (!local) apply(d.state);
+        return "config";
+      }
     } catch (e) {}
+
     return "cache";
   }
 
-  /* ---------- Admin-Aktionen: in weather-config.js speichern ---------- */
-  function randomSeed() { return Math.floor(Math.random() * 1000000); }
+  function randomSeed() {
+    return Math.floor(Math.random() * 1000000);
+  }
 
   function pickRandom(list, excludeName) {
     var pool = list.filter(function (w) { return w.name !== excludeName; });
     if (!pool.length) pool = list.slice();
+
     var total = pool.reduce(function (s, w) { return s + w.weight; }, 0);
     if (total <= 0) return pool[Math.floor(Math.random() * pool.length)];
+
     var r = Math.random() * total;
-    for (var i = 0; i < pool.length; i++) { r -= pool[i].weight; if (r < 0) return pool[i]; }
+    for (var i = 0; i < pool.length; i++) {
+      r -= pool[i].weight;
+      if (r < 0) return pool[i];
+    }
     return pool[pool.length - 1];
   }
 
-  function plain(w) { return { name: w.name, icon: w.icon, description: w.description, weight: w.weight }; }
+  function plain(w) {
+    return {
+      name: w.name,
+      icon: w.icon,
+      description: w.description,
+      weight: w.weight
+    };
+  }
 
   async function update(mutator) {
     var latest = normalize(shared);
     var now = Date.now();
     var next = mutator(latest, compute(latest, now), now) || latest;
+
     next.updatedAt = now;
-    var record = {
+    apply({
       intervalMinutes: next.intervalMinutes,
       weather: next.weather.map(plain),
-      anchor: next.anchor, seed: next.seed,
+      anchor: next.anchor,
+      seed: next.seed,
       forced: next.forced ? plain(next.forced) : null,
       forcedSlot: next.forcedSlot,
-      title: next.title, text: next.text,
+      title: next.title,
+      text: next.text,
       updatedAt: next.updatedAt
+    });
+
+    return {
+      state: compute(shared),
+      proxy: false,
+      localOnly: true
     };
-
-    var token = sessionStorage.getItem("chroniken_discord_token") || "";
-    if (!token) throw new Error("Admin-Anmeldung fehlt. Bitte erneut mit Discord anmelden.");
-
-    var saveResponse = await withTimeout(fetch(proxyBase() + "/weather/config-save", {
-      method: "POST",
-      cache: "no-store",
-      headers: {
-        "Content-Type": "application/json",
-        "Authorization": "Bearer " + token
-      },
-      body: JSON.stringify({ state: record })
-    }), 45000);
-
-    var saved = await saveResponse.json().catch(function () { return {}; });
-    if (!saveResponse.ok || !saved.ok) throw new Error(saved.error || ("Config-Speicherung Status " + saveResponse.status));
-    apply(saved.state || record);
-
-    var discord = false;
-    try {
-      var r = await withTimeout(fetch(proxyBase() + "/weather/reload", { method: "POST", cache: "no-store" }), 45000);
-      var d = await r.json().catch(function () { return {}; });
-      if (!r.ok || !d.ok) throw new Error(d.error || ("Render-Proxy Status " + r.status));
-      if (!d.webhook) throw new Error("DISCORD_WEATHER_WEBHOOK ist auf Render nicht gesetzt.");
-      if (!d.sent) {
-        var detail = d.last && d.last.error ? " Discord: " + d.last.error : "";
-        throw new Error("Render hat das Wetter nicht an Discord gesendet." + detail);
-      }
-      discord = true;
-    } catch (e) {}
-    return { state: compute(shared), proxy: discord };
   }
 
   function restartWith(w) {
     return function (st, cur, now) {
-      st.anchor = now; st.seed = randomSeed(); st.forced = cleanWeather(w || cur); st.forcedSlot = 0;
+      st.anchor = now;
+      st.seed = randomSeed();
+      st.forced = w ? cleanWeather(w) : null;
+      st.forcedSlot = 0;
       return st;
     };
   }
@@ -213,41 +232,84 @@
     get: function () { return compute(shared); },
     msNext: function () { return Math.max(0, compute(shared).nextAt - Date.now()); },
     nextChangeTime: function () { return new Date(compute(shared).nextAt); },
+
     format: function (ms) {
       var t = Math.max(0, Math.floor(Number(ms) / 1000));
-      var d = Math.floor(t / 86400), h = Math.floor((t % 86400) / 3600), m = Math.floor((t % 3600) / 60), s = t % 60;
+      var d = Math.floor(t / 86400);
+      var h = Math.floor((t % 86400) / 3600);
+      var m = Math.floor((t % 3600) / 60);
+      var s = t % 60;
       var hms = String(h).padStart(2, "0") + ":" + String(m).padStart(2, "0") + ":" + String(s).padStart(2, "0");
       return d ? d + "T " + hms : hms;
     },
+
     formatInterval: function (min) {
       min = Number(min) || 0;
       if (min % 1440 === 0) return (min / 1440) + (min === 1440 ? " Tag" : " Tage");
       if (min % 60 === 0) return (min / 60) + (min === 60 ? " Stunde" : " Stunden");
       return min + (min === 1 ? " Minute" : " Minuten");
     },
-    getShared: function () { return JSON.parse(JSON.stringify(shared)); },
-    getWeatherList: function () { return shared.weather.slice(); },
-    loadConfig: function () { return { intervalHours: shared.intervalMinutes / 60, intervalMinutes: shared.intervalMinutes, weather: shared.weather.slice() }; },
-    refresh: refresh,
-    // Admin
-    chooseWeather: function (w) { return update(restartWith(w)); },
-    skipWeather: function () {
-      return update(function (st, cur, now) { return restartWith(pickRandom(st.weather, cur.name))(st, cur, now); });
+
+    getShared: function () {
+      return JSON.parse(JSON.stringify(shared));
     },
-    resetTimer: function () { return update(restartWith(null)); },
+
+    getWeatherList: function () {
+      return shared.weather.slice();
+    },
+
+    loadConfig: function () {
+      return {
+        intervalHours: shared.intervalMinutes / 60,
+        intervalMinutes: shared.intervalMinutes,
+        weather: shared.weather.slice()
+      };
+    },
+
+    refresh: refresh,
+
+    chooseWeather: function (w) {
+      return update(restartWith(w));
+    },
+
+    skipWeather: function () {
+      return update(function (st, cur, now) {
+        return restartWith(pickRandom(st.weather, cur.name))(st, cur, now);
+      });
+    },
+
+    resetTimer: function () {
+      return update(restartWith(null));
+    },
+
     setIntervalMinutes: function (min) {
       min = Math.max(1, Math.round(Number(min) || 0));
-      return update(function (st, cur, now) { st.intervalMinutes = min; return restartWith(null)(st, cur, now); });
+      return update(function (st, cur, now) {
+        st.intervalMinutes = min;
+        return restartWith(null)(st, cur, now);
+      });
     },
+
     saveWeatherList: function (list) {
       list = (list || []).map(cleanWeather).filter(function (w) { return w.name; });
       if (!list.length) return Promise.reject(new Error("Mindestens eine Wetterlage nötig"));
-      // aktuelles Wetter + Timer bleiben unverändert
-      return update(function (st, cur) { st.forced = cleanWeather(cur); st.forcedSlot = cur.slot; st.weather = list; return st; });
+
+      return update(function (st, cur) {
+        st.forced = cleanWeather(cur);
+        st.forcedSlot = cur.slot;
+        st.weather = list;
+        return st;
+      });
     },
+
     saveTemplate: function (title, text) {
-      return update(function (st) { st.title = String(title || "").trim() || DEFAULT_TITLE; st.text = String(text || "").trim() || DEFAULT_TEXT; return st; });
+      return update(function (st) {
+        st.title = String(title || "").trim() || DEFAULT_TITLE;
+        st.text = String(text || "").trim() || DEFAULT_TEXT;
+        return st;
+      });
     },
+
     DEFAULT_TITLE: DEFAULT_TITLE,
     DEFAULT_TEXT: DEFAULT_TEXT,
     _compute: compute,
@@ -256,9 +318,17 @@
 
   setInterval(function () {
     var cur = compute(shared);
-    if (lastKey === null) { lastKey = cur.key; return; }
-    if (cur.key !== lastKey) { lastKey = cur.key; emit(); }
+    if (lastKey === null) {
+      lastKey = cur.key;
+      return;
+    }
+
+    if (cur.key !== lastKey) {
+      lastKey = cur.key;
+      emit();
+    }
   }, 1000);
+
   setInterval(refresh, 60 * 1000);
   refresh();
 
