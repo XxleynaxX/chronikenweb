@@ -389,9 +389,15 @@
       setStatus("Sende aktuelle Mondphase …");
       try {
         var base = "https://chronikenweb-1.onrender.com";
+        var token = sessionStorage.getItem("chroniken_discord_token") || "";
+        if (!token) throw new Error("Admin-Anmeldung fehlt. Bitte einmal abmelden und erneut mit Discord anmelden.");
         var r = await fetch(base + "/weather/moon-send", {
           method: "POST",
-          cache: "no-store"
+          cache: "no-store",
+          headers: {
+            "Authorization": "Bearer " + token,
+            "Cache-Control": "no-store"
+          }
         });
         var d = await r.json().catch(function () { return {}; });
         if (!r.ok || !d.ok) throw new Error(d.error || ("Status " + r.status));
