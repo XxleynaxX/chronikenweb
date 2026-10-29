@@ -225,6 +225,25 @@ const server = http.createServer(async (req, res) => {
 
   const url = new URL(req.url, 'http://localhost');
 
+  if (req.method === 'POST' && url.pathname === '/weather/moon-send') {
+    const auth = String(req.headers.authorization || '').replace(/^Bearer\\s+/i, '');
+    const session = verify(auth);
+    if (!session || !session.admin) {
+      res.writeHead(403, { 'Content-Type': 'application/json', 'Cache-Control': 'no-store' });
+      res.end(JSON.stringify({ ok: false, error: 'Nur Admins dürfen die aktuelle Mondphase senden.' }));
+      return;
+    }
+    try {
+      const moon = await weather.sendCurrentMoon();
+      res.writeHead(200, { 'Content-Type': 'application/json', 'Cache-Control': 'no-store' });
+      res.end(JSON.stringify({ ok: true, moon }));
+    } catch (e) {
+      res.writeHead(500, { 'Content-Type': 'application/json', 'Cache-Control': 'no-store' });
+      res.end(JSON.stringify({ ok: false, error: e.message }));
+    }
+    return;
+  }
+
   if (url.pathname === '/weather' || url.pathname.startsWith('/weather/')) {
     if ((await weather.handle(req, res, url, AUTH_SECRET)) !== false) return;
   }
