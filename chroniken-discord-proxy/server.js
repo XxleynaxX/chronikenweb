@@ -273,9 +273,9 @@ const server = http.createServer(async (req, res) => {
       return;
     }
     try {
-      const moon = await weather.sendCurrentMoon();
+      const moonResult = await moon.sendCurrentMoon();
       res.writeHead(200, { 'Content-Type': 'application/json', 'Cache-Control': 'no-store' });
-      res.end(JSON.stringify({ ok: true, moon }));
+      res.end(JSON.stringify({ ok: true, moon: moonResult }));
     } catch (e) {
       res.writeHead(500, { 'Content-Type': 'application/json', 'Cache-Control': 'no-store' });
       res.end(JSON.stringify({ ok: false, error: e.message }));
