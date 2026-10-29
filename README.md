@@ -25,6 +25,7 @@ Der Charakterbogen bleibt das Herzstück; darum herum entstand das **Chroniken**
 - **Events** und **News**
 - **Ingame-Kalender** (15 reale Tage = 1 Monat, ab Frostmond 1400)
 - **Götter & Kulte**, **Kreaturen**, **Berufe**, **Regeln**
+- **Admin-Login** (unten links) → extra Kachel **Charakterverwaltung** mit laufenden IDs, Verwarnungen, Regelverstößen und Notizen
 - Einheitliches dunkles Design, Navigation, © Kiyasha
 
 ---
@@ -36,6 +37,9 @@ Reine **Client-Web-App** – kein Node.js, kein Backend nötig.
 1. Ordner entpacken.
 2. `index.html` im Browser öffnen (oder direkt `charakterbogen.html`).
 3. Charakter ausfüllen, speichern, JSON oder PNG exportieren – oder die anderen Bereiche der Website nutzen.
+
+**Admin-Zugang** (unten links auf der Startseite): Benutzer `admin` · Passwort `chroniken2026`  
+(Zugangsdaten in `index.html` und `admin.html` änderbar – Suche nach `ADMIN_USER` / `ADMIN_PASS`.)
 
 ```text
 portal-website/
@@ -61,16 +65,6 @@ portal-website/
 
 ---
 
-## 🔐 Schreibrechte (Portal)
-
-| Bereich | Passwort (Standard) |
-|---------|---------------------|
-| Wiki, Events, Regeln, Götter, Berufe, Kreaturen | `portal123` |
-| Bibliothek | `bibliothek456` |
-
-Nur clientseitig – für echte Sicherheit später einen Server einplanen.
-
----
 
 ## 💡 Kurz gesagt
 
