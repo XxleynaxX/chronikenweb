@@ -395,8 +395,7 @@
           method: "POST",
           cache: "no-store",
           headers: {
-            "Authorization": "Bearer " + token,
-            "Cache-Control": "no-store"
+            "Authorization": "Bearer " + token
           }
         });
         var d = await r.json().catch(function () { return {}; });
