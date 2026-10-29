@@ -391,7 +391,12 @@
         var base = "https://chronikenweb-1.onrender.com";
         var token = sessionStorage.getItem("chroniken_discord_token") || "";
         if (!token) throw new Error("Admin-Anmeldung fehlt. Bitte einmal abmelden und erneut mit Discord anmelden.");
-        var r = await fetch(base + "/weather/moon-send", {
+                // Login vor dem Versand erneut beim Render-Server prüfen.
+        var me = await fetch(base + "/auth/me", { method: "GET", cache: "no-store", headers: { "Authorization": "Bearer " + token } });
+        var mi = await me.json().catch(function () { return {}; });
+        if (!me.ok || !mi.ok || !mi.admin) throw new Error("Discord-Admin-Anmeldung ungültig. Bitte abmelden und erneut mit Discord anmelden.");
+
+var r = await fetch(base + "/weather/moon-send", {
           method: "POST",
           cache: "no-store",
           headers: {
