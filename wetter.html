@@ -385,22 +385,15 @@
 
     el("btnSendMoon").addEventListener("click", async function () {
       const button = el("btnSendMoon");
-      const token = sessionStorage.getItem("chroniken_discord_token") || "";
-      if (!token) {
-        setStatus("Fehler: Admin-Anmeldung fehlt.", "err");
-        return;
-      }
       button.disabled = true;
       setStatus("Sende aktuelle Mondphase …");
       try {
-        const base = (window.ChronikenWeather && typeof ChronikenWeather.proxyBase === "function")
-          ? ChronikenWeather.proxyBase()
-          : "https://chronikenweb-1.onrender.com";
-        const r = await fetch(base + "/weather/moon-send", {
+        var base = "https://chronikenweb-1.onrender.com";
+        var r = await fetch(base + "/weather/moon-send", {
           method: "POST",
-          headers: { "Authorization": "Bearer " + token, "Cache-Control": "no-store" }
+          cache: "no-store"
         });
-        const d = await r.json().catch(function () { return {}; });
+        var d = await r.json().catch(function () { return {}; });
         if (!r.ok || !d.ok) throw new Error(d.error || ("Status " + r.status));
         setStatus("✓ Mondphase gesendet: " + (d.moon.icon || "🌙") + " " + d.moon.name, "ok");
       } catch (e) {
