@@ -6,7 +6,7 @@
   <title>Bibliothek – Chroniken</title>
   <link rel="stylesheet" href="style.css">
   <link rel="stylesheet" href="chroniken-admin.css">
-</head>
+<style>.wiki-controls{display:flex;gap:.7rem;align-items:center;flex-wrap:wrap;margin-bottom:1rem}.library-search{flex:1;min-width:220px;padding:.7rem;border-radius:8px;border:1px solid var(--border);background:var(--bg-input);color:var(--text)}.library-category{padding:.7rem;border-radius:8px;border:1px solid var(--border);background:var(--bg-input);color:var(--text)}.library-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(250px,1fr));gap:1rem}.library-card{background:var(--bg-card);border:1px solid var(--border);border-radius:14px;padding:1rem}.library-card h3{color:var(--purple-bright);margin:.4rem 0}.library-card p{color:var(--text-muted);font-size:.9rem;line-height:1.5}.library-tag{font-size:.72rem;color:var(--purple);border:1px solid var(--border);border-radius:999px;padding:.15rem .45rem}</style></head>
 <body>
   <div class="bg-overlay"></div>
     <header>
@@ -37,13 +37,12 @@
     <h1 class="page-title">Bibliothek</h1>
     <p class="page-desc">Bücher, Schriften und Archive. Schreiben nach Anmeldung als Bibliothek oder Admin (Login über Discord in der Menüleiste).</p>
 
-    <div class="wiki-controls">
-      <button class="btn secondary" id="btnNewTopic" style="display:none;">+ Neuer Eintrag</button>
+    <div class="wiki-controls"><input id="librarySearch" class="library-search" placeholder="🔎 Bibliothek durchsuchen..."><select id="libraryCategory" class="library-category"><option value="">Alle Kategorien</option><option>Geschichte</option><option>Mythen</option><option>Magie</option><option>Kreaturen</option><option>Götter</option><option>Orte</option><option>Personen</option><option>Schriften</option><option>Sonstiges</option></select><button class="btn secondary" id="btnNewTopic" style="display:none;">+ Neuer Eintrag</button>
       <span id="status" style="margin-left:1rem;font-size:0.9rem;opacity:0.8;"></span>
     </div>
 
     <div id="listView">
-      <ul class="topic-list" id="topicList"></ul>
+      <div class="library-grid" id="topicList"></div>
       <div class="empty" id="emptyState" style="display:none;">
         Noch keine Einträge vorhanden.
       </div>
@@ -70,7 +69,7 @@
           <input type="text" id="inputTitle" placeholder="Titel des Eintrags...">
         </div>
         <div class="form-group">
-          <label for="inputContent">Inhalt</label>
+          <label for="inputCategory">Kategorie</label><select id="inputCategory"><option>Geschichte</option><option>Mythen</option><option>Magie</option><option>Kreaturen</option><option>Götter</option><option>Orte</option><option>Personen</option><option>Schriften</option><option>Sonstiges</option></select><label for="inputContent">Inhalt</label>
           <textarea id="inputContent" placeholder="Schreibe hier den Inhalt..."></textarea>
         </div>
         <div style="display:flex; gap:0.8rem; align-items:center;">
@@ -105,7 +104,7 @@
     const editorArea  = document.getElementById("editorArea");
     const statusEl    = document.getElementById("status");
     const btnNewTopic = document.getElementById("btnNewTopic");
-    const saveStatus  = document.getElementById("saveStatus");
+    const saveStatus  = document.getElementById("saveStatus"); const librarySearch=document.getElementById("librarySearch"); const libraryCategory=document.getElementById("libraryCategory");
 
     function setStatus(text, isError = false) {
       if (statusEl) {
@@ -150,7 +149,7 @@
     }
 
     function renderList() {
-      const topics = [...topicsCache].sort((a, b) => b.updated - a.updated);
+      const query=(librarySearch?.value||"").trim().toLowerCase(); const cat=libraryCategory?.value||""; const topics=[...topicsCache].filter(t=>(!cat||(t.category||"Sonstiges")===cat)&&(!query||String(t.title||"").toLowerCase().includes(query)||String(t.content||"").toLowerCase().includes(query))).sort((a,b)=>b.updated-a.updated);
       topicList.innerHTML = "";
 
       if (topics.length === 0) {
@@ -160,12 +159,11 @@
       emptyState.style.display = "none";
 
       topics.forEach(t => {
-        const li = document.createElement("li");
+        const li = document.createElement("article"); li.className="library-card";
         const date = new Date(t.updated).toLocaleString("de-DE");
         li.innerHTML = `
           <a href="#" data-id="${t.id}">
-            <strong>${escapeHtml(t.title)}</strong>
-            <div class="topic-meta">Zuletzt geändert: ${date}</div>
+            <span class="library-tag">${escapeHtml(t.category||"Sonstiges")}</span><h3>${escapeHtml(t.title)}</h3><p>${escapeHtml((t.content||"").slice(0,150))}${(t.content||"").length>150?"…":""}</p><div class="topic-meta">Zuletzt geändert: ${date}</div>
           </a>
           ${unlocked ? `<div class="tile-actions" style="margin-top:.6rem;">
             <button class="btn secondary" data-edit-list="${t.id}">Bearbeiten</button>
@@ -240,7 +238,7 @@
       editingId = topic ? topic.id : null;
       document.getElementById("editorTitle").textContent =
         topic ? "Eintrag bearbeiten" : "Neuer Eintrag";
-      document.getElementById("inputTitle").value = topic ? topic.title : "";
+      document.getElementById("inputTitle").value = topic ? topic.title : ""; document.getElementById("inputCategory").value = topic ? (topic.category||"Sonstiges") : "Geschichte";
       document.getElementById("inputContent").value = topic ? topic.content : "";
       setSaveStatus("");
 
@@ -252,7 +250,7 @@
 
     async function saveTopic() {
       const title = document.getElementById("inputTitle").value.trim();
-      const content = document.getElementById("inputContent").value.trim();
+      const content = document.getElementById("inputContent").value.trim(); const category = document.getElementById("inputCategory").value;
 
       if (!title) {
         alert("Bitte einen Titel eingeben.");
@@ -267,6 +265,7 @@
         if (t) {
           t.title = title;
           t.content = content;
+          t.category = category;
           t.updated = now;
         }
       } else {
@@ -274,6 +273,7 @@
           id: "b_" + now + "_" + Math.random().toString(36).slice(2, 7),
           title,
           content,
+          category,
           created: now,
           updated: now
         });
@@ -301,7 +301,7 @@
     if (btnNewTopic) btnNewTopic.addEventListener("click", () => openEditor());
     document.getElementById("btnSave")?.addEventListener("click", saveTopic);
     document.getElementById("btnCancel")?.addEventListener("click", showList);
-    document.getElementById("btnBack")?.addEventListener("click", showList);
+    document.getElementById("btnBack")?.addEventListener("click", showList); librarySearch?.addEventListener("input",renderList); libraryCategory?.addEventListener("change",renderList);
 
     setUnlocked(canWrite());
     loadTopics().then(() => {
