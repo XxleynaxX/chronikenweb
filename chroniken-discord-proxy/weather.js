@@ -287,6 +287,31 @@ async function tickMoon() {
   }
 }
 
+async function setCurrentWeather(weather) {
+  if (!shared) await loadState();
+  if (!weather || typeof weather !== 'object') throw new Error('Kein gültiges Wetter angegeben.');
+
+  const now = Date.now();
+  shared.anchor = now;
+  shared.seed = Math.floor(Math.random() * 1000000);
+  shared.forced = cleanWeather(weather);
+  shared.forcedSlot = 0;
+  shared.updatedAt = now;
+
+  const current = compute(shared, now);
+  await send(shared, current);
+  lastSentKey = current.key;
+  lastResult = {
+    ok: true,
+    at: new Date().toISOString(),
+    name: current.name,
+    manual: true
+  };
+
+  console.log('Wetter manuell gesetzt:', current.icon, current.name, '(' + current.key + ')');
+  return current;
+}
+
 async function sendCurrentMoon() {
   if (!WEBHOOK) throw new Error('DISCORD_WEATHER_WEBHOOK fehlt');
 
@@ -461,6 +486,7 @@ module.exports = {
   tick,
   tickMoon,
   sendCurrentMoon,
+  setCurrentWeather,
   compute,
   computeMoon,
   normalize
