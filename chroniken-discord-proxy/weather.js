@@ -193,7 +193,7 @@ function replaceVars(text, w) {
     .replace(/%([a-zA-Z0-9_]+)%/g, (_, k) =>
       vars[k] !== undefined ? vars[k] : '%' + k + '%'
     )
-    .replace(/\\\\n/g, '\\n');
+    .replace(/\\+n/g, '\n');
 }
 
 async function discordWebhookUrl() {
