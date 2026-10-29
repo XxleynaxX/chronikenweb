@@ -102,19 +102,23 @@ function pickWeighted(seed, list) {
 }
 
 function computeMoon(now = Date.now()) {
+  // Kalenderrechnung: Jede Mondphase dauert 15 reale Tage.
+  // 9 Phasen ergeben damit einen vollständigen RP-Mondzyklus von 135 Tagen.
+  const PHASE_DAYS = 15;
   const realDays = Math.max(0, Math.floor((now - MOON_START) / 86400000));
-  const totalDays = realDays * 2;
-  const slot = Math.floor((totalDays % 27) / 3);
+  const phaseIndex = Math.floor(realDays / PHASE_DAYS);
+  const totalDays = realDays;
+  const slot = phaseIndex % MOON_PHASES.length;
   const phase = MOON_PHASES[slot] || MOON_PHASES[0];
   return {
-    key: 'moon:' + Math.floor(totalDays / 3),
+    key: 'moon:' + phaseIndex,
     slot,
     name: phase.name,
     icon: phase.icon,
     description: phase.description,
     totalDays,
-    changedAt: new Date(MOON_START + Math.floor(totalDays / 3) * 3 * 86400000 / 2).toISOString(),
-    nextChangeAt: new Date(MOON_START + (Math.floor(totalDays / 3) + 1) * 3 * 86400000 / 2).toISOString()
+    changedAt: new Date(MOON_START + phaseIndex * PHASE_DAYS * 86400000).toISOString(),
+    nextChangeAt: new Date(MOON_START + (phaseIndex + 1) * PHASE_DAYS * 86400000).toISOString()
   };
 }
 
