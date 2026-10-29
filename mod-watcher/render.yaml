@@ -1,0 +1,15 @@
+# Optional: Blueprint für Render
+# Docs: https://render.com/docs/blueprint-spec
+services:
+  - type: worker
+    name: conan-mod-watcher
+    runtime: node
+    buildCommand: ""
+    startCommand: node index.js
+    envVars:
+      - key: DISCORD_WEBHOOK_URL
+        sync: false
+      - key: CHECK_INTERVAL_MIN
+        value: "180"
+      - key: QUIET
+        value: "1"
