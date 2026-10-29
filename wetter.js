@@ -135,15 +135,12 @@
     try {
       var r = await withTimeout(fetch(proxyBase() + "/weather/state", { cache: "no-store" }), 6000);
       var d = await r.json();
-      if (r.ok && d && d.ok && d.source === "jsonbin") { apply(d.state); return "proxy"; }
-    } catch (e) {}
-    try {
-      if (window.ChronikenStorage) { apply(await ChronikenStorage.refresh("weather")); return "jsonbin"; }
+      if (r.ok && d && d.ok && d.state) { apply(d.state); return "config"; }
     } catch (e) {}
     return "cache";
   }
 
-  /* ---------- Admin-Aktionen (speichern im Haupt-Bin, Proxy neu laden lassen) ---------- */
+  /* ---------- Admin-Aktionen: in weather-config.js speichern ---------- */
   function randomSeed() { return Math.floor(Math.random() * 1000000); }
 
   function pickRandom(list, excludeName) {
@@ -159,8 +156,7 @@
   function plain(w) { return { name: w.name, icon: w.icon, description: w.description, weight: w.weight }; }
 
   async function update(mutator) {
-    if (!window.ChronikenStorage) throw new Error("jsonbin-storage.js fehlt");
-    var latest = normalize(await ChronikenStorage.refresh("weather"));
+    var latest = normalize(shared);
     var now = Date.now();
     var next = mutator(latest, compute(latest, now), now) || latest;
     next.updatedAt = now;
@@ -173,8 +169,24 @@
       title: next.title, text: next.text,
       updatedAt: next.updatedAt
     };
-    await ChronikenStorage.save("weather", record);
-    apply(record);
+
+    var token = sessionStorage.getItem("chroniken_discord_token") || "";
+    if (!token) throw new Error("Admin-Anmeldung fehlt. Bitte erneut mit Discord anmelden.");
+
+    var saveResponse = await withTimeout(fetch(proxyBase() + "/weather/config-save", {
+      method: "POST",
+      cache: "no-store",
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": "Bearer " + token
+      },
+      body: JSON.stringify({ state: record })
+    }), 45000);
+
+    var saved = await saveResponse.json().catch(function () { return {}; });
+    if (!saveResponse.ok || !saved.ok) throw new Error(saved.error || ("Config-Speicherung Status " + saveResponse.status));
+    apply(saved.state || record);
+
     var discord = false;
     try {
       var r = await withTimeout(fetch(proxyBase() + "/weather/reload", { method: "POST", cache: "no-store" }), 45000);
