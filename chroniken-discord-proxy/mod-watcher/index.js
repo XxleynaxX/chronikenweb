@@ -3,7 +3,7 @@
  * Prüft Steam Workshop auf Updates und postet in EINEN Discord-Webhook.
  *
  * Env:
- *   DISCORD_WEBHOOK_URL  – Pflicht (dein Discord-Webhook)
+ *   MOD_WEBHOOK          – Pflicht (dein Discord-Webhook aus Render)
  *   CHECK_INTERVAL_MIN   – optional, nur bei Dauerbetrieb (Standard: 180 = 3 Std.)
  *   QUIET                – "1" = nur bei Updates posten (Standard), "0" = auch "nichts neu"
  *   STATE_PATH           – optional, Pfad zur state.json (Standard: ./state.json)
@@ -12,7 +12,7 @@
 const fs = require("fs");
 const path = require("path");
 
-const WEBHOOK = process.env.DISCORD_WEBHOOK_URL || "";
+const WEBHOOK = process.env.MOD_WEBHOOK || "";
 const INTERVAL_MIN = Math.max(15, parseInt(process.env.CHECK_INTERVAL_MIN || "180", 10) || 180);
 const QUIET = (process.env.QUIET || "1") !== "0";
 const STATE_PATH = process.env.STATE_PATH || path.join(__dirname, "state.json");
@@ -193,7 +193,7 @@ async function runOnce() {
 
 async function main() {
   if (!WEBHOOK) {
-    console.warn("⚠️  DISCORD_WEBHOOK_URL ist nicht gesetzt. Nachrichten werden nur geloggt.");
+    console.warn("⚠️  MOD_WEBHOOK ist nicht gesetzt. Nachrichten werden nur geloggt.");
   }
 
   // Einmaliger Lauf (für Cron / GitHub Actions / manuell)
