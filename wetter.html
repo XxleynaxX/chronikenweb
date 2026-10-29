@@ -213,24 +213,6 @@
         </div>
       </div>
 
-      <div class="admin-form">
-        <h2>📨 Discord-Nachricht</h2>
-        <div class="admin-grid">
-          <div class="admin-field full">
-            <label for="tplTitle">Titel</label>
-            <input type="text" id="tplTitle">
-          </div>
-          <div class="admin-field full">
-            <label for="tplText">Text</label>
-            <textarea id="tplText" rows="5"></textarea>
-            <span class="small">Platzhalter: <code>%wetter%</code> <code>%wetter_icon%</code> <code>%wetter_beschreibung%</code> <code>%naechster_wetterwechsel%</code> <code>%datum%</code> <code>%zeit%</code></span>
-          </div>
-        </div>
-        <div class="admin-actions">
-          <button type="button" class="btn" id="btnSaveTpl">Nachricht speichern</button>
-        </div>
-      </div>
-
       <p class="wstatus" id="wstatus" role="status"></p>
     </section>
 
@@ -306,7 +288,7 @@
     function isAdmin() {
       try { return sessionStorage.getItem("portal_admin_auth") === "1"; } catch (e) { return false; }
     }
-    let listDirty = false, tplDirty = false;
+    let listDirty = false;
 
     function setStatus(text, kind) {
       el("wstatus").textContent = text;
@@ -353,7 +335,6 @@
         el("intervalValue").value = m / unit;
       }
       if (!listDirty) renderList(st.weather);
-      if (!tplDirty) { el("tplTitle").value = st.title; el("tplText").value = st.text; }
     }
 
     async function run(label, fn) {
@@ -413,13 +394,6 @@
       listDirty = false;
       await run("Speichere Wetterlagen", function () { return ChronikenWeather.saveWeatherList(list); });
     });
-    el("tplTitle").addEventListener("input", function () { tplDirty = true; });
-    el("tplText").addEventListener("input", function () { tplDirty = true; });
-    el("btnSaveTpl").addEventListener("click", async function () {
-      tplDirty = false;
-      await run("Speichere Nachricht", function () { return ChronikenWeather.saveTemplate(el("tplTitle").value, el("tplText").value); });
-    });
-
     draw();
     renderWeatherList();
     renderAdmin();
