@@ -23,15 +23,6 @@
     .god-card:hover { border-color: var(--accent-soft); background: var(--bg-hover); box-shadow: 0 0 20px rgba(168, 85, 247, 0.22); }
     .god-card h3 { margin: 0 0 0.3rem; color: var(--accent-soft); font-size: 1.25rem; }
     .god-card .domain { font-size: 0.85rem; color: var(--accent); margin-bottom: 0.6rem; font-weight: 600; }
-    .god-card .short-text {
-      font-size: 0.95rem;
-      color: var(--text-muted);
-      display: -webkit-box;
-      -webkit-line-clamp: 3;
-      -webkit-box-orient: vertical;
-      overflow: hidden;
-      line-height: 1.5;
-    }
     .god-card .click-hint {
       font-size: 0.75rem;
       color: var(--purple);
@@ -42,7 +33,6 @@
       border-color: var(--purple);
       box-shadow: 0 0 24px rgba(124, 58, 237, 0.3);
     }
-    .god-card.expanded .short-text { display: none; }
     .god-card .full-text {
       display: none;
       font-size: 1rem;
@@ -88,8 +78,7 @@
         <div class="admin-grid">
           <div class="admin-field"><label>Name *</label><input id="fName" data-testid="goetter-input-name" placeholder="z. B. Aurelion"></div>
           <div class="admin-field"><label>Domäne</label><input id="fDomain" data-testid="goetter-input-domain" placeholder="Licht • Ordnung • Sonne"></div>
-          <div class="admin-field full"><label>Kurztext</label><textarea id="fShort" data-testid="goetter-input-short"></textarea></div>
-          <div class="admin-field full"><label>Ausführlicher Text</label><textarea id="fFull" data-testid="goetter-input-full"></textarea></div>
+          <div class="admin-field full"><label>Kompletter Text</label><textarea id="fFull" data-testid="goetter-input-full" rows="10" placeholder="Hier kommt der komplette Text des Gottes hinein."></textarea></div>
         </div>
         <div class="admin-actions">
           <button class="btn" id="btnSave" data-testid="goetter-save-btn">Speichern</button>
@@ -122,8 +111,7 @@
         <article class="god-card">
           <h3>${esc(g.name)}</h3>
           <div class="domain">${esc(g.domain || "")}</div>
-          <p class="short-text">${esc(g.short || "")}</p>
-          <p class="full-text">${esc(g.full || g.short || "")}</p>
+          <div class="full-text">${esc(g.full || g.short || "")}</div>
           <div class="click-hint">Klicken zum Aufklappen →</div>
           ${admin() ? `<div class="tile-actions">
             <button class="btn secondary" data-edit="${i}" data-testid="goetter-edit-${i}">Bearbeiten</button>
@@ -142,7 +130,7 @@
 
     function resetForm() {
       editIndex = null;
-      el("fName").value = ""; el("fDomain").value = ""; el("fShort").value = ""; el("fFull").value = "";
+      el("fName").value = ""; el("fDomain").value = ""; el("fFull").value = "";
       el("formTitle").textContent = "Neuen Gott anlegen";
       el("btnSave").textContent = "Speichern";
       el("btnCancel").style.display = "none";
@@ -153,7 +141,7 @@
       const g = ChronikenData.load(KEY)[i];
       if (!g) return;
       editIndex = i;
-      el("fName").value = g.name || ""; el("fDomain").value = g.domain || ""; el("fShort").value = g.short || ""; el("fFull").value = g.full || "";
+      el("fName").value = g.name || ""; el("fDomain").value = g.domain || ""; el("fFull").value = g.full || g.short || "";
       el("formTitle").textContent = "Gott bearbeiten";
       el("btnSave").textContent = "Änderungen speichern";
       el("btnCancel").style.display = "inline-block";
@@ -173,8 +161,8 @@
       const name = el("fName").value.trim();
       if (!name) { el("status").style.color = "#f87171"; el("status").textContent = "Bitte einen Namen eingeben."; return; }
       const list = ChronikenData.load(KEY);
-      const short = el("fShort").value.trim();
-      const entry = { name, domain: el("fDomain").value.trim(), short, full: el("fFull").value.trim() || short };
+      const full = el("fFull").value.trim();
+      const entry = { name, domain: el("fDomain").value.trim(), full };
       if (editIndex !== null && list[editIndex]) list[editIndex] = entry; else list.push(entry);
       ChronikenData.save(KEY, list);
       resetForm();
