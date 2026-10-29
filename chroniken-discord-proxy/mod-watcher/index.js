@@ -147,6 +147,45 @@ async function runOnce() {
 
   saveJson(STATE_PATH, newState);
 
+  // Beim ersten erfolgreichen Lauf einmal die komplette Mod-Liste an Discord senden.
+  // Danach wird sie nicht erneut gesendet, sondern nur noch bei echten Updates.
+  if (!state.__initial_mod_list_sent && WEBHOOK) {
+    console.log("  → Erster erfolgreicher Lauf: sende komplette Mod-Liste an Discord …");
+
+    const validDetails = details.filter((item) => item.result === 1);
+    const listChunks = [];
+    for (let i = 0; i < validDetails.length; i += 10) listChunks.push(validDetails.slice(i, i + 10));
+
+    for (let c = 0; c < listChunks.length; c++) {
+      const batch = listChunks[c];
+      const embeds = batch.map((item) => {
+        const id = String(item.publishedfileid);
+        const title = item.title || nameById[id] || id;
+        return {
+          title,
+          url: workshopUrl(id),
+          description: "Conan Exiles Workshop-Mod",
+          color: 0x9b59b6,
+          fields: [
+            { name: "Workshop", value: `[Öffnen](${workshopUrl(id)})`, inline: true },
+            { name: "Workshop-ID", value: id, inline: true }
+          ]
+        };
+      });
+
+      const header = c === 0
+        ? `📋 **Mod-Liste – ${validDetails.length} Mods**`
+        : `📋 **Mod-Liste – Teil ${c + 1}/${listChunks.length}**`;
+
+      await postDiscord(header, embeds);
+    }
+
+    newState.__initial_mod_list_sent = true;
+    newState.__initial_mod_list_sent_at = new Date().toISOString();
+    saveJson(STATE_PATH, newState);
+    console.log("  ✓ Komplette Mod-Liste einmalig an Discord gesendet.");
+  }
+
   if (updates.length === 0) {
     console.log("  Keine Updates.");
     if (!QUIET) {
