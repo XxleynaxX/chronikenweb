@@ -189,9 +189,11 @@ function replaceVars(text, w) {
     zeit: now.toLocaleTimeString('de-DE', { timeZone: TZ })
   };
 
-  return String(text || '').replace(/%([a-zA-Z0-9_]+)%/g, (_, k) =>
-    vars[k] !== undefined ? vars[k] : '%' + k + '%'
-  );
+  return String(text || '')
+    .replace(/%([a-zA-Z0-9_]+)%/g, (_, k) =>
+      vars[k] !== undefined ? vars[k] : '%' + k + '%'
+    )
+    .replace(/\\\\n/g, '\\n');
 }
 
 async function discordWebhookUrl() {
