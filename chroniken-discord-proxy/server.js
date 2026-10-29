@@ -1,6 +1,7 @@
 const http = require('http');
 const crypto = require('crypto');
 const weather = require('./weather');
+const moon = require('./mond');
 
 const PORT = process.env.PORT || 3000;
 const CHAR_WEBHOOK = process.env.CHAR_WEBHOOK || '';
