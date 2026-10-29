@@ -23,9 +23,9 @@ const CLIENT_SECRET = process.env.DISCORD_CLIENT_SECRET || '';
 const AUTH_SECRET = process.env.AUTH_SECRET || '';
 const PUBLIC_URL = (process.env.PUBLIC_URL || 'https://chronikenweb-1.onrender.com').replace(/\/$/, '');
 const GUILD_ID = process.env.DISCORD_GUILD_ID || '1204906165004279889';
-const ADMIN_ROLES = (process.env.ADMIN_ROLE_IDS || '1251121611130540063,1300216664113156116').split(',').map(s => s.trim()).filter(Boolean);
-const LIB_ROLES = (process.env.LIB_ROLE_IDS || '1564874876236472470').split(',').map(s => s.trim()).filter(Boolean);
-const HEALER_ROLES = (process.env.HEALER_ROLE_IDS || '1562596034243461150').split(',').map(s => s.trim()).filter(Boolean);
+const ADMIN_ROLES = (process.env.ADMIN_ROLE_IDS || process.env.ADMIN_ROLE_ID || process.env.DISCORD_ADMIN_ROLE_IDS || '1251121611130540063,1300216664113156116').split(',').map(s => s.trim()).filter(Boolean);
+const LIB_ROLES = (process.env.LIB_ROLE_IDS || process.env.LIB_ROLE_ID || process.env.DISCORD_LIB_ROLE_IDS || '1564874876236472470').split(',').map(s => s.trim()).filter(Boolean);
+const HEALER_ROLES = (process.env.HEALER_ROLE_IDS || process.env.HEALER_ROLE_ID || process.env.DISCORD_HEALER_ROLE_IDS || '1562596034243461150').split(',').map(s => s.trim()).filter(Boolean);
 const ALLOWED_ORIGINS = (process.env.ALLOWED_RETURN_ORIGINS || '').split(',').map(s => s.trim().replace(/\/$/, '')).filter(Boolean);
 const SESSION_MS = (Number(process.env.SESSION_HOURS) || 12) * 3600 * 1000;
 
@@ -128,6 +128,13 @@ async function handleAuth(req, res, url) {
       const admin = roles.some(r => ADMIN_ROLES.includes(r));
       const lib = admin || roles.some(r => LIB_ROLES.includes(r));
       const healer = admin || roles.some(r => HEALER_ROLES.includes(r));
+      console.log('Discord-Rollenprüfung:', {
+        user: user?.id || m?.user?.id || 'unbekannt',
+        admin,
+        lib,
+        healer,
+        matchedAdminRole: roles.find(r => ADMIN_ROLES.includes(r)) || null
+      });
       if (!admin && !lib && !healer) return backWithError(res, ret, 'Dir fehlt die nötige Rolle (Admin, Bibliothek oder Heiler).');
       const user = m.user || {};
       const token = sign({
