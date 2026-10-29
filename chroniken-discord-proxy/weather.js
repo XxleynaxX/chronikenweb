@@ -288,6 +288,10 @@ async function handle(req, res, url, authSecret) {
     if (req.method === 'GET' && url.pathname === '/weather/state') {
       return json(200, { ok: true, source, state: shared, current: compute(shared), moon: computeMoon(), loadedAt });
     }
+    if (req.method === 'POST' && url.pathname === '/weather/moon-send') {
+      const moon = await sendCurrentMoon();
+      return json(200, { ok: true, moon, webhook: !!WEBHOOK });
+    }
     if (req.method === 'POST' && url.pathname === '/weather/reload') {
       // nacheinander abarbeiten, damit schnelle Klicks im Menü keine Meldung verschlucken
       const job = reloadChain.then(async () => { await loadState(); return tick(); });
