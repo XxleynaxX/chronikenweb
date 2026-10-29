@@ -45,6 +45,28 @@
       display: block;
     }
 
+    .lore-help {
+      margin: 0 0 1rem;
+      padding: 0.9rem 1rem;
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      background: rgba(124, 58, 237, 0.08);
+      color: var(--text);
+      line-height: 1.6;
+      font-size: 0.9rem;
+    }
+
+    .lore-help strong {
+      color: var(--accent-soft);
+    }
+
+    .lore-help code {
+      padding: 0.12rem 0.35rem;
+      border-radius: 5px;
+      background: rgba(0, 0, 0, 0.22);
+      color: var(--accent-soft);
+    }
+
     .god-card .lore-heading {
       color: var(--accent-soft);
       font-size: 1.1rem;
@@ -103,6 +125,20 @@
     <section class="admin-panel" id="adminPanel" style="display:none;">
       <div class="admin-form">
         <h2 id="formTitle" data-testid="goetter-form-title">Neuen Gott anlegen</h2>
+        <div class="lore-help">
+          <strong>So kannst du die Lore schreiben:</strong><br>
+          Leerzeilen erzeugen neue Absätze. Überschriften kannst du einfach mit
+          <code>- Überschrift -</code> oder <code>## Überschrift</code> schreiben.
+          Aufzählungen funktionieren mit <code>- Punkt</code>, <code>• Punkt</code>,
+          <code>* Punkt</code> oder <code>1. Punkt</code>. Du musst kein HTML schreiben.
+          <br><br>
+          <strong>Beispiel:</strong><br>
+          <code>- Die Macht des Blutgedächtnisses -</code><br>
+          Eine kurze Beschreibung der Fähigkeit und ihrer Bedeutung.<br><br>
+          <code>- Fähigkeiten -</code><br>
+          <code>- Erinnerungen wahrnehmen</code><br>
+          <code>- Gefühle im Blut erkennen</code>
+        </div>
         <div class="admin-grid">
           <div class="admin-field"><label>Name *</label><input id="fName" data-testid="goetter-input-name" placeholder="z. B. Aurelion"></div>
           <div class="admin-field"><label>Domäne</label><input id="fDomain" data-testid="goetter-input-domain" placeholder="Licht • Ordnung • Sonne"></div>
