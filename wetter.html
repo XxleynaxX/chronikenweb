@@ -176,6 +176,10 @@
           <button type="button" class="btn" id="btnSkip">⏭ Wetter überspringen</button>
           <button type="button" class="btn secondary" id="btnReset">🔄 Timer neu starten</button>
         </div>
+        <div class="row" style="margin-top:.8rem">
+          <button type="button" class="btn secondary" id="btnSendMoon">🌙 Aktuelle Mondphase einmal senden</button>
+          <span class="small">Sendet die gerade aktive Mondphase sofort über denselben Wetter-Webhook.</span>
+        </div>
         <div class="row" style="margin-top:1rem">
           <select id="chooseSelect" aria-label="Wetter auswählen"></select>
           <button type="button" class="btn" id="btnChoose">Dieses Wetter setzen</button>
@@ -378,6 +382,33 @@
 
     el("btnSkip").addEventListener("click", function () { run("Überspringe", ChronikenWeather.skipWeather); });
     el("btnReset").addEventListener("click", function () { run("Starte Timer neu", ChronikenWeather.resetTimer); });
+
+    el("btnSendMoon").addEventListener("click", async function () {
+      const button = el("btnSendMoon");
+      const token = sessionStorage.getItem("chroniken_discord_token") || "";
+      if (!token) {
+        setStatus("Fehler: Admin-Anmeldung fehlt.", "err");
+        return;
+      }
+      button.disabled = true;
+      setStatus("Sende aktuelle Mondphase …");
+      try {
+        const base = (window.ChronikenWeather && typeof ChronikenWeather.proxyBase === "function")
+          ? ChronikenWeather.proxyBase()
+          : "https://chronikenweb-1.onrender.com";
+        const r = await fetch(base + "/weather/moon-send", {
+          method: "POST",
+          headers: { "Authorization": "Bearer " + token, "Cache-Control": "no-store" }
+        });
+        const d = await r.json().catch(function () { return {}; });
+        if (!r.ok || !d.ok) throw new Error(d.error || ("Status " + r.status));
+        setStatus("✓ Mondphase gesendet: " + (d.moon.icon || "🌙") + " " + d.moon.name, "ok");
+      } catch (e) {
+        setStatus("Fehler: " + e.message, "err");
+      } finally {
+        button.disabled = false;
+      }
+    });
     el("btnChoose").addEventListener("click", function () {
       const w = ChronikenWeather.getWeatherList()[Number(el("chooseSelect").value)];
       if (w) run("Setze Wetter", function () { return ChronikenWeather.chooseWeather(w); });
