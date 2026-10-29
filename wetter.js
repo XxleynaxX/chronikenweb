@@ -218,6 +218,35 @@
     };
   }
 
+  async function setWeatherOnRender(w) {
+    var token = "";
+    try { token = sessionStorage.getItem("chroniken_discord_token") || ""; } catch (e) {}
+    if (!token) throw new Error("Admin-Anmeldung fehlt. Bitte erneut mit Discord anmelden.");
+
+    var me = await withTimeout(fetch(proxyBase() + "/auth/me", {
+      method: "GET",
+      cache: "no-store",
+      headers: { "Authorization": "Bearer " + token }
+    }), 6000);
+    var mi = await me.json().catch(function () { return {}; });
+    if (!me.ok || !mi.ok || !mi.admin) {
+      throw new Error("Discord-Admin-Anmeldung ungültig. Bitte erneut anmelden.");
+    }
+
+    var r = await withTimeout(fetch(proxyBase() + "/weather/set", {
+      method: "POST",
+      cache: "no-store",
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": "Bearer " + token
+      },
+      body: JSON.stringify({ weather: plain(cleanWeather(w)) })
+    }), 10000);
+    var d = await r.json().catch(function () { return {}; });
+    if (!r.ok || !d.ok || !d.current) throw new Error(d.error || ("Status " + r.status));
+    return d.current;
+  }
+
   function restartWith(w) {
     return function (st, cur, now) {
       st.anchor = now;
@@ -268,8 +297,20 @@
 
     refresh: refresh,
 
-    chooseWeather: function (w) {
-      return update(restartWith(w));
+    chooseWeather: async function (w) {
+      var current = await setWeatherOnRender(w);
+      apply({
+        intervalMinutes: shared.intervalMinutes,
+        weather: shared.weather.map(plain),
+        anchor: current.changedAt ? new Date(current.changedAt).getTime() : Date.now(),
+        seed: shared.seed,
+        forced: plain(w),
+        forcedSlot: 0,
+        title: shared.title,
+        text: shared.text,
+        updatedAt: Date.now()
+      });
+      return { state: compute(shared), proxy: true, localOnly: false };
     },
 
     skipWeather: function () {
