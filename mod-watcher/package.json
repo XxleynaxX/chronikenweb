@@ -1,0 +1,14 @@
+{
+  "name": "conan-mod-watcher",
+  "version": "1.0.0",
+  "description": "Überwacht Conan Exiles Steam-Workshop-Mods und postet Updates in Discord (1 Webhook)",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js",
+    "check": "node index.js"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "dependencies": {}
+}
