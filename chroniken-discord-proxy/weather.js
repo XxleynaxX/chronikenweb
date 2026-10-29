@@ -218,7 +218,11 @@ async function send(st, w) {
         title: replaceVars(st.title, w).slice(0, 256),
         description: replaceVars(st.text, w).slice(0, 4000),
         color: 0x7c3aed,
-        footer: { text: 'Chroniken · Wetter · Wechsel alle ' + intervalText(st.intervalMinutes) },
+        fields: [
+          { name: '🌤️ Aktuelles Wetter', value: w.icon + ' **' + w.name + '**', inline: true },
+          { name: '⏰ Nächster Wechsel', value: format(w.msNext), inline: true }
+        ],
+        footer: { text: 'Die Chroniken · Wetter · Wechsel alle ' + intervalText(st.intervalMinutes) },
         timestamp: new Date().toISOString()
       }]
     })
