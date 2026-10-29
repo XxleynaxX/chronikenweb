@@ -24,13 +24,98 @@
 <section class="form" id="adminForm" style="display:none"><h2 id="formTitle">Neues Event</h2><div class="row"><div class="field"><label>Titel</label><input id="title"></div><div class="field"><label>Datum</label><input id="date" type="date"></div></div><div class="field"><label>Beschreibung</label><textarea id="description"></textarea></div><div class="actions"><button class="btn" id="save">Speichern</button><button class="btn secondary" id="cancel" style="display:none">Abbrechen</button><span id="status" class="meta"></span></div></section>
 <section><h2 class="page-title">Kommende Events</h2><div id="events" class="grid"></div></section></main><footer><p>© 2026 Kiyasha · Chroniken</p></footer>
 <script src="chroniken-auth.js"></script>
-<script src="jsonbin-storage.js"></script><script>
-const isAdmin=()=>{try{return sessionStorage.getItem('portal_admin_auth')==='1'}catch{return false}};let list=[],editId=null;const esc=s=>String(s??'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
-async function load(){list=await ChronikenStorage.load('characterEvents');render()}
-function render(){adminForm.style.display=isAdmin()?'block':'none';const arr=list.filter(e=>e.eventType!=='Geburtstag').slice().sort((a,b)=>String(a.date||'').localeCompare(String(b.date||'')));events.innerHTML=arr.length?arr.map(e=>`<article class="cardx"><h3>${esc(e.title||e.characterName||'Event')}</h3><div class="meta">${esc(e.date||'')}</div><p>${esc(e.description||e.text||'')}</p>${isAdmin()?`<div class="actions"><button class="btn secondary" data-edit="${esc(e.id)}">Bearbeiten</button><button class="btn danger" data-del="${esc(e.id)}">Löschen</button></div>`:''}</article>`).join(''):'<p class="meta">Keine Events vorhanden.</p>';document.querySelectorAll('[data-edit]').forEach(b=>b.onclick=()=>startEdit(b.dataset.edit));document.querySelectorAll('[data-del]').forEach(b=>b.onclick=()=>remove(b.dataset.del))}
+<script src="jsonbin-storage.js"></script>
+<script src="chroniken-sync.js"></script><script>
+const isAdmin=()=>{try{return sessionStorage.getItem('portal_admin_auth')==='1'}catch{return false}};
+let list=[],editId=null;
+const esc=s=>String(s??'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+
+async function load(){
+  // Bevorzugt ChronikenSync (Events-Bin), Fallback auf ChronikenStorage
+  try {
+    if (window.ChronikenSync && ChronikenSync.loadShared) {
+      const fromEvents = await ChronikenSync.loadShared('events');
+      const fromCharEv = await ChronikenStorage.load('characterEvents');
+      // Mergen, ohne Duplikate (nach id)
+      const byId = new Map();
+      (fromEvents||[]).forEach(e => { if (e && e.id) byId.set(String(e.id), e); });
+      (fromCharEv||[]).forEach(e => { if (e && e.id && !byId.has(String(e.id))) byId.set(String(e.id), e); });
+      list = Array.from(byId.values());
+    } else {
+      list = await ChronikenStorage.load('characterEvents');
+    }
+  } catch (e) {
+    list = await ChronikenStorage.load('characterEvents');
+  }
+  if (!Array.isArray(list)) list = [];
+  render();
+}
+
+function render(){
+  adminForm.style.display=isAdmin()?'block':'none';
+  const arr=list.filter(e=>e.eventType!=='Geburtstag').slice().sort((a,b)=>String(a.date||'').localeCompare(String(b.date||'')));
+  events.innerHTML=arr.length?arr.map(e=>`<article class="cardx"><h3>${esc(e.title||e.characterName||'Event')}</h3><div class="meta">${esc(e.date||'')}</div><p>${esc(e.description||e.text||'')}</p>${isAdmin()?`<div class="actions"><button class="btn secondary" data-edit="${esc(e.id)}">Bearbeiten</button><button class="btn danger" data-del="${esc(e.id)}">Löschen</button></div>`:''}</article>`).join(''):'<p class="meta">Keine Events vorhanden.</p>';
+  document.querySelectorAll('[data-edit]').forEach(b=>b.onclick=()=>startEdit(b.dataset.edit));
+  document.querySelectorAll('[data-del]').forEach(b=>b.onclick=()=>remove(b.dataset.del));
+}
 function reset(){editId=null;title.value='';date.value='';description.value='';formTitle.textContent='Neues Event';save.textContent='Speichern';cancel.style.display='none'}
 function startEdit(id){const e=list.find(x=>x.id===id);if(!e)return;editId=id;title.value=e.title||'';date.value=e.date||'';description.value=e.description||e.text||'';formTitle.textContent='Event bearbeiten';save.textContent='Änderungen speichern';cancel.style.display='inline-block'}
-save.onclick=async()=>{if(!isAdmin())return;const t=title.value.trim();if(!t)return;const now=new Date().toISOString();if(editId){const i=list.findIndex(x=>x.id===editId);if(i>=0)list[i]={...list[i],title:t,date:date.value,description:description.value.trim(),updatedAt:now}}else list.push({id:'E-'+Date.now(),title:t,date:date.value,description:description.value.trim(),eventType:'Event',createdAt:now,updatedAt:now});await ChronikenStorage.save('characterEvents',list);status.textContent='✓ In JSONBin gespeichert';reset();await load()};
-cancel.onclick=reset;async function remove(id){if(!isAdmin()||!confirm('Event wirklich löschen?'))return;list=list.filter(x=>x.id!==id);await ChronikenStorage.save('characterEvents',list);await load()}
+
+save.onclick=async()=>{
+  if(!isAdmin())return;
+  const t=title.value.trim();
+  if(!t)return;
+  const now=new Date().toISOString();
+  let payload;
+  if(editId){
+    const i=list.findIndex(x=>x.id===editId);
+    if(i>=0){
+      list[i]={...list[i],title:t,date:date.value,description:description.value.trim(),updatedAt:now};
+      payload=list[i];
+    }
+  } else {
+    payload={id:'E-'+Date.now(),title:t,date:date.value,description:description.value.trim(),eventType:'Event',createdAt:now,updatedAt:now};
+    list.push(payload);
+  }
+  // In den Events-Bin schreiben
+  try {
+    if (window.ChronikenSync && ChronikenSync.saveEvent) {
+      await ChronikenSync.saveEvent({
+        title: payload.title,
+        date: payload.date,
+        content: payload.description,
+        description: payload.description,
+        eventType: payload.eventType || 'Event',
+        showInNews: true
+      }, editId || null);
+    } else {
+      await ChronikenStorage.save('characterEvents', list);
+    }
+  } catch (err) {
+    await ChronikenStorage.save('characterEvents', list);
+  }
+  status.textContent='✓ In JSONBin gespeichert';
+  reset();
+  await load();
+};
+cancel.onclick=reset;
+
+async function remove(id){
+  if(!isAdmin()||!confirm('Event wirklich löschen?'))return;
+  try {
+    if (window.ChronikenSync && ChronikenSync.removeEvent) {
+      await ChronikenSync.removeEvent(id);
+    } else {
+      list=list.filter(x=>x.id!==id);
+      await ChronikenStorage.save('characterEvents',list);
+    }
+  } catch (e) {
+    list=list.filter(x=>x.id!==id);
+    await ChronikenStorage.save('characterEvents',list);
+  }
+  await load();
+}
+
+document.addEventListener('chroniken-synced', () => load());
 load().catch(e=>events.innerHTML='<p class="meta">Fehler beim Laden: '+esc(e.message)+'</p>');
 </script></body></html>

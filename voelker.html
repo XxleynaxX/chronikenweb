@@ -184,6 +184,7 @@
     el("btnCancel").onclick = () => { resetForm(); };
     render();
     window.addEventListener("storage", render);
+    document.addEventListener("chroniken-data-synced", render);
   </script>
 <script src="legal-notice.js"></script>
 </body>

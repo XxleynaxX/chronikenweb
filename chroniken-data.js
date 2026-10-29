@@ -149,35 +149,46 @@
    * Wird beim Laden der Seite aufgerufen.
    */
   async function syncFromRemote() {
-    if (!window.ChronikenStorage) return;
+    if (!window.ChronikenStorage) return false;
+    let changed = false;
 
     try {
-      const remote = await ChronikenStorage.ensureCache();
-
+      // Jeden SHARED_KEY einzeln laden (richtige Bin-Zuordnung)
       for (const key of SHARED_KEYS) {
-        const remoteList = remote[key];
-        if (Array.isArray(remoteList) && remoteList.length > 0) {
-          // Remote hat Daten → übernehmen
-          memCache[key] = remoteList;
-          saveToLocal(key, remoteList);
-        } else {
-          // Remote leer → Defaults hochladen (einmalig seed)
-          const local = loadFromLocal(key) || clone(DEFAULTS[key] || []);
-          if (local.length > 0) {
-            memCache[key] = local;
-            await ChronikenStorage.save(key, local);
+        try {
+          const remoteList = await ChronikenStorage.load(key);
+          if (Array.isArray(remoteList) && remoteList.length > 0) {
+            const before = JSON.stringify(memCache[key] || loadFromLocal(key) || []);
+            memCache[key] = remoteList;
+            saveToLocal(key, remoteList);
+            if (before !== JSON.stringify(remoteList)) changed = true;
+          } else {
+            // Remote leer → lokale/Defaults hochladen (nur wenn etwas da ist)
+            const local = loadFromLocal(key) || clone(DEFAULTS[key] || []);
+            if (local.length > 0) {
+              memCache[key] = local;
+              await ChronikenStorage.save(key, local);
+              changed = true;
+            }
           }
+        } catch (err) {
+          console.warn("JSONBin-Sync für", key, "fehlgeschlagen:", err);
         }
       }
     } catch (e) {
       console.warn("JSONBin-Sync fehlgeschlagen, nutze lokale Daten:", e);
     }
+
+    try {
+      document.dispatchEvent(new CustomEvent("chroniken-data-synced", { detail: { changed: changed } }));
+    } catch (e) {}
+    return changed;
   }
 
   // Beim Laden der Seite sofort synchronisieren (nicht-blockierend)
   if (typeof window !== "undefined") {
     // Kleiner Delay, damit jsonbin-storage.js schon geladen ist
-    setTimeout(() => { syncFromRemote(); }, 50);
+    setTimeout(() => { syncFromRemote(); }, 80);
   }
 
   window.ChronikenData = {
