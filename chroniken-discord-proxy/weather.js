@@ -241,6 +241,22 @@ async function tickMoon() {
   }
 }
 
+async function sendCurrentMoon() {
+  if (!WEBHOOK) throw new Error('DISCORD_WEATHER_WEBHOOK fehlt');
+  const moon = computeMoon();
+  await sendMoon(moon);
+  lastMoonSentKey = moon.key;
+  lastMoonResult = {
+    ok: true,
+    at: new Date().toISOString(),
+    name: moon.name,
+    key: moon.key,
+    manual: true
+  };
+  console.log('Mondphase manuell gemeldet:', moon.icon, moon.name, '(' + moon.key + ')');
+  return moon;
+}
+
 async function tick() {
   if (!shared) await loadState();
   await tickMoon();
@@ -308,4 +324,4 @@ function start(publicUrl) {
   }
 }
 
-module.exports = { start, handle, tick, tickMoon, compute, computeMoon, normalize };
+module.exports = { start, handle, tick, tickMoon, sendCurrentMoon, compute, computeMoon, normalize };
