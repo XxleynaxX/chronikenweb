@@ -177,9 +177,20 @@ function replaceVars(text, w) {
   return String(text || '').replace(/%([a-zA-Z0-9_]+)%/g, (_, k) => vars[k] !== undefined ? vars[k] : '%' + k + '%');
 }
 
-async function send(st, w) {
+async function discordWebhookUrl() {
   if (!WEBHOOK) throw new Error('DISCORD_WEATHER_WEBHOOK fehlt');
-  const r = await fetch(WEBHOOK, {
+  try {
+    const u = new URL(WEBHOOK);
+    u.searchParams.set('wait', 'true');
+    return u.toString();
+  } catch {
+    throw new Error('DISCORD_WEATHER_WEBHOOK ist keine gültige Discord-Webhook-URL');
+  }
+}
+
+async function send(st, w) {
+  const webhookUrl = await discordWebhookUrl();
+  const r = await fetch(webhookUrl, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
@@ -197,9 +208,9 @@ async function send(st, w) {
 }
 
 async function sendMoon(moon) {
-  if (!WEBHOOK) throw new Error('DISCORD_WEATHER_WEBHOOK fehlt');
+  const webhookUrl = await discordWebhookUrl();
   const now = new Date();
-  const r = await fetch(WEBHOOK, {
+  const r = await fetch(webhookUrl, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
@@ -264,9 +275,9 @@ async function tick() {
   const w = compute(st);
   if (!WEBHOOK || lastSentKey === w.key) return false;
   if (w.msIntoSlot > Math.min(WINDOW_MS, st.intervalMinutes * 60000)) return false;
-  lastSentKey = w.key;
   try {
     await send(st, w);
+    lastSentKey = w.key;
     lastResult = { ok: true, at: new Date().toISOString(), name: w.name };
     console.log('Wetter gemeldet:', w.icon, w.name, '(' + w.key + ')');
     return true;
@@ -297,7 +308,16 @@ async function handle(req, res, url, authSecret) {
       const job = reloadChain.then(async () => { await loadState(); return tick(); });
       reloadChain = job.catch(() => false);
       const sent = await job;
-      return json(200, { ok: true, source, current: compute(shared), moon: computeMoon(), sent, webhook: !!WEBHOOK });
+      return json(200, {
+        ok: true,
+        source,
+        current: compute(shared),
+        moon: computeMoon(),
+        sent,
+        webhook: !!WEBHOOK,
+        last: lastResult,
+        lastMoon: lastMoonResult
+      });
     }
     if (req.method === 'GET' && url.pathname === '/weather/send') {
       if (!authSecret || url.searchParams.get('key') !== authSecret) return json(403, { ok: false, error: 'key falsch' });
@@ -305,7 +325,8 @@ async function handle(req, res, url, authSecret) {
       const w = compute(shared);
       await send(shared, w);
       lastSentKey = w.key;
-      return json(200, { ok: true, sent: w.name });
+      lastResult = { ok: true, at: new Date().toISOString(), name: w.name, manual: true };
+      return json(200, { ok: true, sent: w.name, webhook: true, last: lastResult });
     }
   } catch (e) {
     return json(500, { ok: false, error: e.message });
