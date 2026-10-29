@@ -125,18 +125,18 @@ async function handleAuth(req, res, url) {
       if (!mr.ok) return backWithError(res, ret, 'Rollen konnten nicht gelesen werden.');
       const m = await mr.json();
       const roles = Array.isArray(m.roles) ? m.roles : [];
+      const user = m.user || {};
       const admin = roles.some(r => ADMIN_ROLES.includes(r));
       const lib = admin || roles.some(r => LIB_ROLES.includes(r));
       const healer = admin || roles.some(r => HEALER_ROLES.includes(r));
       console.log('Discord-Rollenprüfung:', {
-        user: user?.id || m?.user?.id || 'unbekannt',
+        user: user.id || 'unbekannt',
         admin,
         lib,
         healer,
         matchedAdminRole: roles.find(r => ADMIN_ROLES.includes(r)) || null
       });
       if (!admin && !lib && !healer) return backWithError(res, ret, 'Dir fehlt die nötige Rolle (Admin, Bibliothek oder Heiler).');
-      const user = m.user || {};
       const token = sign({
         sub: user.id, name: m.nick || user.global_name || user.username || 'Discord',
         admin, lib, healer, exp: Date.now() + SESSION_MS
