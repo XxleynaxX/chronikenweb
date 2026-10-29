@@ -177,8 +177,15 @@
     apply(record);
     var discord = false;
     try {
-      var r = await withTimeout(fetch(proxyBase() + "/weather/reload", { method: "POST" }), 45000);
-      discord = r.ok;
+      var r = await withTimeout(fetch(proxyBase() + "/weather/reload", { method: "POST", cache: "no-store" }), 45000);
+      var d = await r.json().catch(function () { return {}; });
+      if (!r.ok || !d.ok) throw new Error(d.error || ("Render-Proxy Status " + r.status));
+      if (!d.webhook) throw new Error("DISCORD_WEATHER_WEBHOOK ist auf Render nicht gesetzt.");
+      if (!d.sent) {
+        var detail = d.last && d.last.error ? " Discord: " + d.last.error : "";
+        throw new Error("Render hat das Wetter nicht an Discord gesendet." + detail);
+      }
+      discord = true;
     } catch (e) {}
     return { state: compute(shared), proxy: discord };
   }
