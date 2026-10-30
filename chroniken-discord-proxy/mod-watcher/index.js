@@ -12,8 +12,8 @@
 const fs = require("fs");
 const path = require("path");
 
-const WEBHOOK = process.env.MOD_WEBHOOK || "";
-const INTERVAL_MIN = Math.max(15, parseInt(process.env.CHECK_INTERVAL_MIN || "180", 10) || 180);
+const WEBHOOK = process.env.MOD_WEBHOOK || process.env.DISCORD_WEBHOOK_URL || "";
+const INTERVAL_MIN = Math.max(1, parseInt(process.env.CHECK_INTERVAL_MIN || "5", 10) || 5);
 const QUIET = (process.env.QUIET || "1") !== "0";
 const STATE_PATH = process.env.STATE_PATH || path.join(__dirname, "state.json");
 const MODS_PATH = path.join(__dirname, "mods.json");
