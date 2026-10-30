@@ -169,7 +169,7 @@ async function loadKnowledge() {
       const text = file.endsWith(".html") ? stripHtml(raw) : raw;
 
       const old = knowledge;
-      knowledge = next;
+      knowledge = [];
       splitKnowledge(text, file);
       next.push(...knowledge);
       knowledge = old;
