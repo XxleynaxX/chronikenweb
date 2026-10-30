@@ -5,6 +5,30 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Wiki – Chroniken</title>
   <link rel="stylesheet" href="style.css">
+    <style>
+    .lore-help {
+      margin: 0 0 .8rem;
+      padding: .8rem 1rem;
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      background: rgba(124, 58, 237, .08);
+      color: var(--text);
+      line-height: 1.6;
+      font-size: .9rem;
+    }
+    .lore-help strong { color: var(--accent-soft); }
+    .lore-help code {
+      padding: .1rem .3rem;
+      border-radius: 5px;
+      background: rgba(0,0,0,.22);
+      color: var(--accent-soft);
+    }
+    .lore-heading { color: var(--accent-soft); font-size: 1.1rem; margin: 1.1rem 0 .4rem; }
+    .lore-heading:first-child { margin-top: 0; }
+    .lore-paragraph { margin: 0 0 .8rem; }
+    .lore-list { margin: .3rem 0 .9rem 1.4rem; padding: 0; }
+    .lore-list li { margin-bottom: .3rem; }
+    </style>
 </head>
 <body>
   <div class="bg-overlay"></div>
@@ -73,6 +97,13 @@
         </div>
         <div class="form-group">
           <label for="inputContent">Inhalt</label>
+        <div class="lore-help">
+          <strong>So schreibst du deinen Text:</strong><br>
+          Leerzeilen erzeugen neue Absätze. Überschriften kannst du mit
+          <code>- Überschrift -</code> oder <code>## Überschrift</code> schreiben.
+          Aufzählungen funktionieren mit <code>- Punkt</code>, <code>• Punkt</code>,
+          <code>* Punkt</code> oder <code>1. Punkt</code>. Du musst kein HTML schreiben.
+        </div>
           <textarea id="inputContent" placeholder="Schreibe hier deinen Text..."></textarea>
         </div>
         <div style="display:flex; gap:0.8rem; align-items:center;">
@@ -188,6 +219,37 @@
         .replace(/"/g, "&quot;");
     }
 
+    function formatLore(text) {
+      if (!text) return "";
+      const normalized = String(text)
+        .replace(/\\r\\n/g, "\n")
+        .replace(/\\n/g, "\n")
+        .replace(/\\r/g, "\n")
+        .replace(/\\\\\n/g, "\n");
+      const lines = normalized.split("\n");
+      const parts = [];
+      let listItems = [];
+      const flushList = () => {
+        if (!listItems.length) return;
+        parts.push("<ul class=\"lore-list\">" + listItems.map(item => "<li>" + escapeHtml(item) + "</li>").join("") + "</ul>");
+        listItems = [];
+      };
+      lines.forEach(line => {
+        const trimmed = line.trim();
+        if (!trimmed) { flushList(); return; }
+        const bullet = trimmed.match(/^(?:[-*•]|\d+[.)])\s+(.*)$/);
+        if (bullet) { listItems.push(bullet[1]); return; }
+        flushList();
+        const heading = trimmed.match(/^-+\s*(.+?)\s*-+$/);
+        if (heading) { parts.push("<h4 class=\"lore-heading\">" + escapeHtml(heading[1]) + "</h4>"); return; }
+        const markdownHeading = trimmed.match(/^#{1,4}\s+(.+)$/);
+        if (markdownHeading) { parts.push("<h4 class=\"lore-heading\">" + escapeHtml(markdownHeading[1]) + "</h4>"); return; }
+        parts.push("<p class=\"lore-paragraph\">" + escapeHtml(trimmed) + "</p>");
+      });
+      flushList();
+      return parts.join("");
+    }
+
     // ===== Thema anzeigen =====
     function showTopic(id) {
       const t = topicsCache.find(x => x.id === id);
@@ -197,8 +259,7 @@
       document.getElementById("viewMeta").textContent =
         "Zuletzt geändert: " + new Date(t.updated).toLocaleString("de-DE");
       const vc = document.getElementById("viewContent");
-      // Zeilenumbrüche erhalten
-      vc.textContent = (t.content || "").replace(/\r\n/g, "\n").replace(/\r/g, "\n");
+      vc.innerHTML = formatLore(t.content || "");
 
       const actions = document.getElementById("viewActions");
       actions.style.display = unlocked ? "flex" : "none";
