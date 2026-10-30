@@ -6,7 +6,11 @@
   <title>Bibliothek – Chroniken</title>
   <link rel="stylesheet" href="style.css">
   <link rel="stylesheet" href="chroniken-admin.css">
-<style>.wiki-controls{display:flex;gap:.7rem;align-items:center;flex-wrap:wrap;margin-bottom:1rem}.library-search{flex:1;min-width:220px;padding:.7rem;border-radius:8px;border:1px solid var(--border);background:var(--bg-input);color:var(--text)}.library-category{padding:.7rem;border-radius:8px;border:1px solid var(--border);background:var(--bg-input);color:var(--text)}.library-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(250px,1fr));gap:1rem}.library-card{background:var(--bg-card);border:1px solid var(--border);border-radius:14px;padding:1rem}.library-card h3{color:var(--purple-bright);margin:.4rem 0}.library-card p{color:var(--text-muted);font-size:.9rem;line-height:1.5}.library-tag{font-size:.72rem;color:var(--purple);border:1px solid var(--border);border-radius:999px;padding:.15rem .45rem}</style></head>
+<style>.wiki-controls{display:flex;gap:.7rem;align-items:center;flex-wrap:wrap;margin-bottom:1rem}.library-search{flex:1;min-width:220px;padding:.7rem;border-radius:8px;border:1px solid var(--border);background:var(--bg-input);color:var(--text)}.library-category{padding:.7rem;border-radius:8px;border:1px solid var(--border);background:var(--bg-input);color:var(--text)}.library-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(250px,1fr));gap:1rem}.library-card{background:var(--bg-card);border:1px solid var(--border);border-radius:14px;padding:1rem}.library-card h3{color:var(--purple-bright);margin:.4rem 0}.library-card p{color:var(--text-muted);font-size:.9rem;line-height:1.5}.library-tag{font-size:.72rem;color:var(--purple);border:1px solid var(--border);border-radius:999px;padding:.15rem .45rem}</style><style>
+    .lore-help{margin:.7rem 0;padding:.8rem 1rem;border:1px solid var(--border);border-radius:10px;background:rgba(124,58,237,.08);color:var(--text);line-height:1.6;font-size:.9rem}
+    .lore-help strong{color:var(--accent-soft)} .lore-help code{padding:.1rem .3rem;border-radius:5px;background:rgba(0,0,0,.22);color:var(--accent-soft)}
+    .lore-heading{color:var(--accent-soft);font-size:1.1rem;margin:1.1rem 0 .4rem}.lore-heading:first-child{margin-top:0}.lore-paragraph{margin:0 0 .8rem}.lore-list{margin:.3rem 0 .9rem 1.4rem;padding:0}.lore-list li{margin-bottom:.3rem}
+  </style></head>
 <body>
   <div class="bg-overlay"></div>
     <header>
@@ -69,7 +73,15 @@
           <input type="text" id="inputTitle" placeholder="Titel des Eintrags...">
         </div>
         <div class="form-group">
-          <label for="inputCategory">Kategorie</label><select id="inputCategory"><option>Geschichte</option><option>Mythen</option><option>Magie</option><option>Kreaturen</option><option>Götter</option><option>Orte</option><option>Personen</option><option>Schriften</option><option>Sonstiges</option></select><label for="inputContent">Inhalt</label>
+          <label for="inputCategory">Kategorie</label><select id="inputCategory"><option>Geschichte</option><option>Mythen</option><option>Magie</option><option>Kreaturen</option><option>Götter</option><option>Orte</option><option>Personen</option><option>Schriften</option><option>Sonstiges</option></select>
+          <label for="inputContent">Inhalt</label>
+          <div class="lore-help">
+            <strong>So schreibst du deinen Text:</strong><br>
+            Leerzeilen erzeugen neue Absätze. Überschriften mit
+            <code>- Überschrift -</code> oder <code>## Überschrift</code>.
+            Aufzählungen mit <code>- Punkt</code>, <code>• Punkt</code>,
+            <code>* Punkt</code> oder <code>1. Punkt</code>. Kein HTML nötig.
+          </div>
           <textarea id="inputContent" placeholder="Schreibe hier den Inhalt..."></textarea>
         </div>
         <div style="display:flex; gap:0.8rem; align-items:center;">
@@ -197,6 +209,21 @@
         .replace(/"/g, "&quot;");
     }
 
+    function formatLore(text) {
+      if (!text) return "";
+      const normalized = String(text).replace(/\\r\\n/g, "\n").replace(/\\n/g, "\n").replace(/\\r/g, "\n").replace(/\\\\\n/g, "\n");
+      const lines = normalized.split("\n"), parts = []; let listItems = [];
+      const flushList = () => { if (!listItems.length) return; parts.push("<ul class=\"lore-list\">"+listItems.map(item=>"<li>"+escapeHtml(item)+"</li>").join("")+"</ul>"); listItems=[]; };
+      lines.forEach(line => {
+        const trimmed=line.trim(); if(!trimmed){flushList();return;}
+        const bullet=trimmed.match(/^(?:[-*•]|\d+[.)])\s+(.*)$/); if(bullet){listItems.push(bullet[1]);return;}
+        flushList();
+        const heading=trimmed.match(/^-+\s*(.+?)\s*-+$/); if(heading){parts.push("<h4 class=\"lore-heading\">"+escapeHtml(heading[1])+"</h4>");return;}
+        const markdownHeading=trimmed.match(/^#{1,4}\s+(.+)$/); if(markdownHeading){parts.push("<h4 class=\"lore-heading\">"+escapeHtml(markdownHeading[1])+"</h4>");return;}
+        parts.push("<p class=\"lore-paragraph\">"+escapeHtml(trimmed)+"</p>");
+      }); flushList(); return parts.join("");
+    }
+
     function showTopic(id) {
       const t = topicsCache.find(x => x.id === id);
       if (!t) return;
@@ -205,7 +232,7 @@
       document.getElementById("viewMeta").textContent =
         "Zuletzt geändert: " + new Date(t.updated).toLocaleString("de-DE");
       const vc = document.getElementById("viewContent");
-      vc.textContent = (t.content || "").replace(/\r\n/g, "\n").replace(/\r/g, "\n");
+      vc.innerHTML = formatLore(t.content || "");
 
       const actions = document.getElementById("viewActions");
       actions.style.display = unlocked ? "flex" : "none";
