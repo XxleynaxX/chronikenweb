@@ -7,18 +7,15 @@
   <link rel="stylesheet" href="style.css">
   <link rel="stylesheet" href="chroniken-admin.css">
   <style>
+    .lore-help{margin:.6rem 0;padding:.8rem 1rem;border:1px solid var(--border);border-radius:10px;background:rgba(124,58,237,.08);color:var(--text);line-height:1.6;font-size:.9rem}
+    .lore-help strong{color:var(--accent-soft)} .lore-help code{padding:.1rem .3rem;border-radius:5px;background:rgba(0,0,0,.22);color:var(--accent-soft)}
+    .lore-heading{color:var(--accent-soft);font-size:1.1rem;margin:1.1rem 0 .4rem}.lore-heading:first-child{margin-top:0}.lore-paragraph{margin:0 0 .8rem}.lore-list{margin:.3rem 0 .9rem 1.4rem;padding:0}.lore-list li{margin-bottom:.3rem}
     .god-card {
       cursor: pointer;
       position: relative;
     }
+    /* Kurzbeschreibung entfernt: Kreaturen werden direkt über den ausführlichen Text beschrieben. */
     .god-card .short-text {
-      font-size: 0.95rem;
-      color: var(--text-muted);
-      display: -webkit-box;
-      -webkit-line-clamp: 3;
-      -webkit-box-orient: vertical;
-      overflow: hidden;
-    }
     .god-card .click-hint {
       font-size: 0.75rem;
       color: var(--purple);
@@ -93,8 +90,15 @@
             <select id="fCategory"><option value="beasts">Wilde Bestien</option><option value="peaceful">Friedliche Wesen</option><option value="magic">Magische Wesen</option><option value="magicbeasts">Wilde Magiebestien</option><option value="dragons">Drachenwesen</option><option value="undead">Untote Wesen</option><option value="spirits">Geister &amp; Seelen</option><option value="elementals">Elementarwesen</option><option value="plants">Pflanzenwesen</option><option value="water">Wasserwesen</option><option value="sky">Himmelswesen</option><option value="demons">Dämonische Wesen</option></select>
           </div>
           <div class="admin-field"><label>Bereich / Eigenschaften</label><input id="fDomain" placeholder="z. B. Wald · Nacht · Jagd"></div><div class="admin-field"><label>Gefahrenstufe</label><select id="fDanger"><option value="friedlich">🟢 Friedlich</option><option value="vorsicht">🟡 Vorsicht</option><option value="gefahr">🟠 Gefährlich</option><option value="extrem">🔴 Extrem gefährlich</option></select></div>
-          <div class="admin-field full"><label>Kurzbeschreibung</label><textarea id="fShort" placeholder="Kurze Beschreibung der Kreatur..."></textarea></div>
-          <div class="admin-field full"><label>Ausführliche Beschreibung</label><textarea id="fFull" placeholder="Ausführliche Beschreibung, Verhalten, Besonderheiten..."></textarea></div>
+          <div class="admin-field full"><label>Ausführliche Beschreibung</label>
+          <div class="lore-help">
+            <strong>So schreibst du die Beschreibung:</strong><br>
+            Leerzeilen erzeugen neue Absätze. Überschriften mit
+            <code>- Überschrift -</code> oder <code>## Überschrift</code>.
+            Aufzählungen mit <code>- Punkt</code>, <code>• Punkt</code>,
+            <code>* Punkt</code> oder <code>1. Punkt</code>. Kein HTML nötig.
+          </div>
+          <textarea id="fFull" placeholder="Ausführliche Beschreibung, Verhalten, Besonderheiten..."></textarea></div>
         </div>
         <div class="admin-actions">
           <button class="btn" id="btnSave">Speichern</button>
@@ -227,15 +231,30 @@
         ChronikenStorage.save("kreaturen", d).catch(err => console.warn("Kreaturen JSONBin-Save fehlgeschlagen:", err));
       }
     }
+    function formatLore(text) {
+      if (!text) return "";
+      const normalized = String(text).replace(/\\r\\n/g, "\n").replace(/\\n/g, "\n").replace(/\\r/g, "\n").replace(/\\\\\n/g, "\n");
+      const lines = normalized.split("\n"), parts = []; let listItems = [];
+      const flushList = () => { if (!listItems.length) return; parts.push("<ul class=\"lore-list\">"+listItems.map(item=>"<li>"+esc(item)+"</li>").join("")+"</ul>"); listItems=[]; };
+      lines.forEach(line => {
+        const trimmed=line.trim(); if(!trimmed){flushList();return;}
+        const bullet=trimmed.match(/^(?:[-*•]|\d+[.)])\s+(.*)$/); if(bullet){listItems.push(bullet[1]);return;}
+        flushList();
+        const heading=trimmed.match(/^-+\s*(.+?)\s*-+$/); if(heading){parts.push("<h4 class=\"lore-heading\">"+esc(heading[1])+"</h4>");return;}
+        const markdownHeading=trimmed.match(/^#{1,4}\s+(.+)$/); if(markdownHeading){parts.push("<h4 class=\"lore-heading\">"+esc(markdownHeading[1])+"</h4>");return;}
+        parts.push("<p class=\"lore-paragraph\">"+esc(trimmed)+"</p>");
+      }); flushList(); return parts.join("");
+    }
+
     function resetForm(){
       editCategory=null; editIndex=null;
-      el("fName").value=""; el("fCategory").value="beasts"; el("fDomain").value=""; el("fDanger").value="friedlich"; el("fShort").value=""; el("fFull").value="";
+      el("fName").value=""; el("fCategory").value="beasts"; el("fDomain").value=""; el("fDanger").value="friedlich"; el("fFull").value="";
       el("formTitle").textContent="Neue Kreatur anlegen"; el("btnSave").textContent="Speichern"; el("btnCancel").style.display="none"; el("status").textContent="";
     }
     function startEdit(category,index){
       const item=loadData()[category][index]; if(!item) return;
       editCategory=category; editIndex=index;
-      el("fName").value=item.name||""; el("fCategory").value=category; el("fDomain").value=item.domain||""; el("fDanger").value=item.danger||defaultDanger(category); el("fShort").value=item.short||""; el("fFull").value=item.full||"";
+      el("fName").value=item.name||""; el("fCategory").value=category; el("fDomain").value=item.domain||""; el("fDanger").value=item.danger||defaultDanger(category); el("fFull").value=item.full||"";
       el("formTitle").textContent="Kreatur bearbeiten"; el("btnSave").textContent="Änderungen speichern"; el("btnCancel").style.display="inline-block";
       window.scrollTo({top:0,behavior:"smooth"});
     }
@@ -244,7 +263,7 @@
       const d=loadData(); d[category].splice(index,1); saveData(d); resetForm(); render();
     }
     function defaultDanger(category){return ["peaceful","plants"].includes(category)?"friedlich":["magic","spirits","water","sky"].includes(category)?"vorsicht":["dragons","demons","undead","magicbeasts"].includes(category)?"extrem":"gefahr"} function dangerLabel(level){return {friedlich:"🟢 Friedlich",vorsicht:"🟡 Vorsicht",gefahr:"🟠 Gefährlich",extrem:"🔴 Extrem gefährlich"}[level]||"🟡 Vorsicht"} function card(item,category,index){
-      const danger=item.danger||defaultDanger(category); return `<article class="god-card"><h3>${esc(item.name)}</h3><div class="domain">${esc(item.domain||"")}</div><span class="danger-badge ${esc(danger)}">${dangerLabel(danger)}</span><p class="short-text">${esc(item.short||"")}</p><p class="full-text">${esc(item.full||"")}</p><div class="click-hint">Klicken zum Aufklappen →</div>${admin()?`<div class="tile-actions"><button class="btn secondary" data-edit="${category}:${index}">Bearbeiten</button><button class="btn danger" data-del="${category}:${index}">Löschen</button></div>`:""}</article>`;
+      const danger=item.danger||defaultDanger(category); return `<article class="god-card"><h3>${esc(item.name)}</h3><div class="domain">${esc(item.domain||"")}</div><span class="danger-badge ${esc(danger)}">${dangerLabel(danger)}</span><div class="full-text">${formatLore(item.full||"")}</div><div class="click-hint">Klicken zum Aufklappen →</div>${admin()?`<div class="tile-actions"><button class="btn secondary" data-edit="${category}:${index}">Bearbeiten</button><button class="btn danger" data-del="${category}:${index}">Löschen</button></div>`:""}</article>`;
     }
     function render(){
       const d=loadData();
@@ -267,7 +286,7 @@
     }
     async function save(){
       const name=el("fName").value.trim(); if(!name){el("status").textContent="Bitte einen Namen eingeben.";return;}
-      const item={name,domain:el("fDomain").value.trim(),danger:el("fDanger").value,short:el("fShort").value.trim(),full:el("fFull").value.trim()};
+      const item={name,domain:el("fDomain").value.trim(),danger:el("fDanger").value,full:el("fFull").value.trim()};
       const d=loadData(); const category=el("fCategory").value;
       if(editCategory!==null && d[editCategory] && d[editCategory][editIndex]) d[editCategory].splice(editIndex,1);
       if(!d[category]) d[category]=[];
