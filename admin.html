@@ -162,7 +162,7 @@
 
 
 <script src="chroniken-auth.js"></script>
-<script src="jsonbin-storage.js"></script>
+<script src="chroniken-storage.js"></script>
 <script src="chroniken-sync.js"></script>
 <script>
 const AUTH_KEY="portal_admin_auth";
@@ -302,8 +302,8 @@ const ADMIN_MONTHS=["Frostmond","Eismond","Tauwind","Blütenmond","Sonnenhain","
 const ADMIN_FIXED_HOLIDAYS=[[0,1,"Nacht der ersten Flamme"],[2,15,"Fest der drei Winde"],[3,20,"Blütensegen"],[5,15,"Sonnenwende der Krone"],[6,30,"Danktag der Ernte"],[8,13,"Nacht des Schleiers"],[10,30,"Sternennacht"],[11,15,"Fuchsfeuer"]];
 async function renderAdminEventManager(){
   const box=document.getElementById("adminEventManager");if(!box||!isAdmin()){if(box)box.innerHTML='<p class="small">Bitte zuerst als Admin anmelden.</p>';return}
-  if(!window.ChronikenStorage){box.innerHTML='<p class="small">jsonbin-storage.js wurde nicht geladen.</p>';return}
-  box.innerHTML='<p class="small">Lade Kalenderdaten aus JSONBin …</p>';
+  if(!window.ChronikenStorage){box.innerHTML='<p class="small">chroniken-storage.js wurde nicht geladen.</p>';return}
+  box.innerHTML='<p class="small">Lade Kalenderdaten aus Supabase …</p>';
   let mainBirthdays,characterEvents,custom,disabled;
   try{
     [mainBirthdays,characterEvents,custom,disabled]=await Promise.all([ChronikenStorage.load("birthdays"),ChronikenStorage.load("characterEvents"),ChronikenSync.loadShared("calendar"),ChronikenSync.loadShared("disabledHolidays")]);
