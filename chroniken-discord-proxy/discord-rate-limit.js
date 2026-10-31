@@ -1,14 +1,14 @@
 /**
- * Gemeinsamer Discord-HTTP-Schutz für den Chroniken-Proxy.
+ * Discord-HTTP-Schutz für den Chroniken-Proxy.
  *
- * Normale Discord-Anfragen werden leicht gebremst. Bei 429 wird für
- * normale Webhooks gewartet und erneut versucht. OAuth-Login-Anfragen
- * können dagegen ausdrücklich ohne lange Wartezeit abbrechen.
+ * Webhooks (Wetter, Mond, Mod-Watcher, Heiler usw.) teilen sich eine
+ * eigene Rate-Limit-Queue. OAuth-Login läuft bewusst komplett getrennt,
+ * damit automatische Discord-Meldungen den Login nicht ausbremsen.
  */
 
-let queue = Promise.resolve();
-let nextRequestAt = 0;
-let globalBlockedUntil = 0;
+let webhookQueue = Promise.resolve();
+let webhookNextRequestAt = 0;
+let webhookGlobalBlockedUntil = 0;
 
 const MIN_INTERVAL_MS = Math.max(0, Number(process.env.DISCORD_MIN_REQUEST_INTERVAL_MS) || 50);
 const MAX_RETRIES = Math.max(0, Math.min(5, Number(process.env.DISCORD_MAX_RATE_LIMIT_RETRIES) || 3));
@@ -38,49 +38,56 @@ function isGlobal(response) {
     || String(response.headers.get('x-ratelimit-global') || '').toLowerCase() === 'true';
 }
 
-async function run(request, options = {}) {
-  const failFast429 = options.failFast429 === true;
-  const maxRetries = failFast429 ? 0 : MAX_RETRIES;
-
+async function runWebhook(request) {
   for (let attempt = 0; ; attempt++) {
     const now = Date.now();
-    const wait = Math.max(nextRequestAt - now, globalBlockedUntil - now);
+    const wait = Math.max(webhookNextRequestAt - now, webhookGlobalBlockedUntil - now);
 
-    // OAuth darf nicht minutenlang in einer globalen Sperre warten.
-    if (wait > 0) {
-      if (failFast429 && globalBlockedUntil > now) {
-        const error = new Error('DISCORD_RATE_LIMITED');
-        error.code = 'DISCORD_RATE_LIMITED';
-        error.retryAfterMs = globalBlockedUntil - now;
-        throw error;
-      }
-      await delay(wait);
-    }
+    if (wait > 0) await delay(wait);
 
-    nextRequestAt = Date.now() + MIN_INTERVAL_MS;
+    webhookNextRequestAt = Date.now() + MIN_INTERVAL_MS;
     const response = await request();
 
-    if (response.status !== 429 || attempt >= maxRetries) return response;
+    if (response.status !== 429 || attempt >= MAX_RETRIES) return response;
 
     const bodyText = await response.clone().text().catch(() => '');
     const waitMs = retryAfterMs(response, bodyText);
     const until = Date.now() + waitMs;
 
-    if (isGlobal(response)) globalBlockedUntil = Math.max(globalBlockedUntil, until);
-    nextRequestAt = Math.max(nextRequestAt, until);
+    if (isGlobal(response)) {
+      webhookGlobalBlockedUntil = Math.max(webhookGlobalBlockedUntil, until);
+    }
 
-    console.warn('[Discord Rate Limit] 429 erhalten; warte ' + waitMs + ' ms (Versuch ' + (attempt + 1) + '/' + maxRetries + ').');
+    webhookNextRequestAt = Math.max(webhookNextRequestAt, until);
+
+    console.warn(
+      '[Discord Webhook Rate Limit] 429 erhalten; warte ' +
+      waitMs + ' ms (Versuch ' + (attempt + 1) + '/' + MAX_RETRIES + ').'
+    );
   }
 }
 
+/**
+ * Für Wetter, Mond, Mod-Watcher, Heiler und andere Discord-Webhooks.
+ * Diese Requests teilen sich bewusst nur untereinander die Queue.
+ */
 function discordFetch(url, options = {}) {
-  const failFast429 = options.failFast429 === true;
-  const fetchOptions = { ...options };
-  delete fetchOptions.failFast429;
-
-  const job = queue.then(() => run(() => fetch(url, fetchOptions), { failFast429 }));
-  queue = job.catch(() => {});
+  const job = webhookQueue.then(() => runWebhook(() => fetch(url, options)));
+  webhookQueue = job.catch(() => {});
   return job;
 }
 
-module.exports = { discordFetch };
+/**
+ * Für Discord OAuth.
+ *
+ * Kein Warten auf die Webhook-Queue und kein Warten auf einen globalen
+ * Webhook-Rate-Limit. Bei 429 kommt die Discord-Antwort sofort zurück.
+ */
+async function discordOAuthFetch(url, options = {}) {
+  return fetch(url, options);
+}
+
+module.exports = {
+  discordFetch,
+  discordOAuthFetch
+};
