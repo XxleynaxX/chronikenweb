@@ -163,13 +163,10 @@
             saveToLocal(key, remoteList);
             if (before !== JSON.stringify(remoteList)) changed = true;
           } else {
-            // Remote leer → lokale/Defaults hochladen (nur wenn etwas da ist)
-            const local = loadFromLocal(key) || clone(DEFAULTS[key] || []);
-            if (local.length > 0) {
-              memCache[key] = local;
-              await ChronikenStorage.save(key, local);
-              changed = true;
-            }
+            // Remote leer bedeutet wirklich leer.
+            // Niemals beim bloßen Seitenaufruf Defaults automatisch in Supabase speichern.
+            const local = loadFromLocal(key);
+            memCache[key] = local && local.length > 0 ? local : clone(DEFAULTS[key] || []);
           }
         } catch (err) {
           console.warn("Supabase-Sync für", key, "fehlgeschlagen:", err);
