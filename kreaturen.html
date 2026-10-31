@@ -172,7 +172,7 @@
   </footer>
 
   <script src="chroniken-auth.js"></script>
-  <script src="chroniken-storage.js?v=20261031-testadmin"></script>
+  <script src="chroniken-storage.js?v=20261031-mysql"></script>
   <script src="chroniken-data.js"></script>
   <script>
     const KEY = "kreaturen";
@@ -225,13 +225,6 @@
     let editCategory = null, editIndex = null;
     const el = id => document.getElementById(id);
     function admin(){ return ChronikenData.isAdmin(); }
-    function isLocalTestAdmin(){
-      try {
-        return sessionStorage.getItem("portal_admin_auth") === "1" &&
-               (sessionStorage.getItem("chroniken_test_admin") === "1" ||
-                sessionStorage.getItem("chroniken_discord_name") === "Lokaler Test-Admin");
-      } catch(e){ return false; }
-    }
     function loadData(){
       // 1. Memory-Cache (nach Remote-Sync)
       if (window._kreaturenCache) return JSON.parse(JSON.stringify(window._kreaturenCache));
@@ -325,13 +318,10 @@
         await new Promise((resolve, reject) => {
           window._kreaturenCache = d;
           localStorage.setItem(STORAGE_KEY, JSON.stringify(d));
-          if (isLocalTestAdmin()) {
-            localStorage.setItem("chroniken_test_data_creatures", JSON.stringify(toRemote(d)));
-            resolve();
-          } else if (window.ChronikenStorage) {
+          if (window.ChronikenStorage) {
             ChronikenStorage.save("kreaturen", toRemote(d)).then(resolve).catch(reject);
           } else {
-            resolve();
+            reject(new Error("ChronikenStorage nicht geladen."));
           }
         });
         resetForm();
