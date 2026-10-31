@@ -172,7 +172,7 @@
   </footer>
 
   <script src="chroniken-auth.js"></script>
-  <script src="jsonbin-storage.js"></script>
+  <script src="chroniken-storage.js"></script>
   <script src="chroniken-data.js"></script>
   <script>
     const KEY = "kreaturen";
@@ -226,9 +226,9 @@
     function saveData(d){
       window._kreaturenCache = d;
       localStorage.setItem(STORAGE_KEY, JSON.stringify(d));
-      // Im Hintergrund zu JSONBin
+      // Im Hintergrund zu Supabase
       if (window.ChronikenStorage) {
-        ChronikenStorage.save("kreaturen", d).catch(err => console.warn("Kreaturen JSONBin-Save fehlgeschlagen:", err));
+        ChronikenStorage.save("kreaturen", d).catch(err => console.warn("Kreaturen Supabase-Save fehlgeschlagen:", err));
       }
     }
     function formatLore(text) {
@@ -315,7 +315,7 @@
     }
     el("btnSave").onclick=save; el("btnCancel").onclick=resetForm;
 
-    // Von JSONBin laden (falls vorhanden)
+    // Von Supabase laden (falls vorhanden)
     (async function(){
       if (!window.ChronikenStorage) { render(); return; }
       try {
