@@ -9,6 +9,101 @@ const HEILER_WEBHOOK = process.env.HEILER_WEBHOOK || '';
 const MOD_WEBHOOK = process.env.MOD_WEBHOOK || process.env.DISCORD_MOD_WEBHOOK || '';
 const MOD_WATCHER_SECRET = process.env.MOD_WATCHER_SECRET || '';
 
+const SUPABASE_URL = (process.env.SUPABASE_URL || '').replace(/\/$/, '');
+const SUPABASE_SECRET_KEY = process.env.SUPABASE_SECRET_KEY || '';
+const JSONBIN_MASTER_KEY = process.env.JSONBIN_MASTER_KEY || '';
+const JSONBIN_EVENTS_BIN_ID = process.env.JSONBIN_EVENTS_BIN_ID || '6ae18121ffd5d1605391c7c7';
+const JSONBIN_CHARS_BIN_ID = process.env.JSONBIN_CHARS_BIN_ID || '6ae17c9cffd5d1605391c27b';
+
+function supabaseHeaders() {
+  return {
+    apikey: SUPABASE_SECRET_KEY,
+    Authorization: 'Bearer ' + SUPABASE_SECRET_KEY,
+    'Content-Type': 'application/json',
+    Prefer: 'return=representation'
+  };
+}
+
+async function supabaseRest(path, options = {}) {
+  if (!SUPABASE_URL || !SUPABASE_SECRET_KEY) {
+    throw new Error('SUPABASE_URL oder SUPABASE_SECRET_KEY fehlt.');
+  }
+  const r = await fetch(SUPABASE_URL + '/rest/v1/' + path, {
+    ...options,
+    headers: { ...supabaseHeaders(), ...(options.headers || {}) }
+  });
+  const text = await r.text();
+  let data = null;
+  try { data = text ? JSON.parse(text) : null; } catch {}
+  if (!r.ok) throw new Error('Supabase ' + r.status + ': ' + (data?.message || text || 'unbekannter Fehler'));
+  return data;
+}
+
+async function readJsonBin(binId) {
+  if (!JSONBIN_MASTER_KEY) throw new Error('JSONBIN_MASTER_KEY fehlt.');
+  const r = await fetch('https://api.jsonbin.io/v3/b/' + binId + '/latest', {
+    headers: { 'X-Master-Key': JSONBIN_MASTER_KEY, 'X-Bin-Meta': 'false' }
+  });
+  const text = await r.text();
+  if (!r.ok) throw new Error('JSONBin ' + r.status + ': ' + text);
+  const data = JSON.parse(text);
+  return data && data.record && typeof data.record === 'object' ? data.record : data;
+}
+
+function migrationToken(req) {
+  return String(req.headers.authorization || '').replace(/^Bearer\s+/i, '');
+}
+
+function requireAdmin(req) {
+  const p = verify(migrationToken(req));
+  if (!p || !p.admin) throw new Error('Nur Admins dürfen die Datenmigration starten.');
+  return p;
+}
+
+async function migrateJsonBinToSupabase() {
+  const main = await readJsonBin(JSONBIN_EVENTS_BIN_ID);
+  const chars = await readJsonBin(JSONBIN_CHARS_BIN_ID);
+
+  const snapshot = {
+    migrated_at: new Date().toISOString(),
+    source: {
+      events_bin_id: JSONBIN_EVENTS_BIN_ID,
+      chars_bin_id: JSONBIN_CHARS_BIN_ID
+    },
+    main,
+    chars
+  };
+
+  await supabaseRest('jsonbin_backups', {
+    method: 'POST',
+    body: JSON.stringify({ snapshot })
+  });
+
+  const arrays = {
+    events: Array.isArray(main.events) ? main.events : [],
+    birthdays: Array.isArray(main.birthdays) ? main.birthdays : [],
+    calendar: Array.isArray(main.calendar) ? main.calendar : [],
+    disabledHolidays: Array.isArray(main.disabledHolidays) ? main.disabledHolidays : [],
+    characters: Array.isArray(chars.characters) ? chars.characters : [],
+    characterSheets: Array.isArray(chars.characterSheets) ? chars.characterSheets : []
+  };
+
+  await supabaseRest('chroniken_data?on_conflict=key', {
+    method: 'POST',
+    body: JSON.stringify(Object.entries(arrays).map(([key, value]) => ({
+      key,
+      value,
+      updated_at: new Date().toISOString()
+    })))
+  });
+
+  return {
+    ok: true,
+    migrated_at: snapshot.migrated_at,
+    counts: Object.fromEntries(Object.entries(arrays).map(([k, v]) => [k, v.length]))
+  };
+}
+
 /* ===== Discord-Login (OAuth2) =====
    Benötigte Umgebungsvariablen (Render → Environment):
    DISCORD_CLIENT_ID        Client-ID der Discord-Application
@@ -232,6 +327,33 @@ const server = http.createServer(async (req, res) => {
   }
 
   const url = new URL(req.url, 'http://localhost');
+
+
+  if (req.method === 'GET' && url.pathname === '/admin/migration-status') {
+    try {
+      requireAdmin(req);
+      const rows = await supabaseRest('chroniken_data?select=key,updated_at&order=key.asc');
+      res.writeHead(200, { 'Content-Type': 'application/json', 'Cache-Control': 'no-store' });
+      res.end(JSON.stringify({ ok: true, rows }));
+    } catch (e) {
+      res.writeHead(403, { 'Content-Type': 'application/json', 'Cache-Control': 'no-store' });
+      res.end(JSON.stringify({ ok: false, error: e.message }));
+    }
+    return;
+  }
+
+  if (req.method === 'POST' && url.pathname === '/admin/migrate-jsonbin') {
+    try {
+      requireAdmin(req);
+      const result = await migrateJsonBinToSupabase();
+      res.writeHead(200, { 'Content-Type': 'application/json', 'Cache-Control': 'no-store' });
+      res.end(JSON.stringify(result));
+    } catch (e) {
+      res.writeHead(500, { 'Content-Type': 'application/json', 'Cache-Control': 'no-store' });
+      res.end(JSON.stringify({ ok: false, error: e.message }));
+    }
+    return;
+  }
 
   if (req.method === 'POST' && url.pathname === '/weather/set') {
     const auth = String(req.headers.authorization || '').replace(/^Bearer\s+/i, '');
