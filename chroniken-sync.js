@@ -14,7 +14,8 @@
   const SUPABASE_PUBLISHABLE_KEY = "sb_publishable__kXmLDeP47mcg-ytidwTg_ktUyr1mm";
   const EVENTS_BIN_ID = "supabase";
   const CHARS_BIN_ID = "supabase";
-  const BIN_OF = { events: "main", birthdays: "main", calendar: "main", disabledHolidays: "main", characters: "chars", characterSheets: "chars" };\n  const DB_KEY_OF = { events: "events", birthdays: "birthdays", calendar: "calendar", disabledHolidays: "disabledHolidays", characters: "characters", characterSheets: "character_sheets" };
+  const BIN_OF = { events: "main", birthdays: "main", calendar: "main", disabledHolidays: "main", characters: "chars", characterSheets: "chars" };
+  const DB_KEY_OF = { events: "events", birthdays: "birthdays", calendar: "calendar", disabledHolidays: "disabledHolidays", characters: "characters", characterSheets: "character_sheets" };
 
   const LS = { events: "portal_events", birthdays: "portal_birthdays", calendar: "chroniken_calendar_entries", disabledHolidays: "chroniken_disabled_holidays", characters: "portal_char_registry", characterSheets: "portal_char_sheets" };
   const KEYS = Object.keys(LS);
