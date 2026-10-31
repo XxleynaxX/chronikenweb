@@ -2,7 +2,7 @@
    Chroniken – Zentrale Datenspeicherung direkt in Supabase
 
    Die Webseite liest und speichert die gemeinsamen Chroniken-Daten
-   direkt in Supabase. JSONBin und Render werden dafür nicht benötigt.
+   direkt in Supabase. Supabase und Render werden dafür nicht benötigt.
 
    WICHTIG:
    Nur den Supabase Publishable Key verwenden. Niemals einen
