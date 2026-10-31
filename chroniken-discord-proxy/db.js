@@ -74,12 +74,12 @@ function validValue(key, value) {
 let pool = null;
 
 function sslOption() {
-  const flag = String(process.env.MYSQL_SSL || '').toLowerCase();
-  if (flag === '0' || flag === 'false' || flag === 'off') return undefined;
+  const flag = String(process.env.MYSQL_SSL || '').trim().toLowerCase();
+  if (flag === '0' || flag === 'false' || flag === 'off' || flag === 'disabled') return undefined;
   const ca = process.env.MYSQL_SSL_CA;
   if (ca) return { ca: ca.replace(/\\n/g, '\n'), rejectUnauthorized: true };
-  // Ohne explizite Angabe: nur mit TLS, wenn MYSQL_SSL gesetzt ist.
-  if (flag === '1' || flag === 'true' || flag === 'on') return { rejectUnauthorized: true };
+  // Jeder andere gesetzte Wert (1, true, on, required, …) schaltet TLS ein.
+  if (flag) return { rejectUnauthorized: true };
   return undefined;
 }
 
