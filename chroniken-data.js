@@ -1,9 +1,11 @@
 /* ============================================================
-   Chroniken – zentrale Stammdaten (localStorage)
-   Keys: voelker · berufe · goetter · wetter
-   Admin-Status: sessionStorage "portal_admin_auth" === "1"
+   Chroniken – Stammdaten (Völker, Berufe, Götter, Wetter)
+   Dünner Layer über ChronikenStorage + localStorage-Cache
    ============================================================ */
 (function () {
+  "use strict";
+
+  // ---------- Defaults (nur wenn remote + lokal leer) ----------
   const DEFAULT_VOELKER = [
     { name:"Mensch", emoji:"🧑", size:"M: 155-195 cm | F: 150-185 cm", age:"60-100 Jahre", subraces:["Königreichsmensch","Freier Mensch","Küstenmensch","Steppenmensch","Nordmensch","Wüstenmensch","Magiermensch","Blutgebundener Mensch","Naturmensch","Kriegerkult-Mensch"], description:"Wandelbarstes Volk mit hoher Anpassungsfähigkeit.", strengths:"Hohe Anpassungsfähigkeit, schnelles Lernen, großer emotionaler Spielraum.", weaknesses:"Keine angeborene Spezialisierung.", minM:1.55,maxM:1.95,minF:1.50,maxF:1.85 },
     { name:"Elf", emoji:"🧝", size:"M: 150-210 cm | F: 150-195 cm", age:"300-900 Jahre", subraces:["Waldelf","Hochelf","Dunkelelf","Eiself","Seeelf","Mondelf","Sonnenelf"], description:"Alte Völker, eng mit Magie und Natur verbunden.", strengths:"Hohe Magieaffinität, Beweglichkeit, Resistenz gegen Krankheiten, geistige Disziplin.", weaknesses:"Oft Arroganz, langsame Anpassung an urbane Chaos-Zustände.", minM:1.50,maxM:2.10,minF:1.50,maxF:1.95 },
@@ -68,15 +70,21 @@
     { name:"Dunstiger Morgen", icon:"🌤️", description:"Heller Dunst liegt über dem Land und löst sich langsam auf." }
   ];
 
-  const DEFAULTS = { voelker: DEFAULT_VOELKER, berufe: DEFAULT_BERUFE, goetter: DEFAULT_GOETTER, wetter: DEFAULT_WETTER };
+  const DEFAULTS = {
+    voelker: DEFAULT_VOELKER,
+    berufe: DEFAULT_BERUFE,
+    goetter: DEFAULT_GOETTER,
+    wetter: DEFAULT_WETTER
+  };
 
-  function clone(x) { return JSON.parse(JSON.stringify(x)); }
-
-  // Keys die über Supabase geteilt werden
+  // Alle Keys die über Supabase geteilt werden
   const SHARED_KEYS = ["voelker", "berufe", "goetter"];
 
-  // Lokaler Cache (wird von Supabase befüllt)
-  const memCache = {};
+  const memCache = Object.create(null);
+
+  function clone(x) {
+    return JSON.parse(JSON.stringify(x));
+  }
 
   function loadFromLocal(key) {
     try {
@@ -90,12 +98,14 @@
   }
 
   function saveToLocal(key, arr) {
-    try { localStorage.setItem(key, JSON.stringify(arr)); } catch (e) {}
+    try {
+      localStorage.setItem(key, JSON.stringify(arr));
+    } catch (e) {}
   }
 
   /**
-   * Synchrones load – gibt Cache oder localStorage oder Defaults zurück.
-   * Im Hintergrund wird von Supabase aktualisiert.
+   * Synchrones load – Cache → localStorage → Defaults.
+   * Supabase wird im Hintergrund nachgezogen (syncFromRemote).
    */
   function load(key) {
     if (memCache[key]) return clone(memCache[key]);
@@ -113,30 +123,30 @@
   }
 
   /**
-   * Speichert lokal + (falls shared) asynchron zu Supabase.
+   * Speichert lokal + (falls shared) asynchron in Supabase.
    */
   async function save(key, arr) {
     const data = Array.isArray(arr) ? arr : [];
     memCache[key] = data;
     saveToLocal(key, data);
 
-    if (SHARED_KEYS.includes(key)) {
-      if (!window.ChronikenStorage) {
-        throw new Error("ChronikenStorage ist noch nicht geladen.");
-      }
-
-      try {
-        const saved = await ChronikenStorage.save(key, data);
-        memCache[key] = Array.isArray(saved) ? saved : data;
-        saveToLocal(key, memCache[key]);
-        return clone(memCache[key]);
-      } catch (err) {
-        console.error("[ChronikenData] Supabase-Save fehlgeschlagen:", key, err);
-        throw err;
-      }
+    if (SHARED_KEYS.indexOf(key) === -1) {
+      return clone(data);
     }
 
-    return clone(data);
+    if (!window.ChronikenStorage) {
+      throw new Error("ChronikenStorage ist noch nicht geladen.");
+    }
+
+    try {
+      const saved = await ChronikenStorage.save(key, data);
+      memCache[key] = Array.isArray(saved) ? saved : data;
+      saveToLocal(key, memCache[key]);
+      return clone(memCache[key]);
+    } catch (err) {
+      console.error("[ChronikenData] Supabase-Save fehlgeschlagen:", key, err);
+      throw err;
+    }
   }
 
   function resetDefaults(key) {
@@ -146,25 +156,29 @@
   }
 
   function isAdmin() {
-    try { return sessionStorage.getItem("portal_admin_auth") === "1"; } catch (e) { return false; }
+    try {
+      return sessionStorage.getItem("portal_admin_auth") === "1";
+    } catch (e) {
+      return false;
+    }
   }
 
   function esc(s) {
     return String(s == null ? "" : s)
-      .replace(/&/g, "&amp;").replace(/</g, "&lt;")
-      .replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;")
+      .replace(/"/g, "&quot;");
   }
 
   /**
-   * Einmalig: Daten von Supabase holen und mit lokalen Defaults mergen.
-   * Wird beim Laden der Seite aufgerufen.
+   * Einmalig: Daten von Supabase holen und lokalen Cache aktualisieren.
    */
   async function syncFromRemote() {
     if (!window.ChronikenStorage) return false;
     let changed = false;
 
     try {
-      // Jeden SHARED_KEY einzeln laden (richtige Bin-Zuordnung)
       for (const key of SHARED_KEYS) {
         try {
           const remoteList = await ChronikenStorage.load(key);
@@ -174,8 +188,7 @@
             saveToLocal(key, remoteList);
             if (before !== JSON.stringify(remoteList)) changed = true;
           } else {
-            // Remote leer bedeutet wirklich leer.
-            // Niemals beim bloßen Seitenaufruf Defaults automatisch in Supabase speichern.
+            // Remote leer → lokal behalten oder Defaults
             const local = loadFromLocal(key);
             memCache[key] = local && local.length > 0 ? local : clone(DEFAULTS[key] || []);
           }
@@ -188,20 +201,37 @@
     }
 
     try {
-      document.dispatchEvent(new CustomEvent("chroniken-data-synced", { detail: { changed: changed } }));
+      document.dispatchEvent(new CustomEvent("chroniken-data-synced", {
+        detail: { changed: changed }
+      }));
     } catch (e) {}
+
     return changed;
   }
 
-  // Beim Laden der Seite sofort synchronisieren (nicht-blockierend)
+  // Beim Laden der Seite synchronisieren (nachdem storage.js da ist)
   if (typeof window !== "undefined") {
-    // Kleiner Delay, damit supabase-storage.js schon geladen ist
-    setTimeout(() => { syncFromRemote(); }, 80);
+    function trySync() {
+      if (window.ChronikenStorage) {
+        syncFromRemote();
+      } else {
+        setTimeout(trySync, 50);
+      }
+    }
+    if (document.readyState === "loading") {
+      document.addEventListener("DOMContentLoaded", trySync);
+    } else {
+      trySync();
+    }
   }
 
   window.ChronikenData = {
-    load, save, resetDefaults, isAdmin, esc,
-    DEFAULTS,
-    syncFromRemote   // falls man manuell neu laden will
+    load: load,
+    save: save,
+    resetDefaults: resetDefaults,
+    isAdmin: isAdmin,
+    esc: esc,
+    DEFAULTS: DEFAULTS,
+    syncFromRemote: syncFromRemote
   };
 })();

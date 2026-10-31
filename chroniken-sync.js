@@ -1,28 +1,24 @@
 /* ============================================================
-   Chroniken – Zentrale Datenspeicherung direkt in Supabase
-
-   Die Webseite liest und speichert die gemeinsamen Chroniken-Daten
-   direkt in Supabase. Supabase und Render werden dafür nicht benötigt.
-
-   WICHTIG:
-   Nur den Supabase Publishable Key verwenden. Niemals einen
-   Supabase Secret Key in diese Datei oder eine andere Browser-Datei
-   eintragen.
+   Chroniken – Events, Charaktere, Kalender über Supabase
+   Dünner Layer über ChronikenStorage + localStorage-Cache
+   ============================================================
+   Keine JSONBin-Reste mehr. Alle Daten laufen über
+   ChronikenStorage → Tabelle chroniken_data.
    ============================================================ */
 (function (global) {
-  const SUPABASE_URL = "https://wlrsluafjhaeurgmqmci.supabase.co";
-  const SUPABASE_PUBLISHABLE_KEY = "sb_publishable_kXmLDeP47mcg-ytidwTg_ktUyr1mm";
-  const EVENTS_BIN_ID = "supabase";
-  const CHARS_BIN_ID = "supabase";
-  const BIN_OF = { events: "main", birthdays: "main", calendar: "main", disabledHolidays: "main", characters: "chars", characterSheets: "chars" };
-  const DB_KEY_OF = { events: "events", birthdays: "birthdays", calendar: "calendar", disabledHolidays: "disabledHolidays", characters: "characters", characterSheets: "character_sheets" };
+  "use strict";
 
-  const LS = { events: "portal_events", birthdays: "portal_birthdays", calendar: "chroniken_calendar_entries", disabledHolidays: "chroniken_disabled_holidays", characters: "portal_char_registry", characterSheets: "portal_char_sheets" };
-  const KEYS = Object.keys(LS);
-  const BIN_KEYS = {
-    main: KEYS.filter(function (k) { return BIN_OF[k] === "main"; }),
-    chars: KEYS.filter(function (k) { return BIN_OF[k] === "chars"; })
+  // localStorage-Keys (Cache)
+  const LS = {
+    events: "portal_events",
+    birthdays: "portal_birthdays",
+    calendar: "chroniken_calendar_entries",
+    disabledHolidays: "chroniken_disabled_holidays",
+    characters: "portal_char_registry",
+    characterSheets: "portal_char_sheets"
   };
+
+  const KEYS = Object.keys(LS);
   const AUTH_KEY = "portal_admin_auth";
 
   const script = document.currentScript;
@@ -31,166 +27,161 @@
   function isAdmin() {
     try { return sessionStorage.getItem(AUTH_KEY) === "1"; } catch (e) { return false; }
   }
+
   function readLocal(name) {
-    try { const v = JSON.parse(localStorage.getItem(LS[name]) || "[]"); return Array.isArray(v) ? v : []; }
-    catch (e) { return []; }
+    try {
+      const v = JSON.parse(localStorage.getItem(LS[name]) || "[]");
+      return Array.isArray(v) ? v : [];
+    } catch (e) { return []; }
   }
+
   function writeLocal(name, arr) {
     try { localStorage.setItem(LS[name], JSON.stringify(arr)); } catch (e) {}
   }
 
+  function emit(changed) {
+    try {
+      document.dispatchEvent(new CustomEvent("chroniken-synced", {
+        detail: { changed: !!changed }
+      }));
+    } catch (e) {}
+  }
 
+  // ---------- Remote lesen / schreiben (über ChronikenStorage) ----------
   async function fetchRemote() {
     if (!global.ChronikenStorage) {
       throw new Error("ChronikenStorage ist nicht geladen.");
     }
-
     const out = {};
-    for (const name of Object.keys(DB_KEY_OF)) {
+    for (const name of KEYS) {
       out[name] = await global.ChronikenStorage.load(name);
     }
     return out;
   }
 
-  async function putRemote(record, bin) {
+  async function putRemote(record) {
     if (!global.ChronikenStorage) {
       throw new Error("ChronikenStorage ist nicht geladen.");
     }
-
-    const keys = BIN_KEYS[bin || "main"];
-    for (const k of keys) {
-      const value = Array.isArray(record[k]) ? record[k] : [];
-      await global.ChronikenStorage.save(k, value);
+    for (const k of KEYS) {
+      if (Object.prototype.hasOwnProperty.call(record, k)) {
+        const value = Array.isArray(record[k]) ? record[k] : [];
+        await global.ChronikenStorage.save(k, value);
+      }
     }
     return { ok: true };
   }
 
-  async function fillCharRecord(rec, allowLocal) {
-    let legacy = null, filled = false;
-    for (const k of BIN_KEYS.chars) {
-      if (Array.isArray(rec[k])) continue;
-      if (legacy === null) { try { legacy = await fetchRemote(); } catch (e) { legacy = {}; } }
-      if (Array.isArray(legacy[k]) && legacy[k].length) { rec[k] = legacy[k]; filled = true; }
-      else if (allowLocal && readLocal(k).length) { rec[k] = readLocal(k); filled = true; }
-      else rec[k] = [];
-    }
-    return filled;
-  }
-
-  function emit(changed) {
-    try { document.dispatchEvent(new CustomEvent("chroniken-synced", { detail: { changed: !!changed } })); } catch (e) {}
-  }
-
-  /** Charakter-Bin: fehlen dort Listen, werden sie aus dem alten Events-Bin (oder lokal) übernommen. */
-  async function fillCharRecord(rec, allowLocal) {
-    let legacy = null, filled = false;
-    for (const k of BIN_KEYS.chars) {
-      if (Array.isArray(rec[k])) continue;
-      if (legacy === null) { try { legacy = await fetchRemote(); } catch (e) { legacy = {}; } }
-      if (Array.isArray(legacy[k]) && legacy[k].length) { rec[k] = legacy[k]; filled = true; }
-      else if (allowLocal && readLocal(k).length) { rec[k] = readLocal(k); filled = true; }
-      else rec[k] = [];
-    }
-    return filled;
-  }
-
-  /** Holt die Bins und überschreibt den lokalen Cache. */
+  // ---------- Pull: Remote → localStorage ----------
   async function pull() {
     let changed = false;
+
     const apply = function (name, arr) {
       const before = localStorage.getItem(LS[name]);
-      if (before !== JSON.stringify(arr)) { writeLocal(name, arr); changed = true; }
+      if (before !== JSON.stringify(arr)) {
+        writeLocal(name, arr);
+        changed = true;
+      }
     };
 
-    // --- Events-Bin ---
-    const rec = await fetchRemote();
-    let needsMigration = false;
-    BIN_KEYS.main.forEach(function (name) {
-      if (Array.isArray(rec[name])) apply(name, rec[name]);
-      else if (readLocal(name).length) needsMigration = true;
-    });
-    // Erster Start: lokale Daten eines Admins in den leeren Bin übernehmen
-    if (needsMigration && isAdmin()) {
-      const next = {};
-      BIN_KEYS.main.forEach(function (k) { next[k] = Array.isArray(rec[k]) ? rec[k] : readLocal(k); });
-      await putRemote(Object.assign({}, rec, next), "main");
-    }
-
-    // --- Charakter-Bin ---
     try {
-      const crec = await fetchRemote();
-      const hadAll = BIN_KEYS.chars.every(function (k) { return Array.isArray(crec[k]); });
-      const filled = hadAll ? false : await fillCharRecord(crec, isAdmin());
-      BIN_KEYS.chars.forEach(function (name) { apply(name, crec[name]); });
-      if (filled) await putRemote(crec, "chars");
-    } catch (e) { console.warn("[Chroniken-Sync] Charakter-Bin:", e); }
+      const rec = await fetchRemote();
+      let needsMigration = false;
+
+      KEYS.forEach(function (name) {
+        if (Array.isArray(rec[name])) {
+          apply(name, rec[name]);
+        } else if (readLocal(name).length) {
+          needsMigration = true;
+        }
+      });
+
+      // Erster Start: lokale Admin-Daten hochladen
+      if (needsMigration && isAdmin()) {
+        const next = {};
+        KEYS.forEach(function (k) {
+          next[k] = Array.isArray(rec[k]) ? rec[k] : readLocal(k);
+        });
+        await putRemote(next);
+      }
+    } catch (e) {
+      console.warn("[Chroniken-Sync] pull:", e);
+    }
 
     emit(changed);
     if (changed && reloadOnChange) location.reload();
     return changed;
   }
 
-  /**
-   * Sicherer Schreibzugriff: frisch lesen → ändern → speichern.
-   * fns = { events: arr => newArr, birthdays: arr => newArr }
-   */
+  // ---------- Mutate-Queue (read → change → write) ----------
   let queue = Promise.resolve();
+
   function mutate(fns) {
     const run = queue.then(function () { return doMutate(fns); });
     queue = run.catch(function () {});
     return run;
   }
+
   async function doMutate(fns) {
     const names = Object.keys(fns);
-    const bins = ["main", "chars"].filter(function (b) {
-      return names.some(function (n) { return BIN_OF[n] === b; });
-    });
-    let last = null;
-    for (const bin of bins) {
-      const rec = await fetchRemote();
-      const next = Object.assign({}, rec);
-      if (bin === "chars") await fillCharRecord(next, true);
-      else BIN_KEYS.main.forEach(function (k) { next[k] = Array.isArray(rec[k]) ? rec[k] : readLocal(k); });
-      names.filter(function (n) { return BIN_OF[n] === bin; }).forEach(function (k) {
-        const out = fns[k](next[k].slice());
-        next[k] = Array.isArray(out) ? out : next[k];
-      });
-      await putRemote(next, bin);
-      BIN_KEYS[bin].forEach(function (k) { writeLocal(k, next[k]); });
-      last = next;
+    let rec = {};
+    try {
+      rec = await fetchRemote();
+    } catch (e) {
+      // Fallback auf lokal
+      KEYS.forEach(function (k) { rec[k] = readLocal(k); });
     }
+
+    const next = Object.assign({}, rec);
+    names.forEach(function (k) {
+      const current = Array.isArray(next[k]) ? next[k] : readLocal(k);
+      next[k] = fns[k](current.slice());
+    });
+
+    names.forEach(function (k) { writeLocal(k, next[k]); });
+    await putRemote(next);
     emit(true);
-    return last;
+    return next;
   }
 
   // ---------- Events ----------
-  function newId() { return "e_" + Date.now() + "_" + Math.random().toString(36).slice(2, 7); }
+  function newId() {
+    return "e_" + Date.now() + "_" + Math.random().toString(36).slice(2, 7);
+  }
 
   async function saveEvent(data, editingId) {
     const now = Date.now();
-    let saved = null, wasEdit = false;
+    let saved = null;
+
     await mutate({
       events: function (list) {
         if (editingId) {
           const t = list.find(function (x) { return x.id === editingId; });
-          if (t) { Object.assign(t, data, { updated: now }); saved = t; wasEdit = true; return list; }
+          if (t) {
+            Object.assign(t, data, { updated: now });
+            saved = t;
+            return list;
+          }
         }
         saved = Object.assign({ id: newId(), created: now, updated: now }, data);
         list.push(saved);
         return list;
       }
     });
+
     return saved;
   }
 
   async function removeEvent(id) {
     let removed = null;
+
     await mutate({
       events: function (list) {
         removed = list.find(function (x) { return x.id === id; }) || null;
         return list.filter(function (x) { return x.id !== id; });
       }
     });
+
     if (removed && removed.eventType === "Geburtstag" && removed.characterName) {
       await removeBirthday(removed.characterName, true);
     }
@@ -199,218 +190,196 @@
 
   // ---------- Geburtstage ----------
   async function removeBirthday(name, silent) {
-    let removedEv = null;
     await mutate({
-      birthdays: function (list) { return list.filter(function (b) { return b.name !== name; }); },
+      birthdays: function (list) {
+        return list.filter(function (b) { return b.name !== name; });
+      },
       events: function (list) {
-        removedEv = list.find(function (e) { return e.eventType === "Geburtstag" && e.characterName === name; }) || null;
-        return list.filter(function (e) { return !(e.eventType === "Geburtstag" && e.characterName === name); });
+        return list.filter(function (e) {
+          return !(e.eventType === "Geburtstag" && e.characterName === name);
+        });
       }
     });
   }
 
   async function saveBirthday(oldName, b) {
     const now = Date.now();
-    const months = ["Frostmond","Eismond","Tauwind","Blütenmond","Sonnenhain","Glutmond","Erntemond","Goldlaub","Nebelmond","Dunkelmond","Sternenfall","Nachtfrost"];
+    const months = [
+      "Frostmond", "Eismond", "Tauwind", "Blütenmond", "Sonnenhain", "Glutmond",
+      "Erntemond", "Goldlaub", "Nebelmond", "Dunkelmond", "Sternenfall", "Nachtfrost"
+    ];
     const monthName = months[b.month] || "";
     const date = b.day + ". " + monthName + (b.year ? " " + b.year : "");
+
     await mutate({
       birthdays: function (list) {
-        return list.filter(function (x) { return x.name !== oldName && x.name !== b.name; })
-          .concat([{ name: b.name, day: b.day, month: b.month, year: b.year, monthName: monthName, updated: now }]);
+        return list
+          .filter(function (x) { return x.name !== oldName && x.name !== b.name; })
+          .concat([{
+            name: b.name,
+            day: b.day,
+            month: b.month,
+            year: b.year,
+            monthName: monthName,
+            updated: now
+          }]);
       },
       events: function (list) {
-        const old = list.find(function (e) { return e.eventType === "Geburtstag" && e.characterName === oldName; });
-        const rest = list.filter(function (e) { return !(e.eventType === "Geburtstag" && (e.characterName === oldName || e.characterName === b.name)); });
-        rest.push(Object.assign({}, old || { id: newId(), content: "Automatisch aus dem Charakterbogen erstellt.", showInNews: true, created: now, eventType: "Geburtstag" }, {
-          characterName: b.name, title: "🎂 Geburtstag von " + b.name, date: date,
-          birthdayDay: b.day, birthdayMonth: b.month, birthdayYear: b.year, updated: now
-        }));
+        const old = list.find(function (e) {
+          return e.eventType === "Geburtstag" && e.characterName === oldName;
+        });
+        const rest = list.filter(function (e) {
+          return !(e.eventType === "Geburtstag" &&
+            (e.characterName === oldName || e.characterName === b.name));
+        });
+        rest.push(Object.assign(
+          {},
+          old || {
+            id: newId(),
+            content: "Automatisch aus dem Charakterbogen erstellt.",
+            showInNews: true,
+            created: now,
+            eventType: "Geburtstag"
+          },
+          {
+            characterName: b.name,
+            title: "🎂 Geburtstag von " + b.name,
+            date: date,
+            birthdayDay: b.day,
+            birthdayMonth: b.month,
+            birthdayYear: b.year,
+            updated: now
+          }
+        ));
         return rest;
       }
     });
   }
 
-  /** Vom Charakterbogen: Eintrag(e) im Bin ersetzen (fail-silent, lokal ist schon gespeichert). */
+  /** Vom Charakterbogen: Event + Geburtstag ersetzen (fail-silent). */
   async function upsertCharacter(eventObj, birthdayObj) {
     try {
       await mutate({
         events: function (list) {
           if (!eventObj) return list;
-          return list.filter(function (e) {
-            return e.characterEventId !== eventObj.characterEventId && e.characterName !== eventObj.characterName;
-          }).concat([eventObj]);
+          return list
+            .filter(function (e) {
+              return e.characterEventId !== eventObj.characterEventId &&
+                     e.characterName !== eventObj.characterName;
+            })
+            .concat([eventObj]);
         },
         birthdays: function (list) {
           if (!birthdayObj) return list;
-          return list.filter(function (b) { return b.name !== birthdayObj.name; }).concat([birthdayObj]);
+          return list
+            .filter(function (b) { return b.name !== birthdayObj.name; })
+            .concat([birthdayObj]);
         }
       });
       return true;
-    } catch (e) { console.warn("[Chroniken-Sync]", e); return false; }
-  }
-
-  // ---------- Kalender / ausgeblendete Feiertage (liegen im Events-Bin) ----------
-  // Ältere Einträge aus dem Haupt-Bin (ChronikenStorage) werden angezeigt, bis
-  // zum ersten Speichern, und dann in den Events-Bin übernommen.
-  async function legacyLoad(name) {
-    try {
-      if (!global.ChronikenStorage) return [];
-      const old = await global.ChronikenStorage.load(name);
-      return Array.isArray(old) ? old : [];
-    } catch (e) { return []; }
-  }
-  async function loadShared(name) {
-    let list;
-    try {
-      const rec = await fetchRemote();
-      list = Array.isArray(rec[name]) ? rec[name] : [];
-      if (BIN_OF[name] === "chars" && !Array.isArray(rec[name])) list = (await fetchRemote())[name] || [];
-      writeLocal(name, list);
     } catch (e) {
       console.warn("[Chroniken-Sync]", e);
-      list = readLocal(name);
+      return false;
     }
-    if (!list.length) {
-      const old = await legacyLoad(name);
-      if (old.length) return old;
-    }
-    return list;
   }
+
+  // ---------- Shared load / save ----------
+  async function loadShared(name) {
+    try {
+      const list = await global.ChronikenStorage.load(name);
+      const arr = Array.isArray(list) ? list : [];
+      writeLocal(name, arr);
+      return arr;
+    } catch (e) {
+      console.warn("[Chroniken-Sync] loadShared:", e);
+      return readLocal(name);
+    }
+  }
+
   async function saveShared(name, list) {
     const value = Array.isArray(list) ? list : [];
-    const fns = {};
-    fns[name] = function () { return value; };
-    await mutate(fns);
-    const old = await legacyLoad(name);
-    if (old.length) {
-      try { await global.ChronikenStorage.save(name, []); } catch (e) { console.warn("[Chroniken-Sync]", e); }
-    }
+    writeLocal(name, value);
+    await global.ChronikenStorage.save(name, value);
+    emit(true);
     return value;
   }
 
-
-  // ---------- Charakter-Verwaltung (gemeinsam für Spieler & Admins) ----------
-  function charIdNum(id) { const m = /^CH-(\d+)$/.exec(String(id || "")); return m ? parseInt(m[1], 10) : 0; }
-  function nextCharId(list) {
-    let n = 0;
-    list.forEach(function (c) { n = Math.max(n, charIdNum(c.id)); });
-    return "CH-" + String(n + 1).padStart(4, "0");
-  }
-  function sameName(a, b) { return String(a.name || "").trim().toLowerCase() === String(b.name || "").trim().toLowerCase(); }
-
-  // Leere Felder weglassen, damit die Kopie im Bin klein bleibt
-  function compactSheet(d) {
-    const out = {};
-    Object.keys(d || {}).forEach(function (k) {
-      const v = d[k];
-      if (v === "" || v === false || v == null || (Array.isArray(v) && !v.length)) return;
-      out[k] = v;
-    });
-    return out;
-  }
-  function putSheet(list, id, name, data) {
-    const rec = { id: id, name: name, savedAt: new Date().toISOString(), data: compactSheet(data) };
-    const i = list.findIndex(function (x) { return x.id === id; });
-    if (i >= 0) list[i] = rec; else list.push(rec);
-    return list;
-  }
-
-  /** Vom Charakterbogen: Eintrag anlegen oder aktualisieren. Die ID wird frisch vergeben,
-   *  damit sich Einträge verschiedener Spieler nie überschneiden. Admin-Felder bleiben erhalten. */
+  // ---------- Charakter-Register ----------
   async function upsertRegistryEntry(entry) {
-    const slim = Object.assign({}, entry);
-    const sheetData = slim.characterData;
-    delete slim.characterData;
-    let result = null;
+    if (!entry || !entry.id) return null;
+    let saved = null;
+
     await mutate({
       characters: function (list) {
-        let i = list.findIndex(function (c) { return c.id === slim.id && sameName(c, slim); });
-        if (i < 0) i = list.findIndex(function (c) {
-          return sameName(c, slim) && (!slim.steamId || String(c.steamId || "").trim() === String(slim.steamId).trim());
-        });
-        if (i >= 0) {
-          const old = list[i];
-          list[i] = Object.assign({}, old, slim, {
-            id: old.id, createdAt: old.createdAt || slim.createdAt,
-            status: old.status || slim.status, warnings: old.warnings,
-            violation: old.violation, notes: old.notes
-          });
-          result = list[i];
+        const idx = list.findIndex(function (c) { return c.id === entry.id; });
+        if (idx >= 0) {
+          list[idx] = Object.assign({}, list[idx], entry);
+          saved = list[idx];
         } else {
-          slim.id = nextCharId(list);
-          list.push(slim);
-          result = slim;
+          saved = Object.assign({ createdAt: new Date().toISOString() }, entry);
+          list.push(saved);
         }
         return list;
-      },
-      characterSheets: function (list) {
-        return result && sheetData ? putSheet(list, result.id, result.name, sheetData) : list;
       }
     });
-    return result;
+
+    return saved;
   }
 
-  /** Admin: neuen Eintrag anlegen (ID wird frisch vergeben). */
   async function addCharacter(payload) {
-    let result = null;
-    await mutate({
-      characters: function (list) {
-        result = Object.assign({ id: nextCharId(list), createdAt: new Date().toISOString() }, payload);
-        list.push(result);
-        return list;
-      }
-    });
-    return result;
+    const id = payload.id || ("c_" + Date.now() + "_" + Math.random().toString(36).slice(2, 6));
+    const entry = Object.assign({ id: id, createdAt: new Date().toISOString() }, payload);
+    return upsertRegistryEntry(entry);
   }
 
-  /** Admin: bestehenden Eintrag ersetzen. */
-  async function saveCharacter(rec) {
-    await mutate({
-      characters: function (list) {
-        const i = list.findIndex(function (c) { return c.id === rec.id; });
-        if (i >= 0) list[i] = rec; else list.push(rec);
-        return list;
-      }
-    });
-    return rec;
+  async function saveCharacter(entry) {
+    return upsertRegistryEntry(entry);
   }
 
   async function removeCharacter(id) {
     await mutate({
-      characters: function (list) { return list.filter(function (c) { return c.id !== id; }); },
-      characterSheets: function (list) { return list.filter(function (x) { return x.id !== id; }); }
-    });
-  }
-
-  /** Admin: ältere Einträge mit eingebetteten Bogen-Daten in die Kopien-Liste überführen. */
-  async function migrateEmbeddedSheets() {
-    if (!readLocal("characters").some(function (c) { return c.characterData; })) return;
-    const pending = [];
-    await mutate({
       characters: function (list) {
-        return list.map(function (c) {
-          if (!c.characterData) return c;
-          pending.push(c);
-          const copy = Object.assign({}, c); delete copy.characterData; return copy;
-        });
+        return list.filter(function (c) { return c.id !== id; });
       },
       characterSheets: function (list) {
-        pending.forEach(function (c) {
-          if (!list.some(function (x) { return x.id === c.id; })) putSheet(list, c.id, c.name, c.characterData);
-        });
-        return list;
+        return list.filter(function (s) { return s.id !== id && s.characterId !== id; });
       }
     });
   }
 
+  // ---------- Eingebettete Bögen migrieren (einmalig) ----------
+  async function migrateEmbeddedSheets() {
+    try {
+      const chars = readLocal("characters");
+      const sheets = readLocal("characterSheets");
+      let changed = false;
+
+      chars.forEach(function (c) {
+        if (c.characterData && !sheets.some(function (s) { return s.id === c.id; })) {
+          sheets.push({
+            id: c.id,
+            name: c.name,
+            characterData: c.characterData,
+            updatedAt: new Date().toISOString()
+          });
+          delete c.characterData;
+          changed = true;
+        }
+      });
+
+      if (changed) {
+        await mutate({
+          characters: function () { return chars; },
+          characterSheets: function () { return sheets; }
+        });
+      }
+    } catch (e) {
+      console.warn("[Chroniken-Sync] migrateEmbeddedSheets:", e);
+    }
+  }
+
+  // ---------- Öffentliche API (kompatibel zu vorher) ----------
   global.ChronikenSync = {
-    upsertRegistryEntry: upsertRegistryEntry,
-    addCharacter: addCharacter,
-    saveCharacter: saveCharacter,
-    removeCharacter: removeCharacter,
-    EVENTS_BIN_ID: EVENTS_BIN_ID,
-    CHARS_BIN_ID: CHARS_BIN_ID,
     isAdmin: isAdmin,
     pull: pull,
     load: readLocal,
@@ -423,20 +392,33 @@
     saveShared: saveShared,
     saveCalendar: function (list) { return saveShared("calendar", list); },
     saveDisabledHolidays: function (list) { return saveShared("disabledHolidays", list); },
-    /** Lokale Daten komplett in den Bin schreiben (Admin-Button). */
+    upsertRegistryEntry: upsertRegistryEntry,
+    addCharacter: addCharacter,
+    saveCharacter: saveCharacter,
+    removeCharacter: removeCharacter,
     async pushLocal() {
-      for (const bin of ["main", "chars"]) {
-        let rec = {};
-        try { rec = await fetchRemote(); } catch (e) {}
-        const all = {};
-        BIN_KEYS[bin].forEach(function (k) { all[k] = readLocal(k); });
-        await putRemote(Object.assign({}, rec, all), bin);
-      }
+      const all = {};
+      KEYS.forEach(function (k) { all[k] = readLocal(k); });
+      await putRemote(all);
       emit(true);
     }
   };
 
-  function start() { pull().then(function () { if (isAdmin()) return migrateEmbeddedSheets(); }).catch(function (e) { console.warn("[Chroniken-Sync]", e); emit(false); }); }
-  if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", start);
-  else start();
+  // Start
+  function start() {
+    pull()
+      .then(function () {
+        if (isAdmin()) return migrateEmbeddedSheets();
+      })
+      .catch(function (e) {
+        console.warn("[Chroniken-Sync]", e);
+        emit(false);
+      });
+  }
+
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", start);
+  } else {
+    start();
+  }
 })(typeof window !== "undefined" ? window : globalThis);
