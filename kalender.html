@@ -1,122 +1,809 @@
 <!DOCTYPE html>
 <html lang="de">
 <head>
-<meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Chroniken – Kalender</title>
 <link rel="stylesheet" href="style.css">
 <link rel="stylesheet" href="chroniken-admin.css">
 <style>
-.calendar-hero{text-align:center;padding:2rem 0 1rem}.calendar-hero h1{color:var(--purple-bright);font-size:2.5rem}.calendar-hero p{color:var(--text-muted)}
-.calendar-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:1rem;margin:1.5rem 0}.month-card{background:var(--bg-card);border:1px solid var(--border);border-radius:14px;padding:1.2rem;transition:.25s}.month-card:hover,.month-card.current{border-color:var(--purple);box-shadow:0 0 18px rgba(168,85,247,.15)}.month-card h3{color:var(--purple-bright);margin-bottom:.3rem}.month-card small{color:var(--text-muted)}.month-card .holiday{margin-top:.7rem;color:var(--text);font-size:.9rem}.calendar-now{display:grid;grid-template-columns:1.2fr 1fr;gap:1rem}.calendar-now .big-date{font-size:2rem;color:var(--purple-bright);font-weight:700}.calc{font-size:.92rem;color:var(--text-muted);line-height:1.7}.holiday-list{display:grid;grid-template-columns:repeat(2,1fr);gap:.8rem}.holiday-item{background:var(--bg-card);border:1px solid var(--border);border-radius:12px;padding:1rem}.holiday-item strong{color:var(--purple-bright)}.moon-panel{background:linear-gradient(145deg,rgba(12,8,30,.96),rgba(31,18,52,.92));border:1px solid rgba(168,85,247,.35);border-radius:18px;padding:1.4rem;margin:1.5rem 0;box-shadow:0 12px 35px rgba(0,0,0,.28),inset 0 0 35px rgba(100,70,160,.08)}.moon-current{display:flex;align-items:center;gap:1rem}.moon-icon{font-size:3.5rem;filter:drop-shadow(0 0 14px rgba(180,160,255,.45))}.moon-current h2{margin:0;color:#d8c8ff}.moon-current p{margin:.35rem 0;color:var(--text-muted)}.moon-cycle{display:grid;grid-template-columns:repeat(4,1fr);gap:.9rem;margin-top:1.2rem}.moon-step{position:relative;overflow:hidden;min-height:190px;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;padding:1rem .7rem;text-align:center;color:#bcb3d0;border:1px solid rgba(150,120,210,.28);border-radius:14px;background:radial-gradient(circle at 50% 28%,rgba(130,100,210,.16),rgba(10,8,25,.92) 55%);box-shadow:inset 0 0 22px rgba(110,80,180,.08);transition:.25s}.moon-step:hover,.moon-step.active{transform:translateY(-3px);border-color:rgba(190,160,255,.75);box-shadow:0 0 24px rgba(150,100,255,.2),inset 0 0 25px rgba(130,90,220,.1);color:#fff}.moon-step .icon{width:92px;height:92px;display:flex;align-items:center;justify-content:center;margin:0 auto .8rem;border-radius:50%;font-size:0;background:#070611;box-shadow:0 0 20px rgba(180,160,255,.28),0 0 0 2px rgba(150,120,220,.25);position:relative}.moon-step .icon::before{content:'';width:86px;height:86px;border-radius:50%;background:radial-gradient(circle at 35% 30%,#fff 0 8%,#d9ddff 25%,#9297b8 65%,#555873 100%);box-shadow:inset -13px -8px 20px rgba(20,18,35,.55)}.moon-step:nth-child(1) .icon::before{background:#05050a;box-shadow:inset 0 0 20px #000}.moon-step:nth-child(2) .icon::before{background:linear-gradient(90deg,#05050a 0 68%,#d7dcff 69% 100%)}.moon-step:nth-child(3) .icon::before{background:linear-gradient(90deg,#05050a 0 50%,#d7dcff 51% 100%)}.moon-step:nth-child(4) .icon::before{background:linear-gradient(90deg,#05050a 0 28%,#d7dcff 29% 100%)}.moon-step:nth-child(5) .icon::before{background:radial-gradient(circle at 35% 30%,#fff 0 8%,#e8ebff 30%,#a7abc7 72%,#73778f 100%);box-shadow:0 0 22px rgba(220,220,255,.6)}.moon-step:nth-child(6) .icon{box-shadow:0 0 24px rgba(255,45,45,.5),0 0 0 2px rgba(255,60,60,.45)}.moon-step:nth-child(6) .icon::before{background:radial-gradient(circle at 35% 30%,#ff7777 0 8%,#ef3f3f 35%,#9b1717 72%,#450606 100%);box-shadow:0 0 22px rgba(255,40,40,.65),inset -13px -8px 20px rgba(30,0,0,.45)}.moon-step:nth-child(7) .icon::before{background:linear-gradient(90deg,#d7dcff 0 72%,#05050a 73% 100%)}.moon-step:nth-child(8) .icon::before{background:linear-gradient(90deg,#d7dcff 0 50%,#05050a 51% 100%)}.moon-step:nth-child(9) .icon::before{background:linear-gradient(90deg,#d7dcff 0 30%,#05050a 31% 100%)}.moon-step::after{content:'';position:absolute;inset:auto 15% 10px;height:1px;background:linear-gradient(90deg,transparent,rgba(170,140,240,.35),transparent)}.moon-step.active::after{background:linear-gradient(90deg,transparent,rgba(220,190,255,.8),transparent)}@media(max-width:800px){.moon-cycle{grid-template-columns:repeat(2,1fr)}}@media(max-width:480px){.moon-cycle{grid-template-columns:1fr}}
-@media(max-width:800px){.calendar-grid,.holiday-list,.calendar-now{grid-template-columns:1fr}}
+.calendar-hero{text-align:center;padding:2rem 0 1rem}
+.calendar-hero h1{color:var(--purple-bright);font-size:2.5rem}
+.calendar-hero p{color:var(--text-muted)}
+.calendar-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:1rem;margin:1.5rem 0}
+.month-card{background:var(--bg-card);border:1px solid var(--border);border-radius:14px;padding:1.2rem;transition:.25s}
+.month-card:hover,.month-card.current{border-color:var(--purple);box-shadow:0 0 18px rgba(168,85,247,.15)}
+.month-card h3{color:var(--purple-bright);margin-bottom:.3rem}
+.month-card small{color:var(--text-muted)}
+.month-card .holiday{margin-top:.7rem;color:var(--text);font-size:.9rem}
+.calendar-now{display:grid;grid-template-columns:1.2fr 1fr;gap:1rem}
+.calendar-now .big-date{font-size:2rem;color:var(--purple-bright);font-weight:700}
+.calc{font-size:.92rem;color:var(--text-muted);line-height:1.7}
+.holiday-list{display:grid;grid-template-columns:repeat(2,1fr);gap:.8rem}
+.holiday-item{background:var(--bg-card);border:1px solid var(--border);border-radius:12px;padding:1rem}
+.holiday-item strong{color:var(--purple-bright)}
+.holiday-item.disabled{opacity:.45}
+.moon-panel{background:linear-gradient(145deg,rgba(12,8,30,.96),rgba(31,18,52,.92));border:1px solid rgba(168,85,247,.35);border-radius:18px;padding:1.4rem;margin:1.5rem 0;box-shadow:0 12px 35px rgba(0,0,0,.28),inset 0 0 35px rgba(100,70,160,.08)}
+.moon-current{display:flex;align-items:center;gap:1rem;flex-wrap:wrap}
+.moon-icon{font-size:3.5rem;filter:drop-shadow(0 0 14px rgba(180,160,255,.45))}
+.moon-current h2{margin:0;color:#d8c8ff}
+.moon-current p{margin:.35rem 0;color:var(--text-muted)}
+.moon-meta{font-size:.88rem;color:var(--text-muted)}
+.moon-cycle{display:grid;grid-template-columns:repeat(3,1fr);gap:.9rem;margin-top:1.2rem}
+.moon-step{position:relative;overflow:hidden;min-height:160px;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;padding:1rem .7rem;text-align:center;color:#bcb3d0;border:1px solid rgba(150,120,210,.28);border-radius:14px;background:radial-gradient(circle at 50% 28%,rgba(130,100,210,.16),rgba(10,8,25,.92) 55%);box-shadow:inset 0 0 22px rgba(110,80,180,.08);transition:.25s}
+.moon-step:hover,.moon-step.active{transform:translateY(-3px);border-color:rgba(190,160,255,.75);box-shadow:0 0 24px rgba(150,100,255,.2),inset 0 0 25px rgba(130,90,220,.1);color:#fff}
+.moon-step .icon{font-size:2.6rem;line-height:1;margin-bottom:.5rem;filter:drop-shadow(0 0 10px rgba(180,160,255,.35))}
+.moon-step.active .icon{filter:drop-shadow(0 0 14px rgba(220,190,255,.7))}
+.moon-step.blood.active .icon,.moon-step.blood .icon{filter:drop-shadow(0 0 14px rgba(255,60,60,.55))}
+.entries-list{display:flex;flex-direction:column;gap:.7rem;margin-top:1rem}
+.entry-card{background:var(--bg-card);border:1px solid var(--border);border-radius:12px;padding:1rem 1.15rem;display:flex;justify-content:space-between;gap:1rem;align-items:flex-start}
+.entry-card .meta{font-size:.82rem;color:var(--text-muted);margin-bottom:.25rem}
+.entry-card h3{margin:0 0 .35rem;color:var(--purple-bright);font-size:1.05rem}
+.entry-actions{display:flex;gap:.4rem;flex-shrink:0}
+.admin-block{margin:1.5rem 0;padding:1.4rem;background:var(--bg-card);border:1px solid var(--border);border-radius:14px}
+.admin-block h2{color:var(--purple-bright);font-size:1.2rem;margin:0 0 .8rem}
+.admin-note{color:var(--text-muted);font-size:.9rem;margin-bottom:1rem}
+.admin-badge{display:inline-block;font-size:.75rem;padding:.1rem .5rem;border-radius:999px;background:rgba(168,85,247,.2);color:var(--accent-soft,#c4b5fd);margin-left:.4rem;vertical-align:middle}
+.row{display:flex;gap:.6rem;flex-wrap:wrap;align-items:center;margin-bottom:.7rem}
+.row input,.row select,.row textarea{padding:.55rem .7rem;border:1px solid var(--border);background:var(--bg-input,rgba(255,255,255,.03));color:var(--text);border-radius:8px;font:inherit}
+.row input[type=number]{width:6.5rem}
+.row textarea{width:100%;min-height:70px;resize:vertical}
+.phase-list{display:flex;flex-direction:column;gap:.5rem}
+.phase-row{display:grid;grid-template-columns:4rem 1fr 2fr 5.5rem auto;gap:.5rem;align-items:center}
+.phase-row input{width:100%;padding:.5rem .6rem;border:1px solid var(--border);background:var(--bg-input,rgba(255,255,255,.03));color:var(--text);border-radius:8px;font:inherit}
+.phase-row.head{font-size:.78rem;color:var(--text-muted);font-weight:600}
+.wstatus{font-size:.88rem;margin-top:.6rem}
+.wstatus.err{color:#fb7185}
+.wstatus.ok{color:#22c55e}
+.form-grid-2{display:grid;grid-template-columns:1fr 1fr;gap:.8rem}
+.form-grid-2 .full{grid-column:1/-1}
+.form-group label{display:block;margin-bottom:.3rem;color:var(--text-muted);font-size:.85rem}
+@media(max-width:900px){.moon-cycle{grid-template-columns:repeat(2,1fr)}.calendar-grid,.holiday-list,.calendar-now{grid-template-columns:1fr}.phase-row{grid-template-columns:3.2rem 1fr 4.5rem auto}.phase-row .pdesc{grid-column:1/-1}.form-grid-2{grid-template-columns:1fr}}
+@media(max-width:480px){.moon-cycle{grid-template-columns:1fr}}
 </style>
 </head>
-<body><div class="bg-overlay"></div>
-<header><div class="logo-wrap"><div class="logo">Chroniken</div></div>
-<nav>
-      <a href="index.html">Start</a>
-      <a href="news.html">News</a>
-      <a href="events.html">Events</a>
-      <a href="kalender.html" class="active">Kalender</a>
-      <a href="wiki.html">Wiki</a>
-      <a href="bibliothek.html">Bibliothek</a>
-      <a href="voelker.html">Völker</a>
-      <a href="berufe.html">Berufe</a>
-      <a href="kreaturen.html">Kreaturen</a>
-      <a href="regeln.html">Regeln</a>
-      <a href="goetter.html">Götter</a>
-      <a href="karte.html">Karte</a>
-      <a href="charakterbogen.html">Charakterbogen</a>
-      <a href="heilerakte.html">Heilerakte</a>
-      <a href="wetter.html" id="navWetter" data-admin-only style="display:none;">Wetter</a>
-      <a href="admin.html" id="navAdmin" data-admin-only style="display:none;">Admin</a>
-    </nav></header>
-<main>
-<section class="calendar-hero"><h1>📜 Kalender der Chroniken</h1><p>Das Jahr 1400 der Chroniken. 15 reale Tage entsprechen einem Monat der Welt.</p></section>
-<section class="calendar-now">
-<div class="card"><h3>Aktuelles Datum der Welt</h3><div class="big-date" id="gameDate">–</div><p id="holidayNow" class="calc">Lade Kalenderdaten …</p></div>
-<div class="card"><h3>Die Rechnung</h3><div class="calc"><b>1 ingame Monat = 15 reale Tage</b><br>12 Monate = 180 reale Tage pro ingame Jahr<br>30 ingame Tage pro Monat = 2 ingame Tage pro realem Tag<br><br>Der Kalender startet am <b>17.10.2026</b> mit dem <b>1. Tag des Frostmondes 1400</b>.</div></div>
-</section>
-<section class="moon-panel"><div class="moon-current"><div class="moon-icon" id="moonIcon">🌑</div><div><h2 id="moonName">Mondphase</h2><p id="moonDescription">Lade Mondphase …</p></div></div><div class="moon-cycle" id="moonCycle"></div></section><section><h2 class="page-title">Die zwölf Monde</h2><div class="calendar-grid" id="months"></div></section>
-<section><h2 class="page-title">Feste und Feiertage</h2><div class="holiday-list" id="holidays"></div></section>
+<body>
+<div class="bg-overlay"></div>
+<header>
+  <div class="logo-wrap"><div class="logo">Chroniken</div></div>
+  <nav>
+    <a href="index.html">Start</a>
+    <a href="news.html">News</a>
+    <a href="events.html">Events</a>
+    <a href="kalender.html" class="active">Kalender</a>
+    <a href="wiki.html">Wiki</a>
+    <a href="bibliothek.html">Bibliothek</a>
+    <a href="voelker.html">Völker</a>
+    <a href="berufe.html">Berufe</a>
+    <a href="kreaturen.html">Kreaturen</a>
+    <a href="regeln.html">Regeln</a>
+    <a href="goetter.html">Götter</a>
+    <a href="karte.html">Karte</a>
+    <a href="charakterbogen.html">Charakterbogen</a>
+    <a href="heilerakte.html">Heilerakte</a>
+    <a href="wetter.html" id="navWetter" data-admin-only style="display:none;">Wetter</a>
+    <a href="admin.html" id="navAdmin" data-admin-only style="display:none;">Admin</a>
+  </nav>
+</header>
+
+<main style="max-width:1100px;margin:0 auto;padding:0 1.5rem 3rem">
+  <section class="calendar-hero">
+    <h1>📜 Kalender der Chroniken</h1>
+    <p>Das Jahr der Chroniken. 15 reale Tage entsprechen einem Monat der Welt.</p>
+  </section>
+
+  <section class="calendar-now">
+    <div class="card">
+      <h3>Aktuelles Datum der Welt</h3>
+      <div class="big-date" id="gameDate">–</div>
+      <p id="holidayNow" class="calc">Lade Kalenderdaten …</p>
+    </div>
+    <div class="card">
+      <h3>Die Rechnung</h3>
+      <div class="calc">
+        <b>1 Ingame-Monat = 15 reale Tage</b><br>
+        12 Monate = 180 reale Tage pro Ingame-Jahr<br>
+        30 Ingame-Tage pro Monat = 2 Ingame-Tage pro realem Tag<br><br>
+        Start: <b>17.10.2026</b> = <b>1. Frostmond 1400</b>
+      </div>
+    </div>
+  </section>
+
+  <!-- Mond -->
+  <section class="moon-panel">
+    <div class="moon-current">
+      <div class="moon-icon" id="moonIcon">🌑</div>
+      <div style="flex:1;min-width:200px">
+        <h2 id="moonName">Mondphase</h2>
+        <p id="moonDescription">Lade Mondphase …</p>
+        <p class="moon-meta" id="moonMeta"></p>
+      </div>
+    </div>
+    <div class="moon-cycle" id="moonCycle"></div>
+  </section>
+
+  <!-- Admin: Mond steuern & bearbeiten -->
+  <section class="admin-block" id="moonAdmin" style="display:none">
+    <h2>🌙 Mond verwalten <span class="admin-badge">Admin</span></h2>
+    <p class="admin-note">Phase setzen, überspringen oder die Phasenliste bearbeiten. Speicherung läuft über MySQL (Proxy).</p>
+
+    <div class="row">
+      <select id="moonChoose" aria-label="Mondphase wählen"></select>
+      <button type="button" class="btn" id="btnMoonSet">Diese Phase setzen</button>
+      <button type="button" class="btn secondary" id="btnMoonSkip">⏭ Nächste Phase</button>
+      <button type="button" class="btn secondary" id="btnMoonReset">🔄 Natürlichen Zyklus</button>
+      <button type="button" class="btn secondary" id="btnMoonDiscord">📣 Nach Discord senden</button>
+    </div>
+
+    <div class="row" style="margin-top:.5rem">
+      <label for="phaseDaysInput" style="color:var(--text-muted);font-size:.9rem">Tage pro Phase:</label>
+      <input type="number" id="phaseDaysInput" min="1" step="1" value="15">
+      <button type="button" class="btn secondary" id="btnPhaseDays">Dauer speichern</button>
+    </div>
+
+    <h3 style="margin:1.2rem 0 .6rem;color:var(--text)">Phasen bearbeiten</h3>
+    <div class="phase-list" id="phaseList"></div>
+    <div class="row" style="margin-top:.8rem">
+      <button type="button" class="btn secondary" id="btnAddPhase">➕ Phase</button>
+      <button type="button" class="btn" id="btnSavePhases">Phasen speichern</button>
+    </div>
+    <p class="wstatus" id="moonStatus" role="status"></p>
+  </section>
+
+  <!-- Eigene Einträge -->
+  <section>
+    <h2 class="page-title">📅 Eigene Kalender-Einträge</h2>
+    <div class="entries-list" id="entriesList">
+      <p class="calc" id="entriesEmpty">Noch keine eigenen Einträge.</p>
+    </div>
+  </section>
+
+  <section class="admin-block" id="entryAdmin" style="display:none">
+    <h2>✏️ Eintrag anlegen / bearbeiten <span class="admin-badge">Admin</span></h2>
+    <form id="entryForm">
+      <input type="hidden" id="entryEditId" value="">
+      <div class="form-grid-2">
+        <div class="form-group">
+          <label>Titel *</label>
+          <input type="text" id="entryTitle" required placeholder="z. B. Markt in Silberhafen">
+        </div>
+        <div class="form-group">
+          <label>Icon (Emoji)</label>
+          <input type="text" id="entryIcon" placeholder="📌" maxlength="8">
+        </div>
+        <div class="form-group">
+          <label>Monat (0–11)</label>
+          <select id="entryMonth"></select>
+        </div>
+        <div class="form-group">
+          <label>Tag (1–30)</label>
+          <input type="number" id="entryDay" min="1" max="30" value="1">
+        </div>
+        <div class="form-group full">
+          <label>Beschreibung</label>
+          <textarea id="entryText" placeholder="Was passiert an diesem Tag?"></textarea>
+        </div>
+      </div>
+      <div class="row" style="margin-top:.8rem">
+        <button type="submit" class="btn" id="btnEntrySave">Speichern</button>
+        <button type="button" class="btn secondary" id="btnEntryCancel" style="display:none">Abbrechen</button>
+      </div>
+    </form>
+    <p class="wstatus" id="entryStatus" role="status"></p>
+  </section>
+
+  <section>
+    <h2 class="page-title">Die zwölf Monde</h2>
+    <div class="calendar-grid" id="months"></div>
+  </section>
+
+  <section>
+    <h2 class="page-title">Feste und Feiertage</h2>
+    <p class="admin-note" id="holidayAdminHint" style="display:none">Als Admin: Feiertage ein-/ausschalten (wird in MySQL gespeichert).</p>
+    <div class="holiday-list" id="holidays"></div>
+  </section>
 </main>
-<footer><p>© 2026 Kiyasha · Chroniken</p></footer>
 
-<script>
-const start=new Date('2026-10-17T00:00:00');
-const months=[
-  ['Frostmond','Der Monat des stillen Schnees'],
-  ['Eismond','Zeit der klaren Nächte'],
-  ['Tauwind','Wenn der Winter seinen Griff löst'],
-  ['Blütenmond','Erstes Erwachen der Natur'],
-  ['Sonnenhain','Monat des jungen Lichts'],
-  ['Glutmond','Die Sonne steht hoch'],
-  ['Erntemond','Zeit des Sammelns und Dankens'],
-  ['Goldlaub','Die Wälder färben sich'],
-  ['Nebelmond','Grenzen zwischen den Welten werden dünn'],
-  ['Dunkelmond','Die längsten Schatten'],
-  ['Sternenfall','Die Nächte tragen Wünsche'],
-  ['Nachtfrost','Das Jahr kehrt zur Stille zurück']
-];
-const holidays=[
-  {m:0,d:1,n:'Nacht der ersten Flamme',t:'Die erste Flamme des neuen Jahres wird entzündet.'},
-  {m:2,d:15,n:'Fest der drei Winde',t:'Ein Fest für Freiheit, Reisen und neue Wege.'},
-  {m:3,d:20,n:'Blütensegen',t:'Ein stilles Frühlingsfest zu Ehren des Lebens.'},
-  {m:5,d:15,n:'Sonnenwende der Krone',t:'Ein großer Feiertag mit Feuer, Musik und Märkten.'},
-  {m:6,d:30,n:'Danktag der Ernte',t:'Gemeinschaften teilen ihre Ernte und danken den Göttern.'},
-  {m:8,d:13,n:'Nacht des Schleiers',t:'Magier und Seher erinnern sich an die dünne Grenze zwischen den Welten.'},
-  {m:10,d:30,n:'Sternennacht',t:'Zum Ende des Jahres werden Lichter für Verstorbene und Hoffnungen entzündet.'},
-  {m:11,d:15,n:'Fuchsfeuer',t:'Ein verspieltes Fest der List, Geschichten und kleiner Streiche.'}
-];
-const moonPhases=[
-  {name:'Neumond',icon:'🌑',description:'Zeit der Stille und des Neubeginns.'},
-  {name:'Zunehmende Sichel',icon:'🌒',description:'Das Licht kehrt langsam zurück.'},
-  {name:'Halbmond',icon:'🌓',description:'Licht und Schatten halten sich die Waage.'},
-  {name:'Zunehmender Mond',icon:'🌔',description:'Die Nächte werden heller.'},
-  {name:'Vollmond',icon:'🌕',description:'Der Mond steht vollständig am Himmel.'},
-  {name:'Abnehmender Mond',icon:'🌖',description:'Das Mondlicht nimmt langsam ab.'},
-  {name:'Letzter Halbmond',icon:'🌗',description:'Die Schatten gewinnen wieder Raum.'},
-  {name:'Abnehmende Sichel',icon:'🌘',description:'Nur noch ein schmaler Lichtbogen bleibt.'}
-];
-const esc=s=>String(s??'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+<footer>
+  <p>© 2026 Kiyasha · Chroniken – Alle Rechte vorbehalten ·
+    <a href="#" class="legal-link" onclick="openLegalNotice(); return false;">Hinweis</a>
+  </p>
+</footer>
 
-function getDate(){
-  const realDays=Math.max(0,Math.floor((Date.now()-start.getTime())/86400000));
-  const totalDays=realDays*2;
-  const year=1400+Math.floor(totalDays/360);
-  const dayOfYear=totalDays%360;
-  return {year,mi:Math.floor(dayOfYear/30),day:(dayOfYear%30)+1,totalDays};
-}
-function renderMoon(totalDays){
-  const i=Math.floor((totalDays%24)/3),p=moonPhases[i];
-  document.getElementById('moonIcon').textContent=p.icon;
-  document.getElementById('moonName').textContent=p.name;
-  document.getElementById('moonDescription').textContent=p.description;
-  document.getElementById('moonCycle').innerHTML=moonPhases.map((x,n)=>
-    '<div class="moon-step '+(n===i?'active':'')+'"><span class="icon">'+x.icon+'</span>'+esc(x.name)+'</div>'
-  ).join('');
-}
-function render(){
-  const d=getDate();
-  renderMoon(d.totalDays);
-  const today=holidays.find(h=>h.m===d.mi&&h.d===d.day);
-  document.getElementById('gameDate').textContent=d.day+'. '+months[d.mi][0]+' '+d.year;
-  document.getElementById('holidayNow').innerHTML=today
-    ? '✨ <b>'+esc(today.n)+'</b><br>'+esc(today.t)
-    : 'Heute steht kein großer Feiertag im Kalender.';
-  document.getElementById('months').innerHTML=months.map((m,i)=>{
-    const entries=holidays.filter(h=>h.m===i);
-    return '<div class="month-card '+(i===d.mi?'current':'')+'"><h3>'+((i+1)+'. '+m[0])+'</h3><small>'+esc(m[1])+'</small><div class="holiday">'+
-      (entries.length?entries.map(h=>'🎉 '+h.d+'. Tag: '+esc(h.n)).join('<br>'):'Keine festgelegten Feiertage')+
-      '</div></div>';
-  }).join('');
-  document.getElementById('holidays').innerHTML=holidays.map(h=>
-    '<div class="holiday-item"><strong>'+esc(h.n)+'</strong><br>'+h.d+'. '+months[h.m][0]+'<br><span class="calc">'+esc(h.t)+'</span></div>'
-  ).join('');
-}
-render();
-setInterval(render,60000);
-</script>
-</script>
+<script src="chroniken-auth.js"></script>
+<script src="chroniken-storage.js"></script>
+<script src="chroniken-sync.js"></script>
 <script src="legal-notice.js"></script>
-</body></html>
+<script>
+(function () {
+  "use strict";
+
+  const START = new Date("2026-10-17T00:00:00").getTime();
+  const MONTHS = [
+    ["Frostmond", "Der Monat des stillen Schnees"],
+    ["Eismond", "Zeit der klaren Nächte"],
+    ["Tauwind", "Wenn der Winter seinen Griff löst"],
+    ["Blütenmond", "Erstes Erwachen der Natur"],
+    ["Sonnenhain", "Monat des jungen Lichts"],
+    ["Glutmond", "Die Sonne steht hoch"],
+    ["Erntemond", "Zeit des Sammelns und Dankens"],
+    ["Goldlaub", "Die Wälder färben sich"],
+    ["Nebelmond", "Grenzen zwischen den Welten werden dünn"],
+    ["Dunkelmond", "Die längsten Schatten"],
+    ["Sternenfall", "Die Nächte tragen Wünsche"],
+    ["Nachtfrost", "Das Jahr kehrt zur Stille zurück"]
+  ];
+
+  const DEFAULT_HOLIDAYS = [
+    { m: 0, d: 1, n: "Nacht der ersten Flamme", t: "Die erste Flamme des neuen Jahres wird entzündet." },
+    { m: 2, d: 15, n: "Fest der drei Winde", t: "Ein Fest für Freiheit, Reisen und neue Wege." },
+    { m: 3, d: 20, n: "Blütensegen", t: "Ein stilles Frühlingsfest zu Ehren des Lebens." },
+    { m: 5, d: 15, n: "Sonnenwende der Krone", t: "Ein großer Feiertag mit Feuer, Musik und Märkten." },
+    { m: 6, d: 30, n: "Danktag der Ernte", t: "Gemeinschaften teilen ihre Ernte und danken den Göttern." },
+    { m: 8, d: 13, n: "Nacht des Schleiers", t: "Magier und Seher erinnern sich an die dünne Grenze zwischen den Welten." },
+    { m: 10, d: 30, n: "Sternennacht", t: "Zum Ende des Jahres werden Lichter für Verstorbene und Hoffnungen entzündet." },
+    { m: 11, d: 15, n: "Fuchsfeuer", t: "Ein verspieltes Fest der List, Geschichten und kleiner Streiche." }
+  ];
+
+  const DEFAULT_PHASES = [
+    { name: "Neumond", icon: "🌑", description: "Zeit der Stille und des Neubeginns." },
+    { name: "Zunehmende Sichel", icon: "🌒", description: "Das Licht kehrt langsam zurück." },
+    { name: "Halbmond", icon: "🌓", description: "Licht und Schatten halten sich die Waage." },
+    { name: "Zunehmender Mond", icon: "🌔", description: "Die Nächte werden heller." },
+    { name: "Vollmond", icon: "🌕", description: "Der Mond steht vollständig am Himmel." },
+    { name: "Blutmond", icon: "🔴", description: "Ein unheilvoller roter Mond steht über den Chroniken." },
+    { name: "Abnehmender Mond", icon: "🌖", description: "Das Mondlicht nimmt langsam ab." },
+    { name: "Letzter Halbmond", icon: "🌗", description: "Die Schatten gewinnen wieder Raum." },
+    { name: "Abnehmende Sichel", icon: "🌘", description: "Nur noch ein schmaler Lichtbogen bleibt." }
+  ];
+
+  const PROXY = "https://chronikenweb-1.onrender.com";
+  const AUTH_KEY = "portal_admin_auth";
+  const TOKEN_KEY = "chroniken_discord_token";
+
+  let calendarEntries = [];
+  let disabledHolidays = [];
+  let moonState = null;
+  let phasesDirty = false;
+
+  function el(id) { return document.getElementById(id); }
+  function esc(s) {
+    return String(s ?? "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+  }
+  function isAdmin() {
+    try { return sessionStorage.getItem(AUTH_KEY) === "1"; } catch (e) { return false; }
+  }
+  function token() {
+    try { return sessionStorage.getItem(TOKEN_KEY) || ""; } catch (e) { return ""; }
+  }
+  function proxyBase() {
+    try {
+      const s = localStorage.getItem("chroniken_discord_proxy_url");
+      if (s && s.trim()) return s.trim().replace(/\/$/, "");
+    } catch (e) {}
+    return PROXY;
+  }
+
+  function holidayKey(h) {
+    return h.m + "-" + h.d + "-" + h.n;
+  }
+
+  function getGameDate(now) {
+    now = now == null ? Date.now() : now;
+    const realDays = Math.max(0, Math.floor((now - START) / 86400000));
+    const totalDays = realDays * 2;
+    const year = 1400 + Math.floor(totalDays / 360);
+    const dayOfYear = totalDays % 360;
+    return {
+      year,
+      mi: Math.floor(dayOfYear / 30),
+      day: (dayOfYear % 30) + 1,
+      totalDays,
+      realDays
+    };
+  }
+
+  function normalizeMoon(raw) {
+    raw = raw && typeof raw === "object" ? raw : {};
+    let phases = Array.isArray(raw.phases) && raw.phases.length
+      ? raw.phases.map(function (p) {
+          return {
+            name: String(p.name || "").trim() || "Unbenannt",
+            icon: String(p.icon || "").trim() || "🌑",
+            description: String(p.description || "").trim()
+          };
+        })
+      : DEFAULT_PHASES.slice();
+    return {
+      phases: phases,
+      phaseDays: Math.max(1, Math.round(Number(raw.phaseDays) || 15)),
+      start: Number(raw.start) || START,
+      forcedIndex: raw.forcedIndex == null || raw.forcedIndex === "" ? null : Math.max(0, Math.floor(Number(raw.forcedIndex))),
+      forcedAt: Number(raw.forcedAt) || 0,
+      updatedAt: Number(raw.updatedAt) || 0
+    };
+  }
+
+  function computeMoon(st, now) {
+    st = st || moonState || normalizeMoon(null);
+    now = now == null ? Date.now() : now;
+    const phaseMs = st.phaseDays * 86400000;
+    const n = st.phases.length || 1;
+    let index, phaseStart, nextAt, forced;
+
+    if (st.forcedIndex != null && st.forcedAt > 0) {
+      const elapsed = Math.max(0, now - st.forcedAt);
+      const steps = Math.floor(elapsed / phaseMs);
+      index = (st.forcedIndex + steps) % n;
+      phaseStart = st.forcedAt + steps * phaseMs;
+      nextAt = phaseStart + phaseMs;
+      forced = steps === 0;
+    } else {
+      const elapsed = Math.max(0, now - st.start);
+      const phaseIndex = Math.floor(elapsed / phaseMs);
+      index = phaseIndex % n;
+      phaseStart = st.start + phaseIndex * phaseMs;
+      nextAt = phaseStart + phaseMs;
+      forced = false;
+    }
+
+    const p = st.phases[index] || st.phases[0];
+    return {
+      index: index,
+      name: p.name,
+      icon: p.icon,
+      description: p.description,
+      phaseStart: phaseStart,
+      nextAt: nextAt,
+      phaseDays: st.phaseDays,
+      forced: forced,
+      msNext: Math.max(0, nextAt - now)
+    };
+  }
+
+  function formatCountdown(ms) {
+    const t = Math.max(0, Math.floor(ms / 1000));
+    const d = Math.floor(t / 86400);
+    const h = Math.floor((t % 86400) / 3600);
+    const m = Math.floor((t % 3600) / 60);
+    const s = t % 60;
+    const hms = [h, m, s].map(function (x) { return String(x).padStart(2, "0"); }).join(":");
+    return d ? d + "T " + hms : hms;
+  }
+
+  /* ---------- Laden / Speichern (MySQL über ChronikenStorage) ---------- */
+
+  async function loadAll() {
+    if (!window.ChronikenStorage) {
+      moonState = normalizeMoon(null);
+      calendarEntries = [];
+      disabledHolidays = [];
+      return;
+    }
+    try {
+      const [cal, dis, moon] = await Promise.all([
+        ChronikenStorage.load("calendar"),
+        ChronikenStorage.load("disabledHolidays"),
+        ChronikenStorage.load("moon")
+      ]);
+      calendarEntries = Array.isArray(cal) ? cal : [];
+      disabledHolidays = Array.isArray(dis) ? dis : [];
+      moonState = normalizeMoon(moon && typeof moon === "object" && !Array.isArray(moon) ? moon : null);
+    } catch (e) {
+      console.warn("[Kalender] Laden:", e);
+      moonState = normalizeMoon(null);
+      calendarEntries = [];
+      disabledHolidays = [];
+    }
+  }
+
+  async function saveMoon(next) {
+    if (!window.ChronikenStorage) throw new Error("ChronikenStorage fehlt");
+    next = normalizeMoon(next);
+    next.updatedAt = Date.now();
+    await ChronikenStorage.save("moon", next);
+    moonState = next;
+    return next;
+  }
+
+  async function saveCalendar(list) {
+    if (!window.ChronikenStorage) throw new Error("ChronikenStorage fehlt");
+    list = Array.isArray(list) ? list : [];
+    await ChronikenStorage.save("calendar", list);
+    calendarEntries = list;
+    return list;
+  }
+
+  async function saveDisabled(list) {
+    if (!window.ChronikenStorage) throw new Error("ChronikenStorage fehlt");
+    list = Array.isArray(list) ? list : [];
+    await ChronikenStorage.save("disabledHolidays", list);
+    disabledHolidays = list;
+    return list;
+  }
+
+  /* ---------- Render ---------- */
+
+  function renderMoon() {
+    const m = computeMoon(moonState);
+    el("moonIcon").textContent = m.icon;
+    el("moonName").textContent = m.name + (m.forced ? " (gesetzt)" : "");
+    el("moonDescription").textContent = m.description;
+    el("moonMeta").textContent = "Nächster Wechsel in " + formatCountdown(m.msNext) +
+      " · " + m.phaseDays + " Tage pro Phase";
+
+    const phases = (moonState && moonState.phases) || DEFAULT_PHASES;
+    el("moonCycle").innerHTML = phases.map(function (p, i) {
+      const blood = /blut/i.test(p.name) ? " blood" : "";
+      return '<div class="moon-step' + (i === m.index ? " active" : "") + blood + '">' +
+        '<span class="icon">' + esc(p.icon) + "</span>" + esc(p.name) + "</div>";
+    }).join("");
+  }
+
+  function renderDate() {
+    const d = getGameDate();
+    el("gameDate").textContent = d.day + ". " + MONTHS[d.mi][0] + " " + d.year;
+
+    const activeHolidays = DEFAULT_HOLIDAYS.filter(function (h) {
+      return disabledHolidays.indexOf(holidayKey(h)) < 0;
+    });
+    const todayH = activeHolidays.find(function (h) { return h.m === d.mi && h.d === d.day; });
+    const todayE = calendarEntries.filter(function (e) {
+      return Number(e.month) === d.mi && Number(e.day) === d.day;
+    });
+
+    let html = "";
+    if (todayH) html += "✨ <b>" + esc(todayH.n) + "</b><br>" + esc(todayH.t);
+    todayE.forEach(function (e) {
+      html += (html ? "<br><br>" : "") + (e.icon || "📌") + " <b>" + esc(e.title) + "</b>";
+      if (e.text) html += "<br>" + esc(e.text);
+    });
+    if (!html) html = "Heute steht kein besonderer Eintrag im Kalender.";
+    el("holidayNow").innerHTML = html;
+  }
+
+  function renderMonths() {
+    const d = getGameDate();
+    el("months").innerHTML = MONTHS.map(function (m, i) {
+      const hols = DEFAULT_HOLIDAYS.filter(function (h) {
+        return h.m === i && disabledHolidays.indexOf(holidayKey(h)) < 0;
+      });
+      const ents = calendarEntries.filter(function (e) { return Number(e.month) === i; });
+      let lines = hols.map(function (h) { return "🎉 " + h.d + ". Tag: " + esc(h.n); });
+      ents.forEach(function (e) {
+        lines.push((e.icon || "📌") + " " + e.day + ". Tag: " + esc(e.title));
+      });
+      return '<div class="month-card' + (i === d.mi ? " current" : "") + '">' +
+        "<h3>" + (i + 1) + ". " + m[0] + "</h3>" +
+        "<small>" + esc(m[1]) + "</small>" +
+        '<div class="holiday">' + (lines.length ? lines.join("<br>") : "Keine Einträge") + "</div></div>";
+    }).join("");
+  }
+
+  function renderHolidays() {
+    const admin = isAdmin();
+    el("holidayAdminHint").style.display = admin ? "" : "none";
+    el("holidays").innerHTML = DEFAULT_HOLIDAYS.map(function (h) {
+      const key = holidayKey(h);
+      const off = disabledHolidays.indexOf(key) >= 0;
+      let btn = "";
+      if (admin) {
+        btn = '<div style="margin-top:.5rem"><button type="button" class="btn secondary" data-toggle-holiday="' +
+          esc(key) + '">' + (off ? "Wieder aktivieren" : "Deaktivieren") + "</button></div>";
+      }
+      return '<div class="holiday-item' + (off ? " disabled" : "") + '">' +
+        "<strong>" + esc(h.n) + (off ? " (aus)" : "") + "</strong><br>" +
+        h.d + ". " + MONTHS[h.m][0] +
+        '<br><span class="calc">' + esc(h.t) + "</span>" + btn + "</div>";
+    }).join("");
+  }
+
+  function renderEntries() {
+    const admin = isAdmin();
+    if (!calendarEntries.length) {
+      el("entriesList").innerHTML = '<p class="calc" id="entriesEmpty">Noch keine eigenen Einträge.</p>';
+      return;
+    }
+    const sorted = calendarEntries.slice().sort(function (a, b) {
+      return (a.month - b.month) || (a.day - b.day);
+    });
+    el("entriesList").innerHTML = sorted.map(function (e) {
+      const actions = admin
+        ? '<div class="entry-actions">' +
+          '<button type="button" class="btn secondary" data-edit-entry="' + esc(e.id) + '">✏️</button>' +
+          '<button type="button" class="btn danger" data-del-entry="' + esc(e.id) + '">🗑️</button></div>'
+        : "";
+      return '<div class="entry-card">' +
+        "<div><div class=\"meta\">" + (e.icon || "📌") + " " + e.day + ". " + MONTHS[e.month][0] + "</div>" +
+        "<h3>" + esc(e.title) + "</h3>" +
+        (e.text ? "<p class=\"calc\">" + esc(e.text) + "</p>" : "") +
+        "</div>" + actions + "</div>";
+    }).join("");
+  }
+
+  function renderAdminMoon() {
+    if (!isAdmin()) {
+      el("moonAdmin").style.display = "none";
+      el("entryAdmin").style.display = "none";
+      return;
+    }
+    el("moonAdmin").style.display = "";
+    el("entryAdmin").style.display = "";
+
+    const st = moonState || normalizeMoon(null);
+    const cur = computeMoon(st);
+
+    el("moonChoose").innerHTML = st.phases.map(function (p, i) {
+      return '<option value="' + i + '"' + (i === cur.index ? " selected" : "") + ">" +
+        esc(p.icon + " " + p.name) + "</option>";
+    }).join("");
+
+    if (document.activeElement !== el("phaseDaysInput")) {
+      el("phaseDaysInput").value = st.phaseDays;
+    }
+
+    if (!phasesDirty) {
+      el("phaseList").innerHTML =
+        '<div class="phase-row head"><span>Icon</span><span>Name</span><span class="pdesc">Beschreibung</span><span></span><span></span></div>' +
+        st.phases.map(function (p) {
+          return '<div class="phase-row">' +
+            '<input class="picon" value="' + esc(p.icon) + '" aria-label="Icon">' +
+            '<input class="pname" value="' + esc(p.name) + '" placeholder="Name">' +
+            '<input class="pdesc" value="' + esc(p.description) + '" placeholder="Beschreibung">' +
+            '<button type="button" class="btn danger" data-del-phase title="Löschen">✕</button></div>';
+        }).join("");
+    }
+
+    // Monat-Select für Einträge
+    if (!el("entryMonth").options.length) {
+      el("entryMonth").innerHTML = MONTHS.map(function (m, i) {
+        return '<option value="' + i + '">' + (i + 1) + ". " + m[0] + "</option>";
+      }).join("");
+    }
+  }
+
+  function renderAll() {
+    renderMoon();
+    renderDate();
+    renderMonths();
+    renderHolidays();
+    renderEntries();
+    renderAdminMoon();
+  }
+
+  function setMoonStatus(text, kind) {
+    el("moonStatus").textContent = text || "";
+    el("moonStatus").className = "wstatus" + (kind ? " " + kind : "");
+  }
+  function setEntryStatus(text, kind) {
+    el("entryStatus").textContent = text || "";
+    el("entryStatus").className = "wstatus" + (kind ? " " + kind : "");
+  }
+
+  function readPhasesFromForm() {
+    return Array.from(el("phaseList").querySelectorAll(".phase-row:not(.head)")).map(function (r) {
+      return {
+        name: r.querySelector(".pname").value.trim(),
+        icon: r.querySelector(".picon").value.trim() || "🌑",
+        description: r.querySelector(".pdesc").value.trim()
+      };
+    }).filter(function (p) { return p.name; });
+  }
+
+  /* ---------- Admin-Aktionen ---------- */
+
+  async function runMoon(label, fn) {
+    setMoonStatus(label + " …");
+    try {
+      await fn();
+      phasesDirty = false;
+      renderAll();
+      setMoonStatus("✓ Gespeichert (MySQL).", "ok");
+    } catch (e) {
+      setMoonStatus("Fehler: " + (e.message || e), "err");
+    }
+  }
+
+  el("btnMoonSet").addEventListener("click", function () {
+    runMoon("Phase setzen", async function () {
+      const idx = parseInt(el("moonChoose").value, 10);
+      const st = normalizeMoon(moonState);
+      st.forcedIndex = idx;
+      st.forcedAt = Date.now();
+      await saveMoon(st);
+    });
+  });
+
+  el("btnMoonSkip").addEventListener("click", function () {
+    runMoon("Nächste Phase", async function () {
+      const cur = computeMoon(moonState);
+      const st = normalizeMoon(moonState);
+      const n = st.phases.length || 1;
+      st.forcedIndex = (cur.index + 1) % n;
+      st.forcedAt = Date.now();
+      await saveMoon(st);
+    });
+  });
+
+  el("btnMoonReset").addEventListener("click", function () {
+    runMoon("Zyklus zurücksetzen", async function () {
+      const st = normalizeMoon(moonState);
+      st.forcedIndex = null;
+      st.forcedAt = 0;
+      await saveMoon(st);
+    });
+  });
+
+  el("btnPhaseDays").addEventListener("click", function () {
+    runMoon("Dauer speichern", async function () {
+      const st = normalizeMoon(moonState);
+      st.phaseDays = Math.max(1, Math.round(Number(el("phaseDaysInput").value) || 15));
+      await saveMoon(st);
+    });
+  });
+
+  el("btnSavePhases").addEventListener("click", function () {
+    runMoon("Phasen speichern", async function () {
+      const list = readPhasesFromForm();
+      if (!list.length) throw new Error("Mindestens eine Phase nötig.");
+      const st = normalizeMoon(moonState);
+      st.phases = list;
+      if (st.forcedIndex != null && st.forcedIndex >= list.length) {
+        st.forcedIndex = list.length - 1;
+      }
+      await saveMoon(st);
+    });
+  });
+
+  el("btnAddPhase").addEventListener("click", function () {
+    phasesDirty = true;
+    const row = document.createElement("div");
+    row.className = "phase-row";
+    row.innerHTML =
+      '<input class="picon" value="🌑" aria-label="Icon">' +
+      '<input class="pname" value="" placeholder="Name">' +
+      '<input class="pdesc" value="" placeholder="Beschreibung">' +
+      '<button type="button" class="btn danger" data-del-phase title="Löschen">✕</button>';
+    el("phaseList").appendChild(row);
+  });
+
+  el("phaseList").addEventListener("click", function (ev) {
+    const btn = ev.target.closest("[data-del-phase]");
+    if (!btn) return;
+    phasesDirty = true;
+    const row = btn.closest(".phase-row");
+    if (row) row.remove();
+  });
+
+  el("phaseList").addEventListener("input", function () {
+    phasesDirty = true;
+  });
+
+  el("btnMoonDiscord").addEventListener("click", async function () {
+    setMoonStatus("Sende an Discord …");
+    try {
+      const t = token();
+      if (!t) throw new Error("Bitte mit Discord anmelden.");
+      const r = await fetch(proxyBase() + "/weather/moon-send", {
+        method: "POST",
+        headers: { Authorization: "Bearer " + t, "Content-Type": "application/json" },
+        body: "{}"
+      });
+      const d = await r.json().catch(function () { return {}; });
+      if (!r.ok || !d.ok) throw new Error(d.error || ("Status " + r.status));
+      setMoonStatus("✓ Discord benachrichtigt.", "ok");
+    } catch (e) {
+      setMoonStatus("Fehler: " + (e.message || e), "err");
+    }
+  });
+
+  /* ---------- Kalender-Einträge ---------- */
+
+  el("entryForm").addEventListener("submit", async function (ev) {
+    ev.preventDefault();
+    setEntryStatus("Speichern …");
+    try {
+      const id = el("entryEditId").value || ("c_" + Date.now() + "_" + Math.random().toString(36).slice(2, 6));
+      const entry = {
+        id: id,
+        title: el("entryTitle").value.trim(),
+        icon: el("entryIcon").value.trim() || "📌",
+        month: Math.max(0, Math.min(11, parseInt(el("entryMonth").value, 10) || 0)),
+        day: Math.max(1, Math.min(30, parseInt(el("entryDay").value, 10) || 1)),
+        text: el("entryText").value.trim(),
+        updatedAt: Date.now()
+      };
+      if (!entry.title) throw new Error("Titel fehlt.");
+      const list = calendarEntries.filter(function (x) { return x.id !== id; }).concat([entry]);
+      await saveCalendar(list);
+      el("entryForm").reset();
+      el("entryEditId").value = "";
+      el("btnEntryCancel").style.display = "none";
+      renderAll();
+      setEntryStatus("✓ Eintrag gespeichert (MySQL).", "ok");
+    } catch (e) {
+      setEntryStatus("Fehler: " + (e.message || e), "err");
+    }
+  });
+
+  el("btnEntryCancel").addEventListener("click", function () {
+    el("entryForm").reset();
+    el("entryEditId").value = "";
+    el("btnEntryCancel").style.display = "none";
+    setEntryStatus("");
+  });
+
+  document.addEventListener("click", async function (ev) {
+    const editBtn = ev.target.closest("[data-edit-entry]");
+    if (editBtn) {
+      const id = editBtn.getAttribute("data-edit-entry");
+      const e = calendarEntries.find(function (x) { return x.id === id; });
+      if (!e) return;
+      el("entryEditId").value = e.id;
+      el("entryTitle").value = e.title || "";
+      el("entryIcon").value = e.icon || "";
+      el("entryMonth").value = String(e.month);
+      el("entryDay").value = e.day;
+      el("entryText").value = e.text || "";
+      el("btnEntryCancel").style.display = "";
+      el("entryAdmin").scrollIntoView({ behavior: "smooth", block: "start" });
+      return;
+    }
+
+    const delBtn = ev.target.closest("[data-del-entry]");
+    if (delBtn) {
+      const id = delBtn.getAttribute("data-del-entry");
+      if (!confirm("Eintrag wirklich löschen?")) return;
+      try {
+        await saveCalendar(calendarEntries.filter(function (x) { return x.id !== id; }));
+        renderAll();
+        setEntryStatus("✓ Gelöscht.", "ok");
+      } catch (e) {
+        setEntryStatus("Fehler: " + (e.message || e), "err");
+      }
+      return;
+    }
+
+    const holBtn = ev.target.closest("[data-toggle-holiday]");
+    if (holBtn) {
+      const key = holBtn.getAttribute("data-toggle-holiday");
+      let next = disabledHolidays.slice();
+      const i = next.indexOf(key);
+      if (i >= 0) next.splice(i, 1);
+      else next.push(key);
+      try {
+        await saveDisabled(next);
+        renderAll();
+      } catch (e) {
+        alert("Fehler: " + (e.message || e));
+      }
+    }
+  });
+
+  /* ---------- Start ---------- */
+
+  async function boot() {
+    await loadAll();
+    // Wenn noch nie Mond in DB: Defaults speichern (nur Admin)
+    if (isAdmin() && moonState && !moonState.updatedAt) {
+      try {
+        await saveMoon(normalizeMoon({ phases: DEFAULT_PHASES, phaseDays: 15, start: START }));
+      } catch (e) { /* ok wenn nicht Admin-Token */ }
+    }
+    renderAll();
+  }
+
+  boot();
+  setInterval(function () {
+    renderMoon();
+    renderDate();
+  }, 1000);
+
+  // Auth-Änderungen (Discord-Login) → Admin-UI neu
+  document.addEventListener("chroniken-auth-changed", function () {
+    renderAll();
+  });
+})();
+</script>
+</body>
+</html>
