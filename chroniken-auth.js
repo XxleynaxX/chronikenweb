@@ -15,7 +15,6 @@
   const TOKEN_KEY = "chroniken_discord_token";
   const NAME_KEY = "chroniken_discord_name";
   const HANDOFF_KEY = "chroniken_auth_handoff";
-  const TEST_ADMIN_KEY = "chroniken_test_admin";
   const POPUP_PARAM = "discord_popup";
   const DEFAULT_PROXY = "https://chronikenweb-1.onrender.com";
 
@@ -36,7 +35,7 @@
 
   function clear() {
     try {
-      [ADMIN_KEY, LIB_KEY, HEALER_KEY, TOKEN_KEY, NAME_KEY, TEST_ADMIN_KEY,
+      [ADMIN_KEY, LIB_KEY, HEALER_KEY, TOKEN_KEY, NAME_KEY,
        "chroniken_discord_roles", "discord_roles", "discord_username", "portal_discord_user"
       ].forEach(function (k) { sessionStorage.removeItem(k); });
     } catch (e) {}
@@ -122,29 +121,6 @@
   function redirectLogin() {
     setLoading(true, "Weiterleitung zu Discord …");
     location.href = proxyBase() + "/auth/login?return=" + encodeURIComponent(pageUrl());
-  }
-
-  async function passwordLogin(password) {
-    const value = String(password || "");
-    if (!value) throw new Error("Bitte Passwort eingeben.");
-    const res = await fetch(proxyBase() + "/auth/password", {
-      method: "POST",
-      headers: { "Content-Type": "application/json", "Cache-Control": "no-store" },
-      cache: "no-store",
-      body: JSON.stringify({ password: value })
-    });
-    const data = await res.json().catch(function () { return {}; });
-    if (!res.ok || !data.ok || !data.token) {
-      throw new Error(data.error || "Passwort-Login fehlgeschlagen.");
-    }
-    try { localStorage.removeItem(LOGOUT_KEY); } catch (e) {}
-    sessionStorage.setItem(TOKEN_KEY, data.token);
-    sessionStorage.setItem(NAME_KEY, "Admin");
-    sessionStorage.setItem(ADMIN_KEY, "1");
-    sessionStorage.setItem(LIB_KEY, "1");
-    sessionStorage.setItem(HEALER_KEY, "1");
-    sessionStorage.removeItem(TEST_ADMIN_KEY);
-    location.href = "admin.html";
   }
 
   async function login() {
@@ -343,7 +319,7 @@
     }
   });
 
-  global.ChronikenAuth = { syncAdminNav: syncAdminNav, login: login, passwordLogin: passwordLogin, clear: clear, logout: logout, name: name };
+  global.ChronikenAuth = { syncAdminNav: syncAdminNav, login: login, clear: clear, logout: logout, name: name };
   function start() {
     syncAdminNav();
     navWidget();
