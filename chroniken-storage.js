@@ -12,6 +12,7 @@
   // ---------- Konfiguration (nur hier ändern) ----------
   const DEFAULT_PROXY = "https://chronikenweb-1.onrender.com";
   const TOKEN_KEY = "chroniken_discord_token";   // gleiche Quelle wie chroniken-auth.js
+  const TEST_ADMIN_KEY = "chroniken_test_admin";
   const REQUEST_TIMEOUT_MS = 45000;               // Render-Free-Instanzen brauchen beim Aufwecken lange
 
   function apiBase() {
@@ -27,6 +28,29 @@
 
   function authToken() {
     try { return sessionStorage.getItem(TOKEN_KEY) || ""; } catch (e) { return ""; }
+  }
+
+  function isTestAdmin() {
+    try {
+      return sessionStorage.getItem(TEST_ADMIN_KEY) === "1" &&
+             sessionStorage.getItem("portal_admin_auth") === "1";
+    } catch (e) { return false; }
+  }
+
+  function testDataKey(dbKey) {
+    return "chroniken_test_data_" + dbKey;
+  }
+
+  function readTestData(dbKey) {
+    if (!isTestAdmin()) return undefined;
+    try {
+      const raw = localStorage.getItem(testDataKey(dbKey));
+      return raw === null ? undefined : JSON.parse(raw);
+    } catch (e) { return undefined; }
+  }
+
+  function writeTestData(dbKey, value) {
+    try { localStorage.setItem(testDataKey(dbKey), JSON.stringify(value)); } catch (e) {}
   }
 
   /**
@@ -132,6 +156,12 @@
   async function load(name) {
     const dbKey = toDbKey(name);
 
+    const localTestValue = readTestData(dbKey);
+    if (localTestValue !== undefined) {
+      cache[dbKey] = localTestValue;
+      return localTestValue;
+    }
+
     if (Object.prototype.hasOwnProperty.call(cache, dbKey)) {
       return cache[dbKey];
     }
@@ -151,6 +181,15 @@
   async function save(name, value) {
     const dbKey = toDbKey(name);
     const normalized = value === undefined ? emptyValue(name) : value;
+
+    // Temporärer Passwort-Admin: Änderungen bleiben lokal im Browser,
+    // damit der Testzugang auch ohne gültigen Discord-Token arbeiten kann.
+    if (isTestAdmin()) {
+      writeTestData(dbKey, normalized);
+      cache[dbKey] = normalized;
+      console.info("[ChronikenStorage] Test-Admin lokal gespeichert:", dbKey);
+      return normalized;
+    }
 
     try {
       await request("/data/" + encodeURIComponent(dbKey), {
