@@ -24,8 +24,6 @@
     chars: KEYS.filter(function (k) { return BIN_OF[k] === "chars"; })
   };
   const AUTH_KEY = "portal_admin_auth";
-  let supabase = null;
-  let supabaseReady = null;
 
   const script = document.currentScript;
   const reloadOnChange = !!(script && script.hasAttribute("data-reload-on-change"));
@@ -70,30 +68,27 @@
   }
 
   async function fetchRemote() {
-    const client = await initSupabase();
-    const { data, error } = await client.from("chroniken_data").select("key,value");
-    if (error) throw new Error("Supabase lesen fehlgeschlagen: " + error.message);
+    if (!global.ChronikenStorage) {
+      throw new Error("ChronikenStorage ist nicht geladen.");
+    }
+
     const out = {};
-    (data || []).forEach(function (row) {
-      const logical = Object.keys(DB_KEY_OF).find(function (k) { return DB_KEY_OF[k] === row.key; });
-      if (logical) out[logical] = Array.isArray(row.value) ? row.value : [];
-      else out[row.key] = Array.isArray(row.value) ? row.value : row.value;
-    });
+    for (const name of Object.keys(DB_KEY_OF)) {
+      out[name] = await global.ChronikenStorage.load(name);
+    }
     return out;
   }
 
   async function putRemote(record, bin) {
-    const client = await initSupabase();
+    if (!global.ChronikenStorage) {
+      throw new Error("ChronikenStorage ist nicht geladen.");
+    }
+
     const keys = BIN_KEYS[bin || "main"];
-    const rows = keys.map(function (k) {
-      return {
-        key: DB_KEY_OF[k] || k,
-        value: Array.isArray(record[k]) ? record[k] : [],
-        updated_at: new Date().toISOString()
-      };
-    });
-    const { error } = await client.from("chroniken_data").upsert(rows, { onConflict: "key" });
-    if (error) throw new Error("Supabase speichern fehlgeschlagen: " + error.message);
+    for (const k of keys) {
+      const value = Array.isArray(record[k]) ? record[k] : [];
+      await global.ChronikenStorage.save(k, value);
+    }
     return { ok: true };
   }
 
