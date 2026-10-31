@@ -163,6 +163,68 @@
     return load(name);
   }
 
+  // Einmaliger Import vorhandener Browser-Daten nach Supabase.
+  // Bereits vorhandene Supabase-Daten werden standardmäßig nicht überschrieben.
+  async function importLocalStorage(options) {
+    options = options || {};
+    const overwrite = options.overwrite === true;
+    const keys = [
+      "characters", "characterSheets", "events", "birthdays", "calendar",
+      "disabledHolidays", "voelker", "berufe", "goetter", "kreaturen",
+      "bibliothek", "wiki", "regeln", "heiler", "weather", "news", "map",
+      "characterEvents"
+    ];
+
+    const report = { imported: [], skipped: [], empty: [], failed: [] };
+    const sb = await init();
+    const { data: rows, error: readError } = await sb
+      .from("chroniken_data")
+      .select("key,value");
+
+    if (readError) {
+      throw new Error("Supabase-Import konnte die Datenbank nicht lesen: " + readError.message);
+    }
+
+    const existing = Object.create(null);
+    (rows || []).forEach(function (row) { existing[row.key] = row.value; });
+
+    function readBrowserValue(name) {
+      try {
+        const raw = localStorage.getItem(name);
+        if (raw !== null) return JSON.parse(raw);
+      } catch (e) {}
+      return undefined;
+    }
+
+    for (const name of keys) {
+      const dbKey = DB_KEY[name] || name;
+      const localValue = readBrowserValue(name);
+
+      if (localValue === undefined || localValue === null ||
+          (Array.isArray(localValue) && localValue.length === 0)) {
+        report.empty.push(name);
+        continue;
+      }
+
+      if (!overwrite && Object.prototype.hasOwnProperty.call(existing, dbKey) &&
+          existing[dbKey] !== null && existing[dbKey] !== undefined &&
+          !(Array.isArray(existing[dbKey]) && existing[dbKey].length === 0)) {
+        report.skipped.push(name);
+        continue;
+      }
+
+      try {
+        const saved = await save(name, localValue);
+        existing[dbKey] = saved;
+        report.imported.push(name);
+      } catch (err) {
+        report.failed.push({ key: name, error: err.message || String(err) });
+      }
+    }
+
+    return report;
+  }
+
   async function ensureMain() {
     const all = await fetchAll();
 
@@ -229,6 +291,7 @@
     save: save,
     refresh: refresh,
     ensureNamed: ensureNamed,
+    importLocalStorage: importLocalStorage,
     ensureMain: ensureMain,
     ensureHealer: ensureHealer,
     ensureMap: ensureMap,
