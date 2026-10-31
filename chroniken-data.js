@@ -115,17 +115,28 @@
   /**
    * Speichert lokal + (falls shared) asynchron zu Supabase.
    */
-  function save(key, arr) {
+  async function save(key, arr) {
     const data = Array.isArray(arr) ? arr : [];
     memCache[key] = data;
     saveToLocal(key, data);
 
-    if (SHARED_KEYS.includes(key) && window.ChronikenStorage) {
-      // Im Hintergrund speichern, UI blockiert nicht
-      ChronikenStorage.save(key, data).catch(err => {
-        console.warn("Supabase-Save für", key, "fehlgeschlagen:", err);
-      });
+    if (SHARED_KEYS.includes(key)) {
+      if (!window.ChronikenStorage) {
+        throw new Error("ChronikenStorage ist noch nicht geladen.");
+      }
+
+      try {
+        const saved = await ChronikenStorage.save(key, data);
+        memCache[key] = Array.isArray(saved) ? saved : data;
+        saveToLocal(key, memCache[key]);
+        return clone(memCache[key]);
+      } catch (err) {
+        console.error("[ChronikenData] Supabase-Save fehlgeschlagen:", key, err);
+        throw err;
+      }
     }
+
+    return clone(data);
   }
 
   function resetDefaults(key) {
