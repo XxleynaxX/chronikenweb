@@ -36,6 +36,7 @@ INSERT INTO chroniken_data (`key`, `value`, label, description) VALUES
   ('calendar',          JSON_ARRAY(),  'Kalender',               'Eigene Kalendereinträge'),
   ('disabled_holidays', JSON_ARRAY(),  'Deaktivierte Feiertage', 'Feiertage die ausgeblendet werden'),
   ('weather',           JSON_OBJECT(), 'Wetter',                 'Aktuelles Fantasy-Wetter (Objekt)'),
+  ('moon',              JSON_OBJECT(), 'Mond',                   'Mondphasen und Zyklus-Zustand (Objekt)'),
   ('characters',        JSON_ARRAY(),  'Charakter-Register',     'Öffentliches Charakter-Register'),
   ('character_sheets',  JSON_ARRAY(),  'Charakterbögen',         'Ausgefüllte Charakterbögen'),
   ('healer_records',    JSON_ARRAY(),  'Heilerakten',            'Medizinische RP-Aufzeichnungen'),
