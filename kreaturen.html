@@ -199,6 +199,28 @@
       sky: [],
       demons: []
     };
+    // Die Datenbank (Key "creatures") erwartet ein ARRAY. Intern arbeitet die Seite mit
+    // einem Objekt {kategorie:[...]}. Beim Speichern/Laden wird deshalb umgewandelt.
+    function toRemote(d){
+      const out=[];
+      Object.keys(d||{}).forEach(cat=>{
+        if(!Array.isArray(d[cat])) return;
+        d[cat].forEach(item=>out.push(Object.assign({}, item, {category:cat})));
+      });
+      return out;
+    }
+    function fromRemote(remote){
+      // Altes Format (Objekt) weiter akzeptieren
+      if(remote && typeof remote==="object" && !Array.isArray(remote)) return remote;
+      const d={}; Object.keys(DEFAULT_DATA).forEach(k=>d[k]=[]);
+      (Array.isArray(remote)?remote:[]).forEach(item=>{
+        if(!item||typeof item!=="object") return;
+        const cat=item.category&&Object.prototype.hasOwnProperty.call(d,item.category)?item.category:"beasts";
+        const copy=Object.assign({},item); delete copy.category;
+        d[cat].push(copy);
+      });
+      return d;
+    }
     const esc = ChronikenData.esc;
     let editCategory = null, editIndex = null;
     const el = id => document.getElementById(id);
@@ -228,7 +250,7 @@
       localStorage.setItem(STORAGE_KEY, JSON.stringify(d));
       // Im Hintergrund in die Datenbank
       if (window.ChronikenStorage) {
-        ChronikenStorage.save("kreaturen", d).catch(err => console.warn("Kreaturen Speichern fehlgeschlagen:", err));
+        ChronikenStorage.save("kreaturen", toRemote(d)).catch(err => console.warn("Kreaturen Speichern fehlgeschlagen:", err));
       }
     }
     function formatLore(text) {
@@ -297,7 +319,7 @@
           window._kreaturenCache = d;
           localStorage.setItem(STORAGE_KEY, JSON.stringify(d));
           if (window.ChronikenStorage) {
-            ChronikenStorage.save("kreaturen", d).then(resolve).catch(reject);
+            ChronikenStorage.save("kreaturen", toRemote(d)).then(resolve).catch(reject);
           } else {
             resolve();
           }
@@ -310,7 +332,7 @@
       } catch(e) {
         console.error(e);
         el("status").style.color="#e74c3c";
-        el("status").textContent="Fehler beim Speichern";
+        el("status").textContent="Fehler beim Speichern: "+((e&&e.message)||e);
       }
     }
     el("btnSave").onclick=save; el("btnCancel").onclick=resetForm;
@@ -319,17 +341,15 @@
     (async function(){
       if (!window.ChronikenStorage) { render(); return; }
       try {
-        const remote = await ChronikenStorage.load("kreaturen");
-        // Gültiges Objekt mit mindestens einer Kategorie?
-        const hasData = remote && typeof remote === "object" && !Array.isArray(remote) &&
-          Object.keys(remote).some(k => Array.isArray(remote[k]) && remote[k].length > 0);
+        const remoteRaw = await ChronikenStorage.load("kreaturen");
+        const remote = fromRemote(remoteRaw);
+        const hasData = Object.keys(remote).some(k => Array.isArray(remote[k]) && remote[k].length > 0);
         if (hasData) {
           window._kreaturenCache = remote;
           localStorage.setItem(STORAGE_KEY, JSON.stringify(remote));
-        } else {
-          // Remote leer oder kaputt → lokale Daten (Defaults) hochladen
-          const local = loadData();
-          await ChronikenStorage.save("kreaturen", local);
+        } else if (admin()) {
+          // Datenbank leer → lokale Daten (Defaults) hochladen (nur als Admin erlaubt)
+          await ChronikenStorage.save("kreaturen", toRemote(loadData()));
         }
       } catch(e){ console.warn("Kreaturen Remote-Sync:", e); }
       render();
