@@ -20,11 +20,11 @@
       <a href="heilerakte.html">Heilerakte</a>
       <a href="wetter.html" id="navWetter" data-admin-only style="display:none;">Wetter</a>
       <a href="admin.html" id="navAdmin" data-admin-only style="display:none;">Admin</a>
-    </nav></header><main class="wrap"><section class="hero"><h1>📅 Events & Geburtstage</h1><p class="meta">Zentrale Daten aus JSONBin.</p></section>
+    </nav></header><main class="wrap"><section class="hero"><h1>📅 Events & Geburtstage</h1><p class="meta">Zentrale Daten aus Supabase.</p></section>
 <section class="form" id="adminForm" style="display:none"><h2 id="formTitle">Neues Event</h2><div class="row"><div class="field"><label>Titel</label><input id="title"></div><div class="field"><label>Datum</label><input id="date" type="date"></div></div><div class="field"><label>Beschreibung</label><textarea id="description"></textarea></div><div class="actions"><button class="btn" id="save">Speichern</button><button class="btn secondary" id="cancel" style="display:none">Abbrechen</button><span id="status" class="meta"></span></div></section>
 <section><h2 class="page-title">Kommende Events</h2><div id="events" class="grid"></div></section></main><footer><p>© 2026 Kiyasha · Chroniken</p></footer>
 <script src="chroniken-auth.js"></script>
-<script src="jsonbin-storage.js"></script>
+<script src="chroniken-storage.js"></script>
 <script src="chroniken-sync.js"></script><script>
 const isAdmin=()=>{try{return sessionStorage.getItem('portal_admin_auth')==='1'}catch{return false}};
 let list=[],editId=null;
@@ -94,7 +94,7 @@ save.onclick=async()=>{
   } catch (err) {
     await ChronikenStorage.save('characterEvents', list);
   }
-  status.textContent='✓ In JSONBin gespeichert';
+  status.textContent='✓ In Supabase gespeichert';
   reset();
   await load();
 };
