@@ -334,39 +334,33 @@
   <script src="weather-config.js"></script>
   <script src="wetter.js"></script>
 <script>
-    // ===== TEMPORÄRER ADMIN-TESTZUGANG =====
+    // ===== ADMIN-LOGIN ÜBER PASSWORT =====
     (function() {
-      const TEST_ADMIN_PASSWORD = "Chroniken2026";
+      const input = document.getElementById("footerAdminPassword");
+      const button = document.getElementById("footerAdminLogin");
+      if (!input || !button) return;
 
-      function activateTestAdmin() {
+      async function login() {
+        if (!window.ChronikenAuth || !ChronikenAuth.passwordLogin) return;
+        const password = input.value;
+        button.disabled = true;
+        button.textContent = "Anmelden …";
         try {
-          sessionStorage.setItem("portal_admin_auth", "1");
-          sessionStorage.removeItem("portal_bibliothek_auth");
-          sessionStorage.removeItem("portal_heiler_auth");
-          localStorage.removeItem("chroniken_logout");
-        } catch {}
-        window.location.href = "admin.html";
-      }
-
-      function tryTestAdminLogin() {
-        const input = document.getElementById("footerAdminPassword");
-        if (!input) return;
-
-        if (input.value === TEST_ADMIN_PASSWORD) {
-          activateTestAdmin();
-          return;
+          await ChronikenAuth.passwordLogin(password);
+        } catch (e) {
+          input.value = "";
+          input.placeholder = e && e.message ? e.message : "Falsches Passwort";
+          button.disabled = false;
+          button.textContent = "Anmelden";
+          setTimeout(() => {
+            input.placeholder = "••••••••";
+          }, 2200);
         }
-
-        input.value = "";
-        input.placeholder = "Falsches Passwort";
-        setTimeout(() => {
-          if (input) input.placeholder = "••••••••";
-        }, 1800);
       }
 
-      document.getElementById("footerAdminLogin")?.addEventListener("click", tryTestAdminLogin);
-      document.getElementById("footerAdminPassword")?.addEventListener("keydown", (event) => {
-        if (event.key === "Enter") tryTestAdminLogin();
+      button.addEventListener("click", login);
+      input.addEventListener("keydown", event => {
+        if (event.key === "Enter") login();
       });
     })();
 
