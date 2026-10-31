@@ -139,14 +139,74 @@ async function handleAuth(req, res, url) {
     try {
       const tr = await fetch('https://discord.com/api/oauth2/token', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        headers: {
+          'Content-Type': 'application/x-www-form-urlencoded'
+        },
         body: new URLSearchParams({
-          client_id: CLIENT_ID, client_secret: CLIENT_SECRET, grant_type: 'authorization_code',
-          code, redirect_uri: redirectUri
+          client_id: CLIENT_ID,
+          client_secret: CLIENT_SECRET,
+          grant_type: 'authorization_code',
+          code,
+          redirect_uri: redirectUri
         })
       });
-      if (!tr.ok) return backWithError(res, ret, 'Discord-Anmeldung fehlgeschlagen (Token).');
-      const tok = await tr.json();
+
+      const tokenText = await tr.text();
+
+      if (!tr.ok) {
+        let discordError = tokenText;
+
+        try {
+          const errorJson = JSON.parse(tokenText);
+          discordError =
+            errorJson.error_description ||
+            errorJson.error ||
+            tokenText;
+        } catch {
+          // Antwort war kein JSON
+        }
+
+        console.error('===== DISCORD OAUTH TOKEN FEHLER =====');
+        console.error('HTTP-Status:', tr.status);
+        console.error('Redirect URI:', redirectUri);
+        console.error('Discord Fehler:', discordError);
+        console.error('======================================');
+
+        return backWithError(
+          res,
+          ret,
+          'Discord-Anmeldung fehlgeschlagen (Token ' + tr.status + ').'
+        );
+      }
+
+      let tok;
+
+      try {
+        tok = JSON.parse(tokenText);
+      } catch (e) {
+        console.error('===== DISCORD TOKEN ANTWORT FEHLER =====');
+        console.error('Antwort von Discord ist kein gültiges JSON.');
+        console.error('HTTP-Status:', tr.status);
+        console.error('========================================');
+
+        return backWithError(
+          res,
+          ret,
+          'Ungültige Antwort von Discord.'
+        );
+      }
+
+      if (!tok.access_token) {
+        console.error('===== DISCORD TOKEN FEHLT =====');
+        console.error('Discord hat keinen access_token zurückgegeben.');
+        console.error('================================');
+
+        return backWithError(
+          res,
+          ret,
+          'Discord hat keinen Zugriffstoken geliefert.'
+        );
+      }
       const mr = await fetch('https://discord.com/api/users/@me/guilds/' + GUILD_ID + '/member', {
         headers: { Authorization: 'Bearer ' + tok.access_token }
       });
