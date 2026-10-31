@@ -120,7 +120,7 @@
   </footer>
 
   <script src="chroniken-auth.js"></script>
-  <script src="jsonbin-storage.js"></script>
+  <script src="chroniken-storage.js"></script>
   <script>
     // ===== Konfiguration =====
     const AUTH_KEY = "portal_admin_auth";   // gleicher Key wie Admin-Login
@@ -155,7 +155,7 @@
       }
     }
 
-    // ===== Storage über JSONBin =====
+    // ===== Storage über Supabase =====
     async function loadTopics() {
       try {
         setStatus("Lade Themen…");
