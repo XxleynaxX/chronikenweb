@@ -1,5 +1,5 @@
 /* ============================================================
-   Chroniken – Events / News / Geburtstage zentral in JSONBin
+   Chroniken – Events / News / Geburtstage zentral in Supabase
 
    Zwei Bins:
      EVENTS_BIN_ID – Events, News, Geburtstage, Kalender, Feiertage
@@ -12,13 +12,9 @@
                sich beim Sync etwas geändert hat.
    ============================================================ */
 (function (global) {
-  const EVENTS_BIN_ID = "6ae18121ffd5d1605391c7c7";
-  const MASTER_KEY = "$2a$10$UtTY0igLD.IvUKF5WDV89uC7/zf7h2HP3R3jXC/mghWJDo20hRpqO";
-  const CHARS_BIN_ID = "6ae17c9cffd5d1605391c27b";
-  const APIS = {
-    main: "https://api.jsonbin.io/v3/b/" + EVENTS_BIN_ID,
-    chars: "https://api.jsonbin.io/v3/b/" + CHARS_BIN_ID
-  };
+  const EVENTS_BIN_ID = "supabase";
+  const CHARS_BIN_ID = "supabase";
+  const PROXY = "https://chronikenweb-1.onrender.com";
   const BIN_OF = { events: "main", birthdays: "main", calendar: "main", disabledHolidays: "main", characters: "chars", characterSheets: "chars" };
 
   const LS = { events: "portal_events", birthdays: "portal_birthdays", calendar: "chroniken_calendar_entries", disabledHolidays: "chroniken_disabled_holidays", characters: "portal_char_registry", characterSheets: "portal_char_sheets" };
@@ -43,20 +39,42 @@
     try { localStorage.setItem(LS[name], JSON.stringify(arr)); } catch (e) {}
   }
 
-  async function fetchRemote(bin) {
-    const res = await fetch(APIS[bin || "main"] + "/latest", { headers: { "X-Master-Key": MASTER_KEY, "X-Bin-Meta": "false" } });
-    if (!res.ok) throw new Error("JSONBin lesen fehlgeschlagen: " + res.status);
-    const data = await res.json();
-    const rec = (data && data.record !== undefined) ? data.record : data;
-    return (rec && typeof rec === "object") ? rec : {};
+  function authToken() {
+    try { return sessionStorage.getItem("chroniken_discord_token") || ""; }
+    catch (e) { return ""; }
   }
+
+  async function fetchRemote() {
+    const res = await fetch(PROXY + "/data", { cache: "no-store" });
+    if (!res.ok) throw new Error("Supabase lesen fehlgeschlagen: " + res.status);
+    const data = await res.json();
+    return data && data.data && typeof data.data === "object" ? data.data : {};
+  }
+
   async function putRemote(record, bin) {
-    const res = await fetch(APIS[bin || "main"], {
-      method: "PUT",
-      headers: { "Content-Type": "application/json", "X-Master-Key": MASTER_KEY },
-      body: JSON.stringify(record)
+    const keys = BIN_KEYS[bin || "main"];
+    const data = {};
+    keys.forEach(function (k) {
+      data[k] = Array.isArray(record[k]) ? record[k] : [];
     });
-    if (!res.ok) throw new Error("JSONBin speichern fehlgeschlagen: " + res.status);
+
+    const headers = { "Content-Type": "application/json" };
+    const token = authToken();
+    if (token) headers.Authorization = "Bearer " + token;
+
+    const res = await fetch(PROXY + "/data", {
+      method: "PUT",
+      headers: headers,
+      body: JSON.stringify({ data: data })
+    });
+    if (!res.ok) {
+      let msg = "Supabase speichern fehlgeschlagen: " + res.status;
+      try {
+        const e = await res.json();
+        if (e && e.error) msg += " - " + e.error;
+      } catch (x) {}
+      throw new Error(msg);
+    }
     return res.json();
   }
 
@@ -69,7 +87,7 @@
     let legacy = null, filled = false;
     for (const k of BIN_KEYS.chars) {
       if (Array.isArray(rec[k])) continue;
-      if (legacy === null) { try { legacy = await fetchRemote("main"); } catch (e) { legacy = {}; } }
+      if (legacy === null) { try { legacy = await fetchRemote(); } catch (e) { legacy = {}; } }
       if (Array.isArray(legacy[k]) && legacy[k].length) { rec[k] = legacy[k]; filled = true; }
       else if (allowLocal && readLocal(k).length) { rec[k] = readLocal(k); filled = true; }
       else rec[k] = [];
@@ -86,7 +104,7 @@
     };
 
     // --- Events-Bin ---
-    const rec = await fetchRemote("main");
+    const rec = await fetchRemote();
     let needsMigration = false;
     BIN_KEYS.main.forEach(function (name) {
       if (Array.isArray(rec[name])) apply(name, rec[name]);
@@ -101,7 +119,7 @@
 
     // --- Charakter-Bin ---
     try {
-      const crec = await fetchRemote("chars");
+      const crec = await fetchRemote();
       const hadAll = BIN_KEYS.chars.every(function (k) { return Array.isArray(crec[k]); });
       const filled = hadAll ? false : await fillCharRecord(crec, isAdmin());
       BIN_KEYS.chars.forEach(function (name) { apply(name, crec[name]); });
@@ -246,9 +264,9 @@
   async function loadShared(name) {
     let list;
     try {
-      const rec = await fetchRemote(BIN_OF[name] || "main");
+      const rec = await fetchRemote();
       list = Array.isArray(rec[name]) ? rec[name] : [];
-      if (BIN_OF[name] === "chars" && !Array.isArray(rec[name])) list = (await fetchRemote("main"))[name] || [];
+      if (BIN_OF[name] === "chars" && !Array.isArray(rec[name])) list = (await fetchRemote())[name] || [];
       writeLocal(name, list);
     } catch (e) {
       console.warn("[Chroniken-Sync]", e);
