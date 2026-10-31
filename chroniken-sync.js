@@ -14,7 +14,7 @@
   const SUPABASE_PUBLISHABLE_KEY = "sb_publishable__kXmLDeP47mcg-ytidwTg_ktUyr1mm";
   const EVENTS_BIN_ID = "supabase";
   const CHARS_BIN_ID = "supabase";
-  const BIN_OF = { events: "main", birthdays: "main", calendar: "main", disabledHolidays: "main", characters: "chars", characterSheets: "chars" };
+  const BIN_OF = { events: "main", birthdays: "main", calendar: "main", disabledHolidays: "main", characters: "chars", characterSheets: "chars" };\n  const DB_KEY_OF = { events: "events", birthdays: "birthdays", calendar: "calendar", disabledHolidays: "disabledHolidays", characters: "characters", characterSheets: "character_sheets" };
 
   const LS = { events: "portal_events", birthdays: "portal_birthdays", calendar: "chroniken_calendar_entries", disabledHolidays: "chroniken_disabled_holidays", characters: "portal_char_registry", characterSheets: "portal_char_sheets" };
   const KEYS = Object.keys(LS);
@@ -74,7 +74,9 @@
     if (error) throw new Error("Supabase lesen fehlgeschlagen: " + error.message);
     const out = {};
     (data || []).forEach(function (row) {
-      out[row.key] = Array.isArray(row.value) ? row.value : [];
+      const logical = Object.keys(DB_KEY_OF).find(function (k) { return DB_KEY_OF[k] === row.key; });
+      if (logical) out[logical] = Array.isArray(row.value) ? row.value : [];
+      else out[row.key] = Array.isArray(row.value) ? row.value : row.value;
     });
     return out;
   }
@@ -83,7 +85,11 @@
     const client = await initSupabase();
     const keys = BIN_KEYS[bin || "main"];
     const rows = keys.map(function (k) {
-      return { key: k, value: Array.isArray(record[k]) ? record[k] : [], updated_at: new Date().toISOString() };
+      return {
+        key: DB_KEY_OF[k] || k,
+        value: Array.isArray(record[k]) ? record[k] : [],
+        updated_at: new Date().toISOString()
+      };
     });
     const { error } = await client.from("chroniken_data").upsert(rows, { onConflict: "key" });
     if (error) throw new Error("Supabase speichern fehlgeschlagen: " + error.message);
