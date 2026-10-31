@@ -97,7 +97,7 @@ Die Website besteht aus mehreren miteinander verbundenen Teilen:
          │
          ▼
 ┌─────────────────────┐
-│ JSONBin             │
+│ Supabase             │
 │ zentrale RP-Daten   │
 └─────────────────────┘
 ```
@@ -108,7 +108,7 @@ Die Website besteht aus mehreren miteinander verbundenen Teilen:
 
 Der **Render-Service** übernimmt Aufgaben, die nicht direkt im Browser stattfinden sollen, darunter Discord-OAuth2, Rollenprüfung, Wetter-Synchronisation und Discord-Webhooks.
 
-**JSONBin** dient als zentrale Speicherung für gemeinsame RP-Daten. Der Browser verwendet zusätzlich `localStorage` als lokalen Cache.
+**Supabase** dient als zentrale Speicherung für gemeinsame RP-Daten. Der Browser verwendet zusätzlich `localStorage` als lokalen Cache.
 
 ---
 
@@ -173,7 +173,7 @@ Je nach Bereich werden unterschiedliche Speicherwege verwendet:
 
 `localStorage` dient als lokaler Cache und für browserbezogene Daten.
 
-### JSONBin
+### Supabase
 
 Gemeinsame Daten wie Events, News, Geburtstage, Kalenderdaten und Charakterdaten können zentral synchronisiert werden.
 
@@ -240,7 +240,7 @@ chronikenweb/
 ├── chroniken-auth.js
 ├── chroniken-data.js
 ├── chroniken-sync.js
-├── jsonbin-storage.js
+├── chroniken-storage.js
 │
 ├── style.css
 ├── chroniken-admin.css
@@ -263,7 +263,7 @@ chronikenweb/
 - **Node.js**
 - **Discord OAuth2**
 - **Discord Webhooks**
-- **JSONBin**
+- **Supabase**
 - **GitHub Pages**
 - **Render**
 - **html2canvas**
