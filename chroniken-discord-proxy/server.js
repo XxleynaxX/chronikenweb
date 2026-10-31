@@ -2,7 +2,7 @@ const http = require('http');
 const crypto = require('crypto');
 const weather = require('./weather');
 const moon = require('./mond');
-const { discordFetch } = require('./discord-rate-limit');
+const { discordFetch, discordOAuthFetch } = require('./discord-rate-limit');
 
 const PORT = process.env.PORT || 3000;
 const CHAR_WEBHOOK = process.env.CHAR_WEBHOOK || '';
@@ -138,9 +138,8 @@ async function handleAuth(req, res, url) {
     const code = url.searchParams.get('code');
     if (!code) return backWithError(res, ret, 'Kein Code von Discord erhalten.');
     try {
-      const tr = await discordFetch('https://discord.com/api/oauth2/token', {
-        failFast429: true,
-        method: 'POST',
+      const tr = await discordOAuthFetch('https://discord.com/api/oauth2/token', {
+                method: 'POST',
         headers: {
           'Content-Type': 'application/x-www-form-urlencoded'
         },
