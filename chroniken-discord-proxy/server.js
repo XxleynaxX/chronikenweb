@@ -139,6 +139,7 @@ async function handleAuth(req, res, url) {
     if (!code) return backWithError(res, ret, 'Kein Code von Discord erhalten.');
     try {
       const tr = await discordFetch('https://discord.com/api/oauth2/token', {
+        failFast429: true,
         method: 'POST',
         headers: {
           'Content-Type': 'application/x-www-form-urlencoded'
@@ -236,6 +237,14 @@ async function handleAuth(req, res, url) {
       });
       return redirect(res, ret + '#auth=' + token);
     } catch (e) {
+      if (e && e.code === 'DISCORD_RATE_LIMITED') {
+        console.warn('[Discord OAuth] Rate-Limit aktiv. Login wird sofort beendet statt zu warten.');
+        return backWithError(
+          res,
+          ret,
+          'Discord ist gerade ausgelastet. Bitte in 30–60 Sekunden erneut anmelden.'
+        );
+      }
       return backWithError(res, ret, 'Discord nicht erreichbar.');
     }
   }
