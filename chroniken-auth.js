@@ -116,7 +116,7 @@
     return pop;
   }
 
-  let finishing = false, popupWatch = null;
+  let finishing = false, popupWatch = null, loginInProgress = false, loginCooldownUntil = 0;
 
   function redirectLogin() {
     setLoading(true, "Weiterleitung zu Discord …");
@@ -124,7 +124,10 @@
   }
 
   async function login() {
-    if (finishing) return;
+    const now = Date.now();
+    if (finishing || loginInProgress || now < loginCooldownUntil) return;
+    loginInProgress = true;
+    loginCooldownUntil = now + 30000;
     setLoading(true);
     const pop = openPopup();
     if (!pop) { redirectLogin(); return; }
@@ -144,7 +147,7 @@
       const res = await fetch(proxyBase() + "/auth/start?return=" + encodeURIComponent(returnUrl), options);
       const data = await res.json().catch(function () { return {}; });
       if (!res.ok || !data.ok || !data.url) throw new Error(data.error || ("Status " + res.status));
-      if (pop.closed) { setLoading(false); return; }
+      if (pop.closed) { loginInProgress = false; setLoading(false); return; }
       pop.location.href = data.url;
       setLoading(true, "Warte auf Discord …");
     } catch (e) {
@@ -152,10 +155,13 @@
       try { pop.close(); } catch (x) {}
       if (e && e.name === "AbortError") {
         showError("Der Login-Server antwortet zu langsam. Die Anmeldung wird direkt geöffnet …");
+        loginInProgress = false;
         redirectLogin();
         return;
       }
-      if (/Status 404/.test(e.message || "")) { redirectLogin(); return; }
+      if (/Status 404/.test(e.message || "")) { loginInProgress = false; redirectLogin(); return; }
+      loginInProgress = false;
+      loginCooldownUntil = Date.now() + 5000;
       setLoading(false);
       showError("Server nicht erreichbar (" + (e.message || "unbekannter Fehler") + "). Bitte gleich nochmal versuchen.");
       return;
@@ -166,6 +172,7 @@
     popupWatch = setInterval(function () {
       if (finishing) { clearInterval(popupWatch); return; }
       if (pop.closed) {
+        loginInProgress = false;
         clearInterval(popupWatch);
         setTimeout(function () { if (!finishing) setLoading(false); }, 1200);
       }
