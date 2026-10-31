@@ -72,10 +72,10 @@
 
   function clone(x) { return JSON.parse(JSON.stringify(x)); }
 
-  // Keys die über JSONBin geteilt werden
+  // Keys die über Supabase geteilt werden
   const SHARED_KEYS = ["voelker", "berufe", "goetter"];
 
-  // Lokaler Cache (wird von JSONBin befüllt)
+  // Lokaler Cache (wird von Supabase befüllt)
   const memCache = {};
 
   function loadFromLocal(key) {
@@ -95,7 +95,7 @@
 
   /**
    * Synchrones load – gibt Cache oder localStorage oder Defaults zurück.
-   * Im Hintergrund wird von JSONBin aktualisiert.
+   * Im Hintergrund wird von Supabase aktualisiert.
    */
   function load(key) {
     if (memCache[key]) return clone(memCache[key]);
@@ -113,7 +113,7 @@
   }
 
   /**
-   * Speichert lokal + (falls shared) asynchron zu JSONBin.
+   * Speichert lokal + (falls shared) asynchron zu Supabase.
    */
   function save(key, arr) {
     const data = Array.isArray(arr) ? arr : [];
@@ -123,7 +123,7 @@
     if (SHARED_KEYS.includes(key) && window.ChronikenStorage) {
       // Im Hintergrund speichern, UI blockiert nicht
       ChronikenStorage.save(key, data).catch(err => {
-        console.warn("JSONBin-Save für", key, "fehlgeschlagen:", err);
+        console.warn("Supabase-Save für", key, "fehlgeschlagen:", err);
       });
     }
   }
@@ -145,7 +145,7 @@
   }
 
   /**
-   * Einmalig: Daten von JSONBin holen und mit lokalen Defaults mergen.
+   * Einmalig: Daten von Supabase holen und mit lokalen Defaults mergen.
    * Wird beim Laden der Seite aufgerufen.
    */
   async function syncFromRemote() {
@@ -172,11 +172,11 @@
             }
           }
         } catch (err) {
-          console.warn("JSONBin-Sync für", key, "fehlgeschlagen:", err);
+          console.warn("Supabase-Sync für", key, "fehlgeschlagen:", err);
         }
       }
     } catch (e) {
-      console.warn("JSONBin-Sync fehlgeschlagen, nutze lokale Daten:", e);
+      console.warn("Supabase-Sync fehlgeschlagen, nutze lokale Daten:", e);
     }
 
     try {
@@ -187,7 +187,7 @@
 
   // Beim Laden der Seite sofort synchronisieren (nicht-blockierend)
   if (typeof window !== "undefined") {
-    // Kleiner Delay, damit jsonbin-storage.js schon geladen ist
+    // Kleiner Delay, damit supabase-storage.js schon geladen ist
     setTimeout(() => { syncFromRemote(); }, 80);
   }
 
