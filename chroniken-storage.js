@@ -132,12 +132,6 @@
   async function load(name) {
     const dbKey = toDbKey(name);
 
-    const localTestValue = readTestData(dbKey);
-    if (localTestValue !== undefined) {
-      cache[dbKey] = localTestValue;
-      return localTestValue;
-    }
-
     if (Object.prototype.hasOwnProperty.call(cache, dbKey)) {
       return cache[dbKey];
     }
