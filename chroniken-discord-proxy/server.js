@@ -169,6 +169,9 @@ async function handleAuth(req, res, url) {
         console.error('===== DISCORD OAUTH TOKEN FEHLER =====');
         console.error('HTTP-Status:', tr.status);
         console.error('Redirect URI:', redirectUri);
+        console.error('Retry-After:', tr.headers.get('retry-after') || 'nicht angegeben');
+        console.error('RateLimit-Scope:', tr.headers.get('x-ratelimit-scope') || 'nicht angegeben');
+        console.error('RateLimit-Reset-After:', tr.headers.get('x-ratelimit-reset-after') || 'nicht angegeben');
         console.error('Discord Fehler:', discordError);
         console.error('======================================');
 
