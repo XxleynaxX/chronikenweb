@@ -139,6 +139,9 @@
       .single();
 
     if (error) {
+      console.error("[ChronikenStorage] Supabase-Speichern fehlgeschlagen:", error);
+      console.error("[ChronikenStorage] Key:", dbKey);
+      console.error("[ChronikenStorage] Wert:", normalized);
       throw new Error("Supabase speichern fehlgeschlagen: " + error.message);
     }
 
@@ -146,6 +149,7 @@
       ? data.value
       : normalized;
 
+    console.info("[ChronikenStorage] Gespeichert:", dbKey, caches[dbKey]);
     return caches[dbKey];
   }
 
