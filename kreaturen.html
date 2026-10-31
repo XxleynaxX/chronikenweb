@@ -226,29 +226,13 @@
     const el = id => document.getElementById(id);
     function admin(){ return ChronikenData.isAdmin(); }
     function loadData(){
-      // 1. Memory-Cache (nach Remote-Sync)
       if (window._kreaturenCache) return JSON.parse(JSON.stringify(window._kreaturenCache));
-      // 2. localStorage
-      try {
-        const raw = localStorage.getItem(STORAGE_KEY);
-        if (raw) {
-          const d = JSON.parse(raw);
-          if (d && typeof d === "object") {
-            window._kreaturenCache = d;
-            return JSON.parse(JSON.stringify(d));
-          }
-        }
-      } catch(e){}
-      // 3. Defaults
       const seed = JSON.parse(JSON.stringify(DEFAULT_DATA));
       window._kreaturenCache = seed;
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(seed));
       return JSON.parse(JSON.stringify(seed));
     }
     function saveData(d){
       window._kreaturenCache = d;
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(d));
-      // Im Hintergrund in die Datenbank
       if (window.ChronikenStorage) {
         ChronikenStorage.save("kreaturen", toRemote(d)).catch(err => console.warn("Kreaturen Speichern fehlgeschlagen:", err));
       }
@@ -346,7 +330,6 @@
         const hasData = Object.keys(remote).some(k => Array.isArray(remote[k]) && remote[k].length > 0);
         if (hasData) {
           window._kreaturenCache = remote;
-          localStorage.setItem(STORAGE_KEY, JSON.stringify(remote));
         } else if (admin()) {
           // Datenbank leer → lokale Daten (Defaults) hochladen (nur als Admin erlaubt)
           await ChronikenStorage.save("kreaturen", toRemote(loadData()));
