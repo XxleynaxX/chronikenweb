@@ -329,6 +329,79 @@ const server = http.createServer(async (req, res) => {
   const url = new URL(req.url, 'http://localhost');
 
 
+  // ===== Chroniken-Daten: Supabase statt JSONBin =====
+  if (req.method === 'GET' && url.pathname === '/data') {
+    try {
+      const rows = await supabaseRest('chroniken_data?select=key,value&order=key.asc');
+      const data = {};
+      for (const row of Array.isArray(rows) ? rows : []) data[row.key] = row.value;
+      res.writeHead(200, { 'Content-Type': 'application/json', 'Cache-Control': 'no-store' });
+      res.end(JSON.stringify({ ok: true, data }));
+    } catch (e) {
+      res.writeHead(500, { 'Content-Type': 'application/json', 'Cache-Control': 'no-store' });
+      res.end(JSON.stringify({ ok: false, error: e.message }));
+    }
+    return;
+  }
+
+  if (req.method === 'PUT' && url.pathname === '/data') {
+    const auth = String(req.headers.authorization || '').replace(/^Bearer\\s+/i, '');
+    const session = verify(auth);
+    if (!session) {
+      res.writeHead(401, { 'Content-Type': 'application/json', 'Cache-Control': 'no-store' });
+      res.end(JSON.stringify({ ok: false, error: 'Anmeldung erforderlich.' }));
+      return;
+    }
+
+    let body = '';
+    for await (const chunk of req) {
+      body += chunk;
+      if (body.length > 1000000) {
+        res.writeHead(413, { 'Content-Type': 'application/json', 'Cache-Control': 'no-store' });
+        res.end(JSON.stringify({ ok: false, error: 'Daten zu groß.' }));
+        return;
+      }
+    }
+
+    try {
+      const parsed = JSON.parse(body || '{}');
+      const input = parsed && parsed.data && typeof parsed.data === 'object' ? parsed.data : {};
+      const allowed = ['events', 'birthdays', 'calendar', 'disabledHolidays', 'characters', 'characterSheets'];
+      const charKeys = new Set(['characters', 'characterSheets']);
+      const changes = [];
+
+      for (const key of Object.keys(input)) {
+        if (!allowed.includes(key)) continue;
+        if (!Array.isArray(input[key])) continue;
+
+        if (!charKeys.has(key) && !session.admin) {
+          throw new Error('Nur Admins dürfen ' + key + ' ändern.');
+        }
+
+        changes.push({
+          key,
+          value: input[key],
+          updated_at: new Date().toISOString()
+        });
+      }
+
+      if (!changes.length) throw new Error('Keine gültigen Daten zum Speichern erhalten.');
+
+      await supabaseRest('chroniken_data?on_conflict=key', {
+        method: 'POST',
+        body: JSON.stringify(changes)
+      });
+
+      res.writeHead(200, { 'Content-Type': 'application/json', 'Cache-Control': 'no-store' });
+      res.end(JSON.stringify({ ok: true, keys: changes.map(x => x.key) }));
+    } catch (e) {
+      const code = /Nur Admins/.test(e.message) ? 403 : 400;
+      res.writeHead(code, { 'Content-Type': 'application/json', 'Cache-Control': 'no-store' });
+      res.end(JSON.stringify({ ok: false, error: e.message }));
+    }
+    return;
+  }
+
   if (req.method === 'GET' && url.pathname === '/admin/migration-status') {
     try {
       requireAdmin(req);
