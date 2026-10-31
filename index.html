@@ -139,6 +139,43 @@
       .critter .emoji { font-size: 2.3rem; }
       .critter .bubble { max-width: 160px; font-size: 0.78rem; }
     }
+
+    .footer-admin-login {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.4rem;
+      margin-left: 0.25rem;
+    }
+    .footer-admin-login input {
+      width: 120px;
+      padding: 0.3rem 0.5rem;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      background: var(--bg-card);
+      color: var(--text);
+      font: inherit;
+      font-size: 0.8rem;
+    }
+    .footer-admin-login button {
+      padding: 0.3rem 0.55rem;
+      border: 1px solid var(--purple);
+      border-radius: 6px;
+      background: var(--bg-card);
+      color: var(--purple-bright);
+      cursor: pointer;
+      font: inherit;
+      font-size: 0.8rem;
+    }
+    .footer-admin-login button:hover {
+      background: var(--bg-hover);
+    }
+    @media (max-width: 600px) {
+      .footer-admin-login {
+        flex-wrap: wrap;
+        justify-content: center;
+        margin-top: 0.4rem;
+      }
+    }
   </style>
 </head>
 <body>
@@ -266,7 +303,16 @@
   </main>
 
   <footer>
-    <p>© 2026 Kiyasha · Chroniken – Alle Rechte vorbehalten · <a href="#" class="legal-link" onclick="openLegalNotice(); return false;">Hinweis</a></p>
+    <p>
+      © 2026 Kiyasha · Chroniken – Alle Rechte vorbehalten ·
+      <a href="#" class="legal-link" onclick="openLegalNotice(); return false;">Hinweis</a>
+      ·
+      <span class="footer-admin-login">
+        <label for="footerAdminPassword">Passwort:</label>
+        <input type="password" id="footerAdminPassword" placeholder="••••••••" autocomplete="off">
+        <button type="button" id="footerAdminLogin">Anmelden</button>
+      </span>
+    </p>
   </footer>
 
 
@@ -288,6 +334,42 @@
   <script src="weather-config.js"></script>
   <script src="wetter.js"></script>
 <script>
+    // ===== TEMPORÄRER ADMIN-TESTZUGANG =====
+    (function() {
+      const TEST_ADMIN_PASSWORD = "Chroniken2026";
+
+      function activateTestAdmin() {
+        try {
+          sessionStorage.setItem("portal_admin_auth", "1");
+          sessionStorage.removeItem("portal_bibliothek_auth");
+          sessionStorage.removeItem("portal_heiler_auth");
+          localStorage.removeItem("chroniken_logout");
+        } catch {}
+        window.location.href = "admin.html";
+      }
+
+      function tryTestAdminLogin() {
+        const input = document.getElementById("footerAdminPassword");
+        if (!input) return;
+
+        if (input.value === TEST_ADMIN_PASSWORD) {
+          activateTestAdmin();
+          return;
+        }
+
+        input.value = "";
+        input.placeholder = "Falsches Passwort";
+        setTimeout(() => {
+          if (input) input.placeholder = "••••••••";
+        }, 1800);
+      }
+
+      document.getElementById("footerAdminLogin")?.addEventListener("click", tryTestAdminLogin);
+      document.getElementById("footerAdminPassword")?.addEventListener("keydown", (event) => {
+        if (event.key === "Enter") tryTestAdminLogin();
+      });
+    })();
+
     // ===== LOGIN (nur Discord, Knopf in der Menüleiste) =====
     (function() {
       const ADMIN_KEY = "portal_admin_auth";
