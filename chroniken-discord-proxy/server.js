@@ -92,6 +92,7 @@ function backWithError(res, ret, msg) {
 }
 
 async function handleAuth(req, res, url) {
+  console.log('[OAUTH] Request:', req.method, url.pathname);
   // Aufwecken (Render schläft nach Inaktivität) – die Website ruft das im Hintergrund auf
   if (url.pathname === '/auth/ping') {
     res.writeHead(200, { 'Content-Type': 'application/json', 'Cache-Control': 'no-store' });
@@ -112,6 +113,7 @@ async function handleAuth(req, res, url) {
 
   // 1) Weiterleitung zu Discord
   if (url.pathname === '/auth/login') {
+    console.log('[OAUTH] /auth/login aufgerufen');
     const ret = url.searchParams.get('return') || '';
     if (!returnAllowed(ret)) return page(res, 400, 'Rückkehr-Adresse nicht erlaubt. ALLOWED_RETURN_ORIGINS prüfen.');
     return redirect(res, discordAuthorizeUrl(ret));
@@ -119,6 +121,7 @@ async function handleAuth(req, res, url) {
 
   // 1b) Discord-Adresse als JSON (Website öffnet sie im Popup, ohne sichtbaren Umweg über Render)
   if (url.pathname === '/auth/start') {
+    console.log('[OAUTH] /auth/start aufgerufen');
     const ret = url.searchParams.get('return') || '';
     res.setHeader('Cache-Control', 'no-store');
     if (!returnAllowed(ret)) {
@@ -126,17 +129,31 @@ async function handleAuth(req, res, url) {
       return res.end(JSON.stringify({ ok: false, error: 'Rückkehr-Adresse nicht erlaubt. ALLOWED_RETURN_ORIGINS prüfen.' }));
     }
     res.writeHead(200, { 'Content-Type': 'application/json' });
-    return res.end(JSON.stringify({ ok: true, url: discordAuthorizeUrl(ret) }));
+    const authUrl = discordAuthorizeUrl(ret);
+    console.log('[OAUTH] Discord Authorization URL erstellt');
+    return res.end(JSON.stringify({ ok: true, url: authUrl }));
   }
 
   // 2) Rückkehr von Discord: Rollen prüfen, Token ausstellen
   if (url.pathname === '/auth/callback') {
+    console.log('[OAUTH] /auth/callback erreicht');
     const st = verify(url.searchParams.get('state') || '');
-    if (!st) return page(res, 400, 'Anmeldung abgelaufen. Bitte erneut versuchen.');
+    if (!st) {
+      console.error('[OAUTH] State ungültig oder abgelaufen');
+      return page(res, 400, 'Anmeldung abgelaufen. Bitte erneut versuchen.');
+    }
+    console.log('[OAUTH] State erfolgreich geprüft');
     const ret = st.ret;
-    if (url.searchParams.get('error')) return backWithError(res, ret, 'Anmeldung abgebrochen.');
+    if (url.searchParams.get('error')) {
+      console.warn('[OAUTH] Discord hat den Login abgebrochen:', url.searchParams.get('error'));
+      return backWithError(res, ret, 'Anmeldung abgebrochen.');
+    }
     const code = url.searchParams.get('code');
-    if (!code) return backWithError(res, ret, 'Kein Code von Discord erhalten.');
+    if (!code) {
+      console.error('[OAUTH] Kein Authorization-Code von Discord erhalten');
+      return backWithError(res, ret, 'Kein Code von Discord erhalten.');
+    }
+    console.log('[OAUTH] Authorization-Code erhalten; Token-Anfrage an Discord wird gesendet');
     try {
       const tr = await discordOAuthFetch('https://discord.com/api/oauth2/token', {
                 method: 'POST',
@@ -153,6 +170,7 @@ async function handleAuth(req, res, url) {
       });
 
       const tokenText = await tr.text();
+      console.log('[OAUTH] Token-Antwort von Discord:', tr.status);
 
       if (!tr.ok) {
         let discordError = tokenText;
@@ -174,6 +192,7 @@ async function handleAuth(req, res, url) {
         console.error('RateLimit-Scope:', tr.headers.get('x-ratelimit-scope') || 'nicht angegeben');
         console.error('RateLimit-Reset-After:', tr.headers.get('x-ratelimit-reset-after') || 'nicht angegeben');
         console.error('Discord Fehler:', discordError);
+        console.error('[OAUTH] Token-Austausch fehlgeschlagen');
         console.error('======================================');
 
         return backWithError(
@@ -200,6 +219,8 @@ async function handleAuth(req, res, url) {
         );
       }
 
+      console.log('[OAUTH] Token-Austausch erfolgreich');
+
       if (!tok.access_token) {
         console.error('===== DISCORD TOKEN FEHLT =====');
         console.error('Discord hat keinen access_token zurückgegeben.');
@@ -211,11 +232,19 @@ async function handleAuth(req, res, url) {
           'Discord hat keinen Zugriffstoken geliefert.'
         );
       }
-      const mr = await discordFetch('https://discord.com/api/users/@me/guilds/' + GUILD_ID + '/member', {
+      console.log('[OAUTH] Prüfe Discord-Servermitgliedschaft und Rollen');
+      const mr = await discordOAuthFetch('https://discord.com/api/users/@me/guilds/' + GUILD_ID + '/member', {
         headers: { Authorization: 'Bearer ' + tok.access_token }
       });
-      if (mr.status === 404 || mr.status === 403) return backWithError(res, ret, 'Du bist nicht auf dem Discord-Server.');
-      if (!mr.ok) return backWithError(res, ret, 'Rollen konnten nicht gelesen werden.');
+      console.log('[OAUTH] Rollen-API Antwort:', mr.status);
+      if (mr.status === 404 || mr.status === 403) {
+        console.warn('[OAUTH] Benutzer ist nicht auf dem Discord-Server oder Zugriff verweigert');
+        return backWithError(res, ret, 'Du bist nicht auf dem Discord-Server.');
+      }
+      if (!mr.ok) {
+        console.error('[OAUTH] Rollen konnten nicht gelesen werden. HTTP:', mr.status);
+        return backWithError(res, ret, 'Rollen konnten nicht gelesen werden.');
+      }
       const m = await mr.json();
       const roles = Array.isArray(m.roles) ? m.roles : [];
       const user = m.user || {};
@@ -229,11 +258,15 @@ async function handleAuth(req, res, url) {
         healer,
         matchedAdminRole: roles.find(r => ADMIN_ROLES.includes(r)) || null
       });
-      if (!admin && !lib && !healer) return backWithError(res, ret, 'Dir fehlt die nötige Rolle (Admin, Bibliothek oder Heiler).');
+      if (!admin && !lib && !healer) {
+        console.warn('[OAUTH] Keine passende Chroniken-Rolle gefunden');
+        return backWithError(res, ret, 'Dir fehlt die nötige Rolle (Admin, Bibliothek oder Heiler).');
+      }
       const token = sign({
         sub: user.id, name: m.nick || user.global_name || user.username || 'Discord',
         admin, lib, healer, exp: Date.now() + SESSION_MS
       });
+      console.log('[OAUTH] Login erfolgreich; Session wird an Website zurückgegeben');
       return redirect(res, ret + '#auth=' + token);
     } catch (e) {
       if (e && e.code === 'DISCORD_RATE_LIMITED') {
@@ -244,6 +277,7 @@ async function handleAuth(req, res, url) {
           'Discord ist gerade ausgelastet. Bitte in 30–60 Sekunden erneut anmelden.'
         );
       }
+      console.error('[OAUTH] Unerwarteter Fehler:', e && e.message ? e.message : e);
       return backWithError(res, ret, 'Discord nicht erreichbar.');
     }
   }
