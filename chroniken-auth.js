@@ -15,6 +15,7 @@
   const TOKEN_KEY = "chroniken_discord_token";
   const NAME_KEY = "chroniken_discord_name";
   const HANDOFF_KEY = "chroniken_auth_handoff";
+  const TEST_ADMIN_KEY = "chroniken_test_admin";
   const POPUP_PARAM = "discord_popup";
   const DEFAULT_PROXY = "https://chronikenweb-1.onrender.com";
 
@@ -35,7 +36,7 @@
 
   function clear() {
     try {
-      [ADMIN_KEY, LIB_KEY, HEALER_KEY, TOKEN_KEY, NAME_KEY,
+      [ADMIN_KEY, LIB_KEY, HEALER_KEY, TOKEN_KEY, NAME_KEY, TEST_ADMIN_KEY,
        "chroniken_discord_roles", "discord_roles", "discord_username", "portal_discord_user"
       ].forEach(function (k) { sessionStorage.removeItem(k); });
     } catch (e) {}
