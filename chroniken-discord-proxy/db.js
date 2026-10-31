@@ -35,6 +35,7 @@ const KEYS = {
   calendar:          { label: 'Kalender',               description: 'Eigene Kalendereinträge',                                type: 'array',  write: 'admin' },
   disabled_holidays: { label: 'Deaktivierte Feiertage', description: 'Feiertage die ausgeblendet werden',                      type: 'array',  write: 'admin' },
   weather:           { label: 'Wetter',                 description: 'Aktuelles Fantasy-Wetter (Objekt)',                      type: 'object', write: 'admin' },
+  moon:              { label: 'Mond',                   description: 'Mondphasen und Zyklus-Zustand (Objekt)',               type: 'object', write: 'admin' },
   characters:        { label: 'Charakter-Register',     description: 'Öffentliches Charakter-Register',                        type: 'array',  write: 'public' },
   character_sheets:  { label: 'Charakterbögen',         description: 'Ausgefüllte Charakterbögen',                             type: 'array',  write: 'public' },
   healer_records:    { label: 'Heilerakten',            description: 'Medizinische RP-Aufzeichnungen',                         type: 'array',  write: 'healer' },
