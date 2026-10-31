@@ -3,7 +3,7 @@
    ============================================================ */
 (function (global) {
   const SUPABASE_URL = "https://wlrsluafjhaeurgmqmci.supabase.co";
-  const SUPABASE_PUBLISHABLE_KEY = "sb_publishable__kXmLDeP47mcg-ytidwTg_ktUyr1mm";
+  const SUPABASE_PUBLISHABLE_KEY = "sb_publishable_kXmLDeP47mcg-ytidwTg_ktUyr1mm";
 
   const DB_KEY = {
     wiki: "wiki",
