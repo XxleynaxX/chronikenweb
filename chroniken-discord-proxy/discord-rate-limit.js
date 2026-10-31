@@ -1,9 +1,9 @@
 /**
  * Gemeinsamer Discord-HTTP-Schutz für den Chroniken-Proxy.
  *
- * Behandelt 429-Antworten zentral, wartet die von Discord gemeldete
- * Zeit und begrenzt Wiederholungen. So erzeugen Wetter, Webhooks und
- * OAuth nicht gegenseitig unnötige Rate-Limit-Spitzen.
+ * Normale Discord-Anfragen werden leicht gebremst. Bei 429 wird für
+ * normale Webhooks gewartet und erneut versucht. OAuth-Login-Anfragen
+ * können dagegen ausdrücklich ohne lange Wartezeit abbrechen.
  */
 
 let queue = Promise.resolve();
@@ -38,16 +38,29 @@ function isGlobal(response) {
     || String(response.headers.get('x-ratelimit-global') || '').toLowerCase() === 'true';
 }
 
-async function run(request) {
+async function run(request, options = {}) {
+  const failFast429 = options.failFast429 === true;
+  const maxRetries = failFast429 ? 0 : MAX_RETRIES;
+
   for (let attempt = 0; ; attempt++) {
     const now = Date.now();
     const wait = Math.max(nextRequestAt - now, globalBlockedUntil - now);
-    if (wait > 0) await delay(wait);
+
+    // OAuth darf nicht minutenlang in einer globalen Sperre warten.
+    if (wait > 0) {
+      if (failFast429 && globalBlockedUntil > now) {
+        const error = new Error('DISCORD_RATE_LIMITED');
+        error.code = 'DISCORD_RATE_LIMITED';
+        error.retryAfterMs = globalBlockedUntil - now;
+        throw error;
+      }
+      await delay(wait);
+    }
 
     nextRequestAt = Date.now() + MIN_INTERVAL_MS;
     const response = await request();
 
-    if (response.status !== 429 || attempt >= MAX_RETRIES) return response;
+    if (response.status !== 429 || attempt >= maxRetries) return response;
 
     const bodyText = await response.clone().text().catch(() => '');
     const waitMs = retryAfterMs(response, bodyText);
@@ -56,12 +69,16 @@ async function run(request) {
     if (isGlobal(response)) globalBlockedUntil = Math.max(globalBlockedUntil, until);
     nextRequestAt = Math.max(nextRequestAt, until);
 
-    console.warn('[Discord Rate Limit] 429 erhalten; warte ' + waitMs + ' ms (Versuch ' + (attempt + 1) + '/' + MAX_RETRIES + ').');
+    console.warn('[Discord Rate Limit] 429 erhalten; warte ' + waitMs + ' ms (Versuch ' + (attempt + 1) + '/' + maxRetries + ').');
   }
 }
 
-function discordFetch(url, options) {
-  const job = queue.then(() => run(() => fetch(url, options)));
+function discordFetch(url, options = {}) {
+  const failFast429 = options.failFast429 === true;
+  const fetchOptions = { ...options };
+  delete fetchOptions.failFast429;
+
+  const job = queue.then(() => run(() => fetch(url, fetchOptions), { failFast429 }));
   queue = job.catch(() => {});
   return job;
 }
