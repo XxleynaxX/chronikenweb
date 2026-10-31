@@ -279,19 +279,38 @@
       render();
     }
 
-    function save() {
+    async function save() {
       const name = el("fName").value.trim();
-      if (!name) { el("status").style.color = "#f87171"; el("status").textContent = "Bitte einen Namen eingeben."; return; }
+      if (!name) {
+        el("status").style.color = "#f87171";
+        el("status").textContent = "Bitte einen Namen eingeben.";
+        return;
+      }
+
       const list = ChronikenData.load(KEY);
       const full = el("fFull").value.trim();
       const entry = { name, domain: el("fDomain").value.trim(), full };
-      if (editIndex !== null && list[editIndex]) list[editIndex] = entry; else list.push(entry);
-      ChronikenData.save(KEY, list);
-      resetForm();
-      el("status").style.color = "#22c55e";
-      el("status").textContent = "✓ Gespeichert";
-      render();
-      setTimeout(() => { el("status").textContent = ""; }, 2500);
+      if (editIndex !== null && list[editIndex]) list[editIndex] = entry;
+      else list.push(entry);
+
+      el("btnSave").disabled = true;
+      el("status").style.color = "";
+      el("status").textContent = "Speichere in Supabase …";
+
+      try {
+        await ChronikenData.save(KEY, list);
+        resetForm();
+        el("status").style.color = "#22c55e";
+        el("status").textContent = "✓ In Supabase gespeichert";
+        render();
+        setTimeout(() => { el("status").textContent = ""; }, 2500);
+      } catch (err) {
+        console.error("[Götter] Speichern fehlgeschlagen:", err);
+        el("status").style.color = "#f87171";
+        el("status").textContent = "✗ Supabase-Speicherung fehlgeschlagen";
+      } finally {
+        el("btnSave").disabled = false;
+      }
     }
 
     el("btnSave").onclick = save;
