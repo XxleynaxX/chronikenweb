@@ -13,7 +13,7 @@ const fs = require("fs");
 const path = require("path");
 
 const WEBHOOK = process.env.MOD_WEBHOOK || process.env.DISCORD_WEBHOOK_URL || "";
-const INTERVAL_MIN = Math.max(1, parseInt(process.env.CHECK_INTERVAL_MIN || "5", 10) || 5);
+const INTERVAL_MIN = Math.max(1, parseInt(process.env.CHECK_INTERVAL_MIN || "180", 10) || 180);
 const QUIET = (process.env.QUIET || "1") !== "0";
 const STATE_PATH = process.env.STATE_PATH || path.join(__dirname, "state.json");
 const MODS_PATH = path.join(__dirname, "mods.json");
@@ -66,6 +66,8 @@ async function fetchDetails(ids) {
   return list;
 }
 
+let blockedUntil = 0;
+
 async function postDiscord(content, embeds) {
   if (!WEBHOOK) {
     console.log("[Discord] Kein WEBHOOK gesetzt – würde senden:", content);
@@ -73,15 +75,24 @@ async function postDiscord(content, embeds) {
     return;
   }
   const payload = { content: content || undefined, embeds: embeds || undefined };
+  if (Date.now() < blockedUntil) throw new Error("Discord blockiert uns gerade (429) – Senden pausiert bis " + new Date(blockedUntil).toISOString());
   const res = await fetch(WEBHOOK, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(payload)
   });
+  if (res.status === 429) {
+    // Nicht erneut hämmern: Pause einlegen (Retry-After, mindestens 30 Min, bei globalem Block)
+    const t = await res.text();
+    const ra = Number(res.headers.get("retry-after")) || 0;
+    blockedUntil = Date.now() + Math.max(ra * 1000, 30 * 60 * 1000);
+    throw new Error(`Discord Webhook HTTP 429: ${t}`);
+  }
   if (!res.ok) {
     const t = await res.text();
     throw new Error(`Discord Webhook HTTP ${res.status}: ${t}`);
   }
+  await new Promise((r) => setTimeout(r, 1500)); // Abstand zwischen Nachrichten
 }
 
 async function runOnce() {
@@ -149,7 +160,7 @@ async function runOnce() {
 
   // Beim ersten erfolgreichen Lauf einmal die komplette Mod-Liste an Discord senden.
   // Danach wird sie nicht erneut gesendet, sondern nur noch bei echten Updates.
-  if (!state.__initial_mod_list_sent && WEBHOOK) {
+  if (!state.__initial_mod_list_sent && WEBHOOK && process.env.SEND_INITIAL_LIST === "1") {
     console.log("  → Erster erfolgreicher Lauf: sende komplette Mod-Liste an Discord …");
 
     const validDetails = details.filter((item) => item.result === 1);
