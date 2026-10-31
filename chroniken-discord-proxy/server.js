@@ -98,32 +98,6 @@ async function handleAuth(req, res, url) {
     res.writeHead(200, { 'Content-Type': 'application/json', 'Cache-Control': 'no-store' });
     return res.end(JSON.stringify({ ok: true }));
   }
-  // Passwort-Admin: stellt dieselbe signierte Admin-Session aus wie Discord.
-  // Die Datenzugriffe verwenden danach unverändert /data und damit MySQL.
-  if (url.pathname === '/auth/password' && req.method === 'POST') {
-    try {
-      const raw = await readBody(req);
-      const body = JSON.parse(raw || '{}');
-      const configuredPassword = process.env.ADMIN_PASSWORD || 'Chroniken2026';
-      if (!body || body.password !== configuredPassword) {
-        return sendJson(res, 401, { ok: false, error: 'Falsches Passwort.' });
-      }
-      const token = sign({
-        sub: 'password-admin',
-        name: 'Admin',
-        admin: true,
-        lib: true,
-        healer: true,
-        exp: Date.now() + SESSION_MS
-      });
-      console.log('[AUTH] Passwort-Admin erfolgreich angemeldet');
-      return sendJson(res, 200, { ok: true, token });
-    } catch (e) {
-      console.error('[AUTH] Passwort-Login fehlgeschlagen:', e && e.message ? e.message : e);
-      return sendJson(res, 400, { ok: false, error: 'Ungültige Anfrage.' });
-    }
-  }
-
   if (!CLIENT_ID || !CLIENT_SECRET || !AUTH_SECRET) {
     return page(res, 500, 'Discord-Login nicht eingerichtet: DISCORD_CLIENT_ID, DISCORD_CLIENT_SECRET und AUTH_SECRET fehlen.');
   }
