@@ -77,7 +77,7 @@
     wetter: DEFAULT_WETTER
   };
 
-  // Alle Keys die über Supabase geteilt werden
+  // Alle Keys die über die Datenbank geteilt werden
   const SHARED_KEYS = ["voelker", "berufe", "goetter"];
 
   const memCache = Object.create(null);
@@ -105,7 +105,7 @@
 
   /**
    * Synchrones load – Cache → localStorage → Defaults.
-   * Supabase wird im Hintergrund nachgezogen (syncFromRemote).
+   * Die Datenbank wird im Hintergrund nachgezogen (syncFromRemote).
    */
   function load(key) {
     if (memCache[key]) return clone(memCache[key]);
@@ -123,7 +123,7 @@
   }
 
   /**
-   * Speichert lokal + (falls shared) asynchron in Supabase.
+   * Speichert lokal + (falls shared) asynchron in der Datenbank.
    */
   async function save(key, arr) {
     const data = Array.isArray(arr) ? arr : [];
@@ -144,7 +144,7 @@
       saveToLocal(key, memCache[key]);
       return clone(memCache[key]);
     } catch (err) {
-      console.error("[ChronikenData] Supabase-Save fehlgeschlagen:", key, err);
+      console.error("[ChronikenData] Speichern fehlgeschlagen:", key, err);
       throw err;
     }
   }
@@ -172,7 +172,7 @@
   }
 
   /**
-   * Einmalig: Daten von Supabase holen und lokalen Cache aktualisieren.
+   * Einmalig: Daten aus der Datenbank holen und lokalen Cache aktualisieren.
    */
   async function syncFromRemote() {
     if (!window.ChronikenStorage) return false;
@@ -193,11 +193,11 @@
             memCache[key] = local && local.length > 0 ? local : clone(DEFAULTS[key] || []);
           }
         } catch (err) {
-          console.warn("Supabase-Sync für", key, "fehlgeschlagen:", err);
+          console.warn("Sync für", key, "fehlgeschlagen:", err);
         }
       }
     } catch (e) {
-      console.warn("Supabase-Sync fehlgeschlagen, nutze lokale Daten:", e);
+      console.warn("Sync fehlgeschlagen, nutze lokale Daten:", e);
     }
 
     try {

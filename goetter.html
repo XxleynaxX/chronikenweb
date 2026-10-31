@@ -295,19 +295,19 @@
 
       el("btnSave").disabled = true;
       el("status").style.color = "";
-      el("status").textContent = "Speichere in Supabase …";
+      el("status").textContent = "Speichere in der Datenbank …";
 
       try {
         await ChronikenData.save(KEY, list);
         resetForm();
         el("status").style.color = "#22c55e";
-        el("status").textContent = "✓ In Supabase gespeichert";
+        el("status").textContent = "✓ In der Datenbank gespeichert";
         render();
         setTimeout(() => { el("status").textContent = ""; }, 2500);
       } catch (err) {
         console.error("[Götter] Speichern fehlgeschlagen:", err);
         el("status").style.color = "#f87171";
-        el("status").textContent = "✗ Supabase-Speicherung fehlgeschlagen";
+        el("status").textContent = "✗ Speichern in der Datenbank fehlgeschlagen";
       } finally {
         el("btnSave").disabled = false;
       }

@@ -303,7 +303,7 @@ const ADMIN_FIXED_HOLIDAYS=[[0,1,"Nacht der ersten Flamme"],[2,15,"Fest der drei
 async function renderAdminEventManager(){
   const box=document.getElementById("adminEventManager");if(!box||!isAdmin()){if(box)box.innerHTML='<p class="small">Bitte zuerst als Admin anmelden.</p>';return}
   if(!window.ChronikenStorage){box.innerHTML='<p class="small">chroniken-storage.js wurde nicht geladen.</p>';return}
-  box.innerHTML='<p class="small">Lade Kalenderdaten aus Supabase …</p>';
+  box.innerHTML='<p class="small">Lade Kalenderdaten aus der Datenbank …</p>';
   let mainBirthdays,characterEvents,custom,disabled;
   try{
     [mainBirthdays,characterEvents,custom,disabled]=await Promise.all([ChronikenStorage.load("birthdays"),ChronikenStorage.load("characterEvents"),ChronikenSync.loadShared("calendar"),ChronikenSync.loadShared("disabledHolidays")]);

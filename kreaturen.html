@@ -226,9 +226,9 @@
     function saveData(d){
       window._kreaturenCache = d;
       localStorage.setItem(STORAGE_KEY, JSON.stringify(d));
-      // Im Hintergrund zu Supabase
+      // Im Hintergrund in die Datenbank
       if (window.ChronikenStorage) {
-        ChronikenStorage.save("kreaturen", d).catch(err => console.warn("Kreaturen Supabase-Save fehlgeschlagen:", err));
+        ChronikenStorage.save("kreaturen", d).catch(err => console.warn("Kreaturen Speichern fehlgeschlagen:", err));
       }
     }
     function formatLore(text) {
@@ -315,7 +315,7 @@
     }
     el("btnSave").onclick=save; el("btnCancel").onclick=resetForm;
 
-    // Von Supabase laden (falls vorhanden)
+    // Aus der Datenbank laden (falls vorhanden)
     (async function(){
       if (!window.ChronikenStorage) { render(); return; }
       try {

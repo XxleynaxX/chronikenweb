@@ -97,7 +97,7 @@ Die Website besteht aus mehreren miteinander verbundenen Teilen:
          │
          ▼
 ┌─────────────────────┐
-│ Supabase             │
+│ MySQL                │
 │ zentrale RP-Daten   │
 └─────────────────────┘
 ```
@@ -108,7 +108,7 @@ Die Website besteht aus mehreren miteinander verbundenen Teilen:
 
 Der **Render-Service** übernimmt Aufgaben, die nicht direkt im Browser stattfinden sollen, darunter Discord-OAuth2, Rollenprüfung, Wetter-Synchronisation und Discord-Webhooks.
 
-**Supabase** dient als zentrale Speicherung für gemeinsame RP-Daten. Der Browser verwendet zusätzlich `localStorage` als lokalen Cache.
+**MySQL** dient als zentrale Speicherung für gemeinsame RP-Daten. Der Browser spricht nie direkt mit der Datenbank, sondern über den Render-Proxy (`/data`). Zusätzlich dient `localStorage` als lokaler Cache.
 
 ---
 
@@ -173,9 +173,36 @@ Je nach Bereich werden unterschiedliche Speicherwege verwendet:
 
 `localStorage` dient als lokaler Cache und für browserbezogene Daten.
 
-### Supabase
+### MySQL
 
-Gemeinsame Daten wie Events, News, Geburtstage, Kalenderdaten und Charakterdaten können zentral synchronisiert werden.
+Gemeinsame Daten wie Events, News, Geburtstage, Kalenderdaten und Charakterdaten liegen in der Tabelle `chroniken_data` (Key-Value, Wert als `JSON`). Der Proxy legt Tabelle und Schlüssel beim Start selbst an (`chroniken-discord-proxy/db.js`, manuell: `mysql-schema.sql`).
+
+**Umgebungsvariablen (Render):**
+
+| Variable | Bedeutung |
+|---|---|
+| `MYSQL_URL` | `mysql://USER:PASSWORT@HOST:PORT/DATENBANK` (alternativ `MYSQL_HOST`, `MYSQL_PORT`, `MYSQL_USER`, `MYSQL_PASSWORD`, `MYSQL_DATABASE`) |
+| `MYSQL_SSL` | `1` bei Cloud-Anbietern (Aiven, TiDB …), `0` ohne TLS |
+| `MYSQL_SSL_CA` | optional: CA-Zertifikat (PEM), falls der Anbieter ein eigenes nutzt |
+
+**Schreibrechte pro Schlüssel** (Lesen ist öffentlich):
+
+| Recht | Schlüssel |
+|---|---|
+| jeder | `events`, `birthdays`, `character_events`, `characters`, `character_sheets` |
+| Bibliothek-Rolle | `library`, `map` |
+| Heiler-Rolle | `healer_records` |
+| nur Admin | `races`, `professions`, `gods`, `creatures`, `wiki`, `rules`, `news`, `calendar`, `disabled_holidays`, `weather` |
+
+Admins dürfen immer alles. Die Zuordnung steht in `db.js` (`KEYS`).
+
+**Daten von Supabase übernehmen (einmalig):**
+
+```bash
+cd chroniken-discord-proxy && npm install
+MYSQL_URL="mysql://…" MYSQL_SSL=1 SUPABASE_URL="https://xxxx.supabase.co" SUPABASE_KEY="…" \
+  node scripts/migrate-supabase-to-mysql.js --dry-run     # erst testen, dann ohne --dry-run
+```
 
 ### Render
 
@@ -263,7 +290,7 @@ chronikenweb/
 - **Node.js**
 - **Discord OAuth2**
 - **Discord Webhooks**
-- **Supabase**
+- **MySQL** (`mysql2`)
 - **GitHub Pages**
 - **Render**
 - **html2canvas**

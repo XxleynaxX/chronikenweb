@@ -1,15 +1,33 @@
 /* ============================================================
-   Chroniken – zentrale Supabase-Speicherung (einzige Quelle)
+   Chroniken – zentrale Datenspeicherung (MySQL über den Proxy)
    ============================================================
    Alle gemeinsamen RP-Daten laufen über dieses Modul.
-   localStorage dient nur noch als schneller Cache.
+   Der Browser spricht NICHT direkt mit MySQL, sondern mit dem
+   Chroniken-Proxy (Render): GET/PUT {PROXY}/data[/key]
+   Schreibrechte werden dort anhand des Discord-Logins geprüft.
    ============================================================ */
 (function (global) {
   "use strict";
 
   // ---------- Konfiguration (nur hier ändern) ----------
-  const SUPABASE_URL = "https://wlrsluafjhaeurgmqmci.supabase.co";
-  const SUPABASE_PUBLISHABLE_KEY = "sb_publishable_kXmLDeP47mcg-ytidwTg_ktUyr1mm";
+  const DEFAULT_PROXY = "https://chronikenweb-1.onrender.com";
+  const TOKEN_KEY = "chroniken_discord_token";   // gleiche Quelle wie chroniken-auth.js
+  const REQUEST_TIMEOUT_MS = 45000;               // Render-Free-Instanzen brauchen beim Aufwecken lange
+
+  function apiBase() {
+    try {
+      const saved = localStorage.getItem("chroniken_discord_proxy_url");
+      if (saved && saved.trim()) return saved.trim().replace(/\/$/, "");
+    } catch (e) {}
+    if (typeof global.CHRONIKEN_DISCORD_PROXY === "string" && global.CHRONIKEN_DISCORD_PROXY.trim()) {
+      return global.CHRONIKEN_DISCORD_PROXY.trim().replace(/\/$/, "");
+    }
+    return DEFAULT_PROXY;
+  }
+
+  function authToken() {
+    try { return sessionStorage.getItem(TOKEN_KEY) || ""; } catch (e) { return ""; }
+  }
 
   /**
    * Frontend-Name → Datenbank-Key
@@ -41,9 +59,8 @@
   const OBJECT_KEYS = new Set(["weather"]);
 
   // ---------- Interner Zustand ----------
-  let client = null;
-  let readyPromise = null;
   const cache = Object.create(null); // dbKey → value
+  let inflightAll = null;
 
   // ---------- Hilfsfunktionen ----------
   function toDbKey(name) {
@@ -59,55 +76,57 @@
     return value;
   }
 
-  // ---------- Client laden ----------
-  function init() {
-    if (client) return Promise.resolve(client);
-    if (readyPromise) return readyPromise;
+  // ---------- HTTP ----------
+  async function request(path, options, attempt) {
+    attempt = attempt || 0;
+    const controller = typeof AbortController !== "undefined" ? new AbortController() : null;
+    const timer = controller ? setTimeout(function () { controller.abort(); }, REQUEST_TIMEOUT_MS) : null;
+    const headers = Object.assign({ "Cache-Control": "no-cache" }, (options && options.headers) || {});
+    const token = authToken();
+    if (token) headers.Authorization = "Bearer " + token;
 
-    readyPromise = new Promise(function (resolve, reject) {
-      function create() {
-        if (!global.supabase || !global.supabase.createClient) {
-          reject(new Error("Supabase JS konnte nicht geladen werden."));
-          return;
-        }
-        client = global.supabase.createClient(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY);
-        resolve(client);
+    let res;
+    try {
+      res = await fetch(apiBase() + path, Object.assign({ cache: "no-store" }, options, {
+        headers: headers,
+        signal: controller ? controller.signal : undefined
+      }));
+    } catch (e) {
+      // Netzwerkfehler / Timeout: bei Lesezugriffen einmal wiederholen (Server wacht gerade auf)
+      if (attempt < 1 && (!options || !options.method || options.method === "GET")) {
+        return request(path, options, attempt + 1);
       }
+      throw new Error(e && e.name === "AbortError"
+        ? "Der Server antwortet nicht (Zeitüberschreitung)."
+        : "Server nicht erreichbar.");
+    } finally {
+      if (timer) clearTimeout(timer);
+    }
 
-      if (global.supabase && global.supabase.createClient) {
-        create();
-        return;
-      }
-
-      const script = document.createElement("script");
-      script.src = "https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2";
-      script.onload = create;
-      script.onerror = function () {
-        reject(new Error("Supabase JS konnte nicht geladen werden."));
-      };
-      document.head.appendChild(script);
-    });
-
-    return readyPromise;
+    let body = null;
+    try { body = await res.json(); } catch (e) {}
+    if (!res.ok || !body || body.ok === false) {
+      const msg = (body && body.error) || ("Status " + res.status);
+      const err = new Error(msg);
+      err.status = res.status;
+      throw err;
+    }
+    return body;
   }
 
   // ---------- Kern-API ----------
   async function fetchAll() {
-    const sb = await init();
-    const { data, error } = await sb
-      .from("chroniken_data")
-      .select("key, value, updated_at");
-
-    if (error) {
-      throw new Error("Supabase lesen fehlgeschlagen: " + error.message);
+    // Mehrere gleichzeitige Aufrufe teilen sich eine Anfrage.
+    if (!inflightAll) {
+      inflightAll = request("/data").then(function (body) {
+        const out = body.data || {};
+        Object.keys(out).forEach(function (k) { cache[k] = out[k]; });
+        return out;
+      }).catch(function (e) {
+        throw new Error("Daten laden fehlgeschlagen: " + e.message);
+      }).finally(function () { inflightAll = null; });
     }
-
-    const out = {};
-    (data || []).forEach(function (row) {
-      out[row.key] = row.value;
-      cache[row.key] = row.value;
-    });
-    return out;
+    return inflightAll;
   }
 
   async function load(name) {
@@ -133,28 +152,23 @@
     const dbKey = toDbKey(name);
     const normalized = value === undefined ? emptyValue(name) : value;
 
-    const sb = await init();
-    const { data, error } = await sb
-      .from("chroniken_data")
-      .upsert(
-        {
-          key: dbKey,
-          value: normalized,
-          updated_at: new Date().toISOString()
-        },
-        { onConflict: "key" }
-      )
-      .select("key, value, updated_at")
-      .single();
-
-    if (error) {
-      console.error("[ChronikenStorage] Speichern fehlgeschlagen:", dbKey, error);
-      throw new Error("Supabase speichern fehlgeschlagen: " + error.message);
+    try {
+      await request("/data/" + encodeURIComponent(dbKey), {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ value: normalized })
+      });
+    } catch (e) {
+      console.error("[ChronikenStorage] Speichern fehlgeschlagen:", dbKey, e);
+      if (e.status === 401 || e.status === 403) {
+        throw new Error("Keine Berechtigung zum Speichern (" + e.message + ") – bitte mit Discord anmelden.");
+      }
+      throw new Error("Speichern fehlgeschlagen: " + e.message);
     }
 
-    cache[dbKey] = data && data.value !== undefined ? data.value : normalized;
+    cache[dbKey] = normalized;
     console.info("[ChronikenStorage] Gespeichert:", dbKey);
-    return cache[dbKey];
+    return normalized;
   }
 
   async function refresh(name) {
@@ -226,17 +240,12 @@
     ];
 
     const report = { imported: [], skipped: [], empty: [], failed: [] };
-    const sb = await init();
-    const { data: rows, error: readError } = await sb
-      .from("chroniken_data")
-      .select("key, value");
-
-    if (readError) {
-      throw new Error("Import: Datenbank konnte nicht gelesen werden: " + readError.message);
+    let existing;
+    try {
+      existing = Object.assign(Object.create(null), await fetchAll());
+    } catch (e) {
+      throw new Error("Import: Datenbank konnte nicht gelesen werden: " + e.message);
     }
-
-    const existing = Object.create(null);
-    (rows || []).forEach(function (row) { existing[row.key] = row.value; });
 
     function readBrowser(name) {
       try {
@@ -293,6 +302,6 @@
     ensureCache: ensureMain,
     importLocalStorage: importLocalStorage,
     DB_KEY: DB_KEY,
-    SUPABASE_URL: SUPABASE_URL
+    API_BASE: apiBase
   };
 })(typeof window !== "undefined" ? window : globalThis);

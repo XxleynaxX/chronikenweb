@@ -1,5 +1,5 @@
 /* ============================================================
-   Chroniken – Events, Charaktere, Kalender über Supabase
+   Chroniken – Events, Charaktere, Kalender über die Datenbank (MySQL)
    Dünner Layer über ChronikenStorage + localStorage-Cache
    ============================================================
    Keine JSONBin-Reste mehr. Alle Daten laufen über

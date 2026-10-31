@@ -9,100 +9,33 @@ const HEILER_WEBHOOK = process.env.HEILER_WEBHOOK || '';
 const MOD_WEBHOOK = process.env.MOD_WEBHOOK || process.env.DISCORD_MOD_WEBHOOK || '';
 const MOD_WATCHER_SECRET = process.env.MOD_WATCHER_SECRET || '';
 
-const SUPABASE_URL = (process.env.SUPABASE_URL || '').replace(/\/$/, '');
-const SUPABASE_SECRET_KEY = process.env.SUPABASE_SECRET_KEY || '';
-const JSONBIN_MASTER_KEY = process.env.JSONBIN_MASTER_KEY || '';
-const JSONBIN_EVENTS_BIN_ID = process.env.JSONBIN_EVENTS_BIN_ID || '6ae18121ffd5d1605391c7c7';
-const JSONBIN_CHARS_BIN_ID = process.env.JSONBIN_CHARS_BIN_ID || '6ae17c9cffd5d1605391c27b';
+const db = require('./db');
+const MAX_BODY = 10 * 1024 * 1024; // 10 MB pro Speichervorgang (MySQL max_allowed_packet beachten)
 
-function supabaseHeaders() {
-  return {
-    apikey: SUPABASE_SECRET_KEY,
-    Authorization: 'Bearer ' + SUPABASE_SECRET_KEY,
-    'Content-Type': 'application/json',
-    Prefer: 'return=representation'
-  };
-}
-
-async function supabaseRest(path, options = {}) {
-  if (!SUPABASE_URL || !SUPABASE_SECRET_KEY) {
-    throw new Error('SUPABASE_URL oder SUPABASE_SECRET_KEY fehlt.');
-  }
-  const r = await fetch(SUPABASE_URL + '/rest/v1/' + path, {
-    ...options,
-    headers: { ...supabaseHeaders(), ...(options.headers || {}) }
-  });
-  const text = await r.text();
-  let data = null;
-  try { data = text ? JSON.parse(text) : null; } catch {}
-  if (!r.ok) throw new Error('Supabase ' + r.status + ': ' + (data?.message || text || 'unbekannter Fehler'));
-  return data;
-}
-
-async function readJsonBin(binId) {
-  if (!JSONBIN_MASTER_KEY) throw new Error('JSONBIN_MASTER_KEY fehlt.');
-  const r = await fetch('https://api.jsonbin.io/v3/b/' + binId + '/latest', {
-    headers: { 'X-Master-Key': JSONBIN_MASTER_KEY, 'X-Bin-Meta': 'false' }
-  });
-  const text = await r.text();
-  if (!r.ok) throw new Error('JSONBin ' + r.status + ': ' + text);
-  const data = JSON.parse(text);
-  return data && data.record && typeof data.record === 'object' ? data.record : data;
-}
-
-function migrationToken(req) {
+function bearer(req) {
   return String(req.headers.authorization || '').replace(/^Bearer\s+/i, '');
 }
 
 function requireAdmin(req) {
-  const p = verify(migrationToken(req));
-  if (!p || !p.admin) throw new Error('Nur Admins dürfen die Datenmigration starten.');
+  const p = verify(bearer(req));
+  if (!p || !p.admin) throw new Error('Nur Admins erlaubt.');
   return p;
 }
 
-async function migrateJsonBinToSupabase() {
-  const main = await readJsonBin(JSONBIN_EVENTS_BIN_ID);
-  const chars = await readJsonBin(JSONBIN_CHARS_BIN_ID);
-
-  const snapshot = {
-    migrated_at: new Date().toISOString(),
-    source: {
-      events_bin_id: JSONBIN_EVENTS_BIN_ID,
-      chars_bin_id: JSONBIN_CHARS_BIN_ID
-    },
-    main,
-    chars
-  };
-
-  await supabaseRest('jsonbin_backups', {
-    method: 'POST',
-    body: JSON.stringify({ snapshot })
-  });
-
-  const arrays = {
-    events: Array.isArray(main.events) ? main.events : [],
-    birthdays: Array.isArray(main.birthdays) ? main.birthdays : [],
-    calendar: Array.isArray(main.calendar) ? main.calendar : [],
-    disabledHolidays: Array.isArray(main.disabledHolidays) ? main.disabledHolidays : [],
-    characters: Array.isArray(chars.characters) ? chars.characters : [],
-    characterSheets: Array.isArray(chars.characterSheets) ? chars.characterSheets : []
-  };
-
-  await supabaseRest('chroniken_data?on_conflict=key', {
-    method: 'POST',
-    body: JSON.stringify(Object.entries(arrays).map(([key, value]) => ({
-      key,
-      value,
-      updated_at: new Date().toISOString()
-    })))
-  });
-
-  return {
-    ok: true,
-    migrated_at: snapshot.migrated_at,
-    counts: Object.fromEntries(Object.entries(arrays).map(([k, v]) => [k, v.length]))
-  };
+function sendJson(res, status, obj) {
+  res.writeHead(status, { 'Content-Type': 'application/json', 'Cache-Control': 'no-store' });
+  res.end(JSON.stringify(obj));
 }
+
+async function readBody(req) {
+  let body = '';
+  for await (const chunk of req) {
+    body += chunk;
+    if (body.length > MAX_BODY) { const e = new Error('Daten zu groß.'); e.status = 413; throw e; }
+  }
+  return body;
+}
+
 
 /* ===== Discord-Login (OAuth2) =====
    Benötigte Umgebungsvariablen (Render → Environment):
@@ -317,7 +250,7 @@ function healerEmbed(body) {
 const server = http.createServer(async (req, res) => {
   // CORS – damit die Website aufrufen darf
   res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
+  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, Cache-Control');
 
   if (req.method === 'OPTIONS') {
@@ -329,103 +262,66 @@ const server = http.createServer(async (req, res) => {
   const url = new URL(req.url, 'http://localhost');
 
 
-  // ===== Chroniken-Daten: Supabase statt JSONBin =====
-  if (req.method === 'GET' && url.pathname === '/data') {
+  // ===== Chroniken-Daten (MySQL) =====
+  // GET  /data         → alle Schlüssel { ok, data: { key: value } }   (öffentlich)
+  // GET  /data/:key    → ein Schlüssel { ok, key, value }              (öffentlich)
+  // PUT  /data/:key    → { value } speichern, Rechte je Schlüssel (db.js)
+  // PUT  /data         → { data: { key: value, ... } } mehrere in einer Transaktion
+  if (url.pathname === '/data' || url.pathname.startsWith('/data/')) {
     try {
-      const rows = await supabaseRest('chroniken_data?select=key,value&order=key.asc');
-      const data = {};
-      for (const row of Array.isArray(rows) ? rows : []) data[row.key] = row.value;
-      res.writeHead(200, { 'Content-Type': 'application/json', 'Cache-Control': 'no-store' });
-      res.end(JSON.stringify({ ok: true, data }));
-    } catch (e) {
-      res.writeHead(500, { 'Content-Type': 'application/json', 'Cache-Control': 'no-store' });
-      res.end(JSON.stringify({ ok: false, error: e.message }));
-    }
-    return;
-  }
+      const rest = url.pathname.slice('/data'.length).replace(/^\//, '');
+      const single = rest ? db.normalizeKey(decodeURIComponent(rest)) : '';
+      if (single && !db.KEYS[single]) return sendJson(res, 404, { ok: false, error: 'Unbekannter Schlüssel: ' + single });
 
-  if (req.method === 'PUT' && url.pathname === '/data') {
-    const auth = String(req.headers.authorization || '').replace(/^Bearer\\s+/i, '');
-    const session = verify(auth);
-    if (!session) {
-      res.writeHead(401, { 'Content-Type': 'application/json', 'Cache-Control': 'no-store' });
-      res.end(JSON.stringify({ ok: false, error: 'Anmeldung erforderlich.' }));
-      return;
-    }
-
-    let body = '';
-    for await (const chunk of req) {
-      body += chunk;
-      if (body.length > 1000000) {
-        res.writeHead(413, { 'Content-Type': 'application/json', 'Cache-Control': 'no-store' });
-        res.end(JSON.stringify({ ok: false, error: 'Daten zu groß.' }));
-        return;
+      if (req.method === 'GET') {
+        if (single) return sendJson(res, 200, { ok: true, key: single, value: await db.getOne(single) });
+        return sendJson(res, 200, { ok: true, data: await db.getAll() });
       }
-    }
 
-    try {
-      const parsed = JSON.parse(body || '{}');
-      const input = parsed && parsed.data && typeof parsed.data === 'object' ? parsed.data : {};
-      const allowed = ['events', 'birthdays', 'calendar', 'disabledHolidays', 'characters', 'characterSheets'];
-      const charKeys = new Set(['characters', 'characterSheets']);
-      const changes = [];
+      if (req.method === 'PUT') {
+        const session = verify(bearer(req));
+        const parsed = JSON.parse((await readBody(req)) || '{}');
+        const input = single
+          ? { [single]: parsed.value }
+          : (parsed && typeof parsed.data === 'object' && parsed.data ? parsed.data : {});
 
-      for (const key of Object.keys(input)) {
-        if (!allowed.includes(key)) continue;
-        if (!Array.isArray(input[key])) continue;
-
-        if (!charKeys.has(key) && !session.admin) {
-          throw new Error('Nur Admins dürfen ' + key + ' ändern.');
+        const entries = [];
+        for (const [rawKey, value] of Object.entries(input)) {
+          const key = db.normalizeKey(rawKey);
+          if (!db.KEYS[key]) return sendJson(res, 400, { ok: false, error: 'Unbekannter Schlüssel: ' + rawKey });
+          if (!db.validValue(key, value)) {
+            return sendJson(res, 400, { ok: false, error: 'Ungültiger Wert für ' + key + ' (erwartet: ' + db.KEYS[key].type + ').' });
+          }
+          if (!db.canWrite(key, session)) {
+            return sendJson(res, session ? 403 : 401, {
+              ok: false,
+              error: session ? 'Dir fehlt die Berechtigung für „' + key + '“.' : 'Anmeldung erforderlich für „' + key + '“.'
+            });
+          }
+          entries.push({ key, value });
         }
+        if (!entries.length) return sendJson(res, 400, { ok: false, error: 'Keine Daten zum Speichern erhalten.' });
 
-        changes.push({
-          key,
-          value: input[key],
-          updated_at: new Date().toISOString()
-        });
+        await db.setMany(entries);
+        return sendJson(res, 200, { ok: true, keys: entries.map(e => e.key) });
       }
 
-      if (!changes.length) throw new Error('Keine gültigen Daten zum Speichern erhalten.');
-
-      await supabaseRest('chroniken_data?on_conflict=key', {
-        method: 'POST',
-        body: JSON.stringify(changes)
-      });
-
-      res.writeHead(200, { 'Content-Type': 'application/json', 'Cache-Control': 'no-store' });
-      res.end(JSON.stringify({ ok: true, keys: changes.map(x => x.key) }));
+      return sendJson(res, 405, { ok: false, error: 'Methode nicht erlaubt.' });
     } catch (e) {
-      const code = /Nur Admins/.test(e.message) ? 403 : 400;
-      res.writeHead(code, { 'Content-Type': 'application/json', 'Cache-Control': 'no-store' });
-      res.end(JSON.stringify({ ok: false, error: e.message }));
+      console.error('[/data]', e.message);
+      const status = e.status || (e instanceof SyntaxError ? 400 : 500);
+      return sendJson(res, status, { ok: false, error: status === 500 ? 'Datenbankfehler: ' + e.message : e.message });
     }
-    return;
   }
 
-  if (req.method === 'GET' && url.pathname === '/admin/migration-status') {
+  // Admin: Zustand der Datenbank (Schlüssel, Einträge, letzte Änderung)
+  if (req.method === 'GET' && url.pathname === '/admin/db-status') {
     try {
       requireAdmin(req);
-      const rows = await supabaseRest('chroniken_data?select=key,updated_at&order=key.asc');
-      res.writeHead(200, { 'Content-Type': 'application/json', 'Cache-Control': 'no-store' });
-      res.end(JSON.stringify({ ok: true, rows }));
+      return sendJson(res, 200, { ok: true, rows: await db.status() });
     } catch (e) {
-      res.writeHead(403, { 'Content-Type': 'application/json', 'Cache-Control': 'no-store' });
-      res.end(JSON.stringify({ ok: false, error: e.message }));
+      return sendJson(res, /Admin/.test(e.message) ? 403 : 500, { ok: false, error: e.message });
     }
-    return;
-  }
-
-  if (req.method === 'POST' && url.pathname === '/admin/migrate-jsonbin') {
-    try {
-      requireAdmin(req);
-      const result = await migrateJsonBinToSupabase();
-      res.writeHead(200, { 'Content-Type': 'application/json', 'Cache-Control': 'no-store' });
-      res.end(JSON.stringify(result));
-    } catch (e) {
-      res.writeHead(500, { 'Content-Type': 'application/json', 'Cache-Control': 'no-store' });
-      res.end(JSON.stringify({ ok: false, error: e.message }));
-    }
-    return;
   }
 
   if (req.method === 'POST' && url.pathname === '/weather/set') {
@@ -586,6 +482,11 @@ const server = http.createServer(async (req, res) => {
 
 server.listen(PORT, () => {
   console.log('Listening on', PORT);
+  if (db.configured()) {
+    db.ensureSchema().catch(e => console.error('[DB] Einrichtung fehlgeschlagen:', e.message));
+  } else {
+    console.warn('[DB] MYSQL_URL bzw. MYSQL_HOST/MYSQL_DATABASE nicht gesetzt – /data funktioniert erst nach der Einrichtung.');
+  }
   weather.start(PUBLIC_URL);
 
   // Mod-Watcher direkt im bestehenden Render-Service starten.

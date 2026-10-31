@@ -2,7 +2,7 @@
  * Chroniken – Wetter-Kern (Browser)
  *
  * Die Grundkonfiguration kommt aus weather-config.js.
- * Kein Supabase und kein GITHUB_TOKEN.
+ * Keine Datenbank und kein GITHUB_TOKEN nötig.
  *
  * Die Webseite und der Render-Proxy verwenden dieselbe weather-config.js.
  * Admin-Änderungen werden lokal im Browser zwischengespeichert.

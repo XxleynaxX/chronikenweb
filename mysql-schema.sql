@@ -1,0 +1,55 @@
+-- ============================================================
+-- Chroniken – MySQL-Schema (MySQL 5.7+ / 8.x, MariaDB 10.5+)
+-- ============================================================
+-- Der Proxy legt Tabelle + Schlüssel beim Start automatisch an.
+-- Diese Datei ist für manuelles Einrichten (phpMyAdmin, mysql-CLI)
+-- und als Dokumentation. Mehrfaches Ausführen ist unschädlich.
+--
+--   mysql -u USER -p DATENBANK < mysql-schema.sql
+-- ============================================================
+
+CREATE TABLE IF NOT EXISTS chroniken_data (
+  `key`       VARCHAR(64)  NOT NULL COMMENT 'Technischer Schlüssel (z. B. races, events)',
+  `value`     JSON         NOT NULL COMMENT 'Daten als JSON (Array oder Objekt)',
+  label       VARCHAR(100) NULL     COMMENT 'Anzeigename',
+  description VARCHAR(255) NULL     COMMENT 'Kurze Beschreibung',
+  updated_at  TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3) ON UPDATE CURRENT_TIMESTAMP(3),
+  created_at  TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
+  PRIMARY KEY (`key`),
+  KEY chroniken_data_updated_at_idx (updated_at)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+  COMMENT='Zentrale RP-Daten der Chroniken (Key-Value mit JSON)';
+
+-- Bekannte Schlüssel vorbelegen. Vorhandene Werte werden NICHT überschrieben.
+INSERT INTO chroniken_data (`key`, `value`, label, description) VALUES
+  ('races',             JSON_ARRAY(),  'Völker',                 'Spielbare Rassen / Völker mit Subrassen und Attributen'),
+  ('professions',       JSON_ARRAY(),  'Berufe',                 'Berufe und Handwerke der Welt'),
+  ('gods',              JSON_ARRAY(),  'Götter',                 'Pantheon und göttliche Wesen'),
+  ('creatures',         JSON_ARRAY(),  'Kreaturen',              'Monster, Tiere und mythische Wesen'),
+  ('wiki',              JSON_ARRAY(),  'Wiki',                   'Wiki-Einträge und Lore-Texte'),
+  ('library',           JSON_ARRAY(),  'Bibliothek',             'Bücher und Schriften'),
+  ('rules',             JSON_ARRAY(),  'Regeln',                 'Server- und RP-Regeln'),
+  ('news',              JSON_ARRAY(),  'News',                   'Ankündigungen und Neuigkeiten'),
+  ('events',            JSON_ARRAY(),  'Events',                 'RP-Events und Termine'),
+  ('character_events',  JSON_ARRAY(),  'Charakter-Events',       'Persönliche Events der Charaktere'),
+  ('birthdays',         JSON_ARRAY(),  'Geburtstage',            'Geburtstage der Charaktere'),
+  ('calendar',          JSON_ARRAY(),  'Kalender',               'Eigene Kalendereinträge'),
+  ('disabled_holidays', JSON_ARRAY(),  'Deaktivierte Feiertage', 'Feiertage die ausgeblendet werden'),
+  ('weather',           JSON_OBJECT(), 'Wetter',                 'Aktuelles Fantasy-Wetter (Objekt)'),
+  ('characters',        JSON_ARRAY(),  'Charakter-Register',     'Öffentliches Charakter-Register'),
+  ('character_sheets',  JSON_ARRAY(),  'Charakterbögen',         'Ausgefüllte Charakterbögen'),
+  ('healer_records',    JSON_ARRAY(),  'Heilerakten',            'Medizinische RP-Aufzeichnungen'),
+  ('map',               JSON_ARRAY(),  'Karte',                  'Kartenmarker und Orte')
+ON DUPLICATE KEY UPDATE label = VALUES(label), description = VALUES(description);
+
+-- Übersicht: Schlüssel + Anzahl Einträge
+CREATE OR REPLACE VIEW chroniken_overview AS
+SELECT `key`, label, description,
+       CASE JSON_TYPE(`value`)
+         WHEN 'ARRAY'  THEN CONCAT(JSON_LENGTH(`value`), ' Einträge')
+         WHEN 'OBJECT' THEN 'Objekt'
+         ELSE '–'
+       END AS preview,
+       updated_at, created_at
+FROM chroniken_data
+ORDER BY label, `key`;
