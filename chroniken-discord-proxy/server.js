@@ -2,6 +2,7 @@ const http = require('http');
 const crypto = require('crypto');
 const weather = require('./weather');
 const moon = require('./mond');
+const { discordFetch } = require('./discord-rate-limit');
 
 const PORT = process.env.PORT || 3000;
 const CHAR_WEBHOOK = process.env.CHAR_WEBHOOK || '';
@@ -137,7 +138,7 @@ async function handleAuth(req, res, url) {
     const code = url.searchParams.get('code');
     if (!code) return backWithError(res, ret, 'Kein Code von Discord erhalten.');
     try {
-      const tr = await fetch('https://discord.com/api/oauth2/token', {
+      const tr = await discordFetch('https://discord.com/api/oauth2/token', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/x-www-form-urlencoded'
@@ -210,7 +211,7 @@ async function handleAuth(req, res, url) {
           'Discord hat keinen Zugriffstoken geliefert.'
         );
       }
-      const mr = await fetch('https://discord.com/api/users/@me/guilds/' + GUILD_ID + '/member', {
+      const mr = await discordFetch('https://discord.com/api/users/@me/guilds/' + GUILD_ID + '/member', {
         headers: { Authorization: 'Bearer ' + tok.access_token }
       });
       if (mr.status === 404 || mr.status === 403) return backWithError(res, ret, 'Du bist nicht auf dem Discord-Server.');
@@ -483,7 +484,7 @@ const server = http.createServer(async (req, res) => {
         res.end(JSON.stringify({ ok: false, error: 'ungültige Mod-Daten' }));
         return;
       }
-      const r = await fetch(MOD_WEBHOOK, {
+      const r = await discordFetch(MOD_WEBHOOK, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload)
@@ -506,7 +507,7 @@ const server = http.createServer(async (req, res) => {
     try { payload = healerEmbed(JSON.parse(body || '{}')); } catch (e) { payload = null; }
     if (!payload) return json(400, { ok: false, error: 'ungültige Daten' });
     try {
-      const r = await fetch(HEILER_WEBHOOK, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+      const r = await discordFetch(HEILER_WEBHOOK, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
       return json(r.ok ? 200 : 502, { ok: r.ok });
     } catch (e) {
       return json(500, { ok: false, error: String(e.message) });
@@ -525,7 +526,7 @@ const server = http.createServer(async (req, res) => {
 
     try {
       const payload = JSON.parse(body || '{}');
-      const r = await fetch(CHAR_WEBHOOK, {
+      const r = await discordFetch(CHAR_WEBHOOK, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload)
