@@ -3,7 +3,7 @@
 // Sendet die aktuell berechnete Mondphase über DISCORD_WEATHER_WEBHOOK.
 // ============================================================
 
-const https = require('https');
+const { discordFetch } = require('./discord-rate-limit');
 
 const WEBHOOK = String(process.env.DISCORD_WEATHER_WEBHOOK || '').trim();
 
@@ -41,38 +41,26 @@ function getMoon(now = Date.now()) {
   };
 }
 
-function discordRequest(payload) {
+async function discordRequest(payload) {
   if (!WEBHOOK) {
     throw new Error('DISCORD_WEATHER_WEBHOOK ist nicht gesetzt.');
   }
 
-  return new Promise((resolve, reject) => {
-    const body = JSON.stringify(payload);
-    const req = https.request(WEBHOOK, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Content-Length': Buffer.byteLength(body)
-      }
-    }, res => {
-      let data = '';
-      res.on('data', chunk => { data += chunk; });
-      res.on('end', () => {
-        if (res.statusCode >= 200 && res.statusCode < 300) {
-          resolve({ status: res.statusCode, data });
-        } else {
-          reject(new Error('Discord Webhook antwortete mit HTTP ' + res.statusCode));
-        }
-      });
-    });
-
-    req.on('error', reject);
-    req.setTimeout(10000, () => {
-      req.destroy(new Error('Discord Webhook Timeout.'));
-    });
-    req.write(body);
-    req.end();
+  const body = JSON.stringify(payload);
+  const response = await discordFetch(WEBHOOK, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Content-Length': Buffer.byteLength(body)
+    },
+    body
   });
+
+  if (response.ok) {
+    return { status: response.status, data: await response.text() };
+  }
+
+  throw new Error('Discord Webhook antwortete mit HTTP ' + response.status);
 }
 
 async function sendCurrentMoon() {
