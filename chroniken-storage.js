@@ -1,12 +1,5 @@
 /* ============================================================
    Chroniken – gemeinsame Supabase-Speicherung
-
-   Alle öffentlichen Chroniken-Daten werden direkt über Supabase
-   geladen und gespeichert. Kein JSONBin und kein Render-Proxy
-   für die Datenspeicherung.
-
-   Die Publishable-Key darf im Browser verwendet werden.
-   Niemals einen Supabase Secret/Service-Role-Key hier eintragen.
    ============================================================ */
 (function (global) {
   const SUPABASE_URL = "https://wlrsluafjhaeurgmqmci.supabase.co";
@@ -34,7 +27,7 @@
     map: "map"
   };
 
-  const OBJECT_KEYS = new Set(["kreaturen", "weather"]);
+  const OBJECT_KEYS = new Set(["weather"]);
   let client = null;
   let ready = null;
   const caches = Object.create(null);
@@ -49,7 +42,10 @@
           reject(new Error("Supabase JS konnte nicht geladen werden."));
           return;
         }
-        client = global.supabase.createClient(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY);
+        client = global.supabase.createClient(
+          SUPABASE_URL,
+          SUPABASE_PUBLISHABLE_KEY
+        );
         resolve(client);
       }
 
@@ -70,63 +66,87 @@
     return ready;
   }
 
+  // Vorhandene JSON-Werte werden niemals in [] oder {} umgewandelt.
   function normalizeValue(name, value) {
-    if (OBJECT_KEYS.has(name)) {
-      return value && typeof value === "object" && !Array.isArray(value) ? value : {};
+    if (value === undefined || value === null) {
+      return OBJECT_KEYS.has(name) ? {} : [];
     }
-    return Array.isArray(value) ? value : [];
+    return value;
   }
 
   async function fetchAll() {
     const sb = await init();
+
     const { data, error } = await sb
       .from("chroniken_data")
-      .select("key,value");
+      .select("key,value,updated_at");
 
     if (error) {
       throw new Error("Supabase lesen fehlgeschlagen: " + error.message);
     }
 
     const out = {};
+
     (data || []).forEach(function (row) {
       out[row.key] = row.value;
+      caches[row.key] = row.value;
     });
+
     return out;
   }
 
   async function load(name) {
     const dbKey = DB_KEY[name] || name;
-    const all = await fetchAll();
-    const value = all[dbKey];
 
-    if (value === undefined || value === null) {
-      return OBJECT_KEYS.has(name) ? {} : [];
+    if (Object.prototype.hasOwnProperty.call(caches, dbKey)) {
+      return caches[dbKey];
     }
 
-    const normalized = normalizeValue(name, value);
-    caches[dbKey] = normalized;
-    return normalized;
+    const all = await fetchAll();
+
+    if (!Object.prototype.hasOwnProperty.call(all, dbKey)) {
+      const empty = normalizeValue(name, undefined);
+      caches[dbKey] = empty;
+      return empty;
+    }
+
+    const value = normalizeValue(name, all[dbKey]);
+    caches[dbKey] = value;
+    return value;
   }
 
   async function save(name, value) {
     const dbKey = DB_KEY[name] || name;
-    const normalized = normalizeValue(name, value);
+
+    // Nur undefined bekommt einen leeren Startwert.
+    // Ein vorhandener Wert wird unverändert gespeichert.
+    const normalized = value === undefined
+      ? (OBJECT_KEYS.has(name) ? {} : [])
+      : value;
+
     const sb = await init();
 
-    const { error } = await sb
+    const { data, error } = await sb
       .from("chroniken_data")
       .upsert({
         key: dbKey,
         value: normalized,
         updated_at: new Date().toISOString()
-      }, { onConflict: "key" });
+      }, {
+        onConflict: "key"
+      })
+      .select("key,value,updated_at")
+      .single();
 
     if (error) {
       throw new Error("Supabase speichern fehlgeschlagen: " + error.message);
     }
 
-    caches[dbKey] = normalized;
-    return normalized;
+    caches[dbKey] = data && data.value !== undefined
+      ? data.value
+      : normalized;
+
+    return caches[dbKey];
   }
 
   async function refresh(name) {
@@ -141,6 +161,7 @@
 
   async function ensureMain() {
     const all = await fetchAll();
+
     return {
       wiki: normalizeValue("wiki", all.wiki),
       bibliothek: normalizeValue("bibliothek", all.library),
@@ -163,21 +184,29 @@
 
   async function ensureEvents() {
     const all = await fetchAll();
+
     return {
       events: normalizeValue("events", all.events),
       characterEvents: normalizeValue("characterEvents", all.characterEvents),
       birthdays: normalizeValue("birthdays", all.birthdays),
       calendar: normalizeValue("calendar", all.calendar),
-      disabledHolidays: normalizeValue("disabledHolidays", all.disabledHolidays),
-      weather: all.weather && typeof all.weather === "object" ? all.weather : {}
+      disabledHolidays: normalizeValue(
+        "disabledHolidays",
+        all.disabledHolidays
+      ),
+      weather: normalizeValue("weather", all.weather)
     };
   }
 
   async function ensureChars() {
     const all = await fetchAll();
+
     return {
       characters: normalizeValue("characters", all.characters),
-      characterSheets: normalizeValue("characterSheets", all.character_sheets)
+      characterSheets: normalizeValue(
+        "characterSheets",
+        all.character_sheets
+      )
     };
   }
 
@@ -186,13 +215,16 @@
   }
 
   function invalidate() {
-    Object.keys(caches).forEach(function (k) { delete caches[k]; });
+    Object.keys(caches).forEach(function (key) {
+      delete caches[key];
+    });
   }
 
   global.ChronikenStorage = {
     load: load,
     save: save,
     refresh: refresh,
+    ensureNamed: ensureNamed,
     ensureMain: ensureMain,
     ensureHealer: ensureHealer,
     ensureMap: ensureMap,
