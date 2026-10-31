@@ -49,6 +49,7 @@
     calendar: "calendar",
     disabledHolidays: "disabled_holidays",
     weather: "weather",
+    moon: "moon",
     characters: "characters",
     characterSheets: "character_sheets",
     heiler: "healer_records",
@@ -56,7 +57,7 @@
   };
 
   // Keys die als Objekt (nicht Array) gespeichert werden
-  const OBJECT_KEYS = new Set(["weather"]);
+  const OBJECT_KEYS = new Set(["weather", "moon"]);
 
   // ---------- Interner Zustand ----------
   const cache = Object.create(null); // dbKey → value
@@ -208,7 +209,8 @@
       birthdays: normalize("birthdays", all.birthdays),
       calendar: normalize("calendar", all.calendar),
       disabledHolidays: normalize("disabledHolidays", all.disabled_holidays),
-      weather: normalize("weather", all.weather)
+      weather: normalize("weather", all.weather),
+      moon: normalize("moon", all.moon)
     };
   }
 
