@@ -17,6 +17,7 @@
  *   GET  /weather/send?key=AUTH_SECRET
  */
 const path = require('path');
+const { discordFetch } = require('./discord-rate-limit');
 
 const WEBHOOK = process.env.DISCORD_WEATHER_WEBHOOK || '';
 const WINDOW_MS = (Number(process.env.WEATHER_WINDOW_MIN) || 10) * 60 * 1000;
@@ -211,7 +212,7 @@ async function discordWebhookUrl() {
 async function send(st, w) {
   const webhookUrl = await discordWebhookUrl();
 
-  const r = await fetch(webhookUrl, {
+  const r = await discordFetch(webhookUrl, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
