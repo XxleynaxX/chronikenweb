@@ -39,33 +39,6 @@
     try { localStorage.setItem(LS[name], JSON.stringify(arr)); } catch (e) {}
   }
 
-  function initSupabase() {
-    if (supabase) return Promise.resolve(supabase);
-    if (supabaseReady) return supabaseReady;
-    if (!SUPABASE_PUBLISHABLE_KEY || SUPABASE_PUBLISHABLE_KEY.indexOf("HIER_DEIN_") === 0) {
-      return Promise.reject(new Error("Supabase Publishable Key fehlt in chroniken-sync.js"));
-    }
-    supabaseReady = new Promise(function (resolve, reject) {
-      function ready() {
-        if (!global.supabase || !global.supabase.createClient) {
-          reject(new Error("Supabase JS konnte nicht geladen werden."));
-          return;
-        }
-        supabase = global.supabase.createClient(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY);
-        resolve(supabase);
-      }
-      if (global.supabase && global.supabase.createClient) {
-        ready();
-        return;
-      }
-      const s = document.createElement("script");
-      s.src = "https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2";
-      s.onload = ready;
-      s.onerror = function () { reject(new Error("Supabase JS konnte nicht geladen werden.")); };
-      document.head.appendChild(s);
-    });
-    return supabaseReady;
-  }
 
   async function fetchRemote() {
     if (!global.ChronikenStorage) {
