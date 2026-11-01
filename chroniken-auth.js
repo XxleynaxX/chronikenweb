@@ -49,8 +49,15 @@
   }
 
   // Abmelden: alles löschen, andere offene Tabs mit abmelden, zur Startseite
-  function logout() {
+  async function logout() {
     clear();
+    try {
+      await fetch(proxyBase() + "/auth/logout", {
+        method: "POST",
+        cache: "no-store",
+        credentials: "include"
+      });
+    } catch (e) {}
     try { localStorage.setItem(LOGOUT_KEY, String(Date.now())); } catch (e) {}
     goHome();
   }
