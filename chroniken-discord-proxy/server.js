@@ -17,8 +17,47 @@ function bearer(req) {
   return String(req.headers.authorization || '').replace(/^Bearer\s+/i, '');
 }
 
+function parseCookies(req) {
+  const out = Object.create(null);
+  const raw = String(req.headers.cookie || '');
+  raw.split(';').forEach(part => {
+    const i = part.indexOf('=');
+    if (i <= 0) return;
+    const key = part.slice(0, i).trim();
+    const value = part.slice(i + 1).trim();
+    try { out[key] = decodeURIComponent(value); } catch { out[key] = value; }
+  });
+  return out;
+}
+
+const SESSION_COOKIE = 'chroniken_session';
+
+function sessionFromRequest(req) {
+  const cookies = parseCookies(req);
+  const cookieToken = cookies[SESSION_COOKIE] || '';
+  return verify(cookieToken) || verify(bearer(req));
+}
+
+function setSessionCookie(res, token) {
+  const maxAge = Math.max(60, Math.floor(SESSION_MS / 1000));
+  res.setHeader('Set-Cookie',
+    SESSION_COOKIE + '=' + encodeURIComponent(token) +
+    '; Max-Age=' + maxAge +
+    '; Path=/' +
+    '; HttpOnly' +
+    '; Secure' +
+    '; SameSite=None'
+  );
+}
+
+function clearSessionCookie(res) {
+  res.setHeader('Set-Cookie',
+    SESSION_COOKIE + '=; Max-Age=0; Path=/; HttpOnly; Secure; SameSite=None'
+  );
+}
+
 function requireAdmin(req) {
-  const p = verify(bearer(req));
+  const p = sessionFromRequest(req);
   if (!p || !p.admin) throw new Error('Nur Admins erlaubt.');
   return p;
 }
@@ -56,7 +95,9 @@ const GUILD_ID = process.env.DISCORD_GUILD_ID || '1204906165004279889';
 const ADMIN_ROLES = (process.env.ADMIN_ROLE_IDS || process.env.ADMIN_ROLE_ID || process.env.DISCORD_ADMIN_ROLE_IDS || '1251121611130540063,1300216664113156116').split(',').map(s => s.trim()).filter(Boolean);
 const LIB_ROLES = (process.env.LIB_ROLE_IDS || process.env.LIB_ROLE_ID || process.env.DISCORD_LIB_ROLE_IDS || '1564874876236472470').split(',').map(s => s.trim()).filter(Boolean);
 const HEALER_ROLES = (process.env.HEALER_ROLE_IDS || process.env.HEALER_ROLE_ID || process.env.DISCORD_HEALER_ROLE_IDS || '1562596034243461150').split(',').map(s => s.trim()).filter(Boolean);
-const ALLOWED_ORIGINS = (process.env.ALLOWED_RETURN_ORIGINS || '').split(',').map(s => s.trim().replace(/\/$/, '')).filter(Boolean);
+const ALLOWED_ORIGINS = (process.env.ALLOWED_RETURN_ORIGINS ||
+  'https://xxleynaxx.github.io,http://localhost:3000,http://127.0.0.1:3000')
+  .split(',').map(s => s.trim().replace(/\/$/, '')).filter(Boolean);
 const SESSION_MS = (Number(process.env.SESSION_HOURS) || 12) * 3600 * 1000;
 
 function b64u(buf) { return Buffer.from(buf).toString('base64url'); }
@@ -112,6 +153,11 @@ async function handleAuth(req, res, url) {
   }
 
   // 1) Weiterleitung zu Discord
+  if (url.pathname === '/auth/logout') {
+    clearSessionCookie(res);
+    return redirect(res, PUBLIC_URL + '/auth/ping');
+  }
+
   if (url.pathname === '/auth/login') {
     console.log('[OAUTH] /auth/login aufgerufen');
     const ret = url.searchParams.get('return') || '';
@@ -263,11 +309,15 @@ async function handleAuth(req, res, url) {
         return backWithError(res, ret, 'Dir fehlt die nötige Rolle (Admin, Bibliothek oder Heiler).');
       }
       const token = sign({
-        sub: user.id, name: m.nick || user.global_name || user.username || 'Discord',
-        admin, lib, healer, exp: Date.now() + SESSION_MS
+        sub: user.id,
+        name: m.nick || user.global_name || user.username || 'Discord',
+        admin, lib, healer,
+        exp: Date.now() + SESSION_MS
       });
-      console.log('[OAUTH] Login erfolgreich; Session wird an Website zurückgegeben');
-      return redirect(res, ret + '#auth=' + token);
+      setSessionCookie(res, token);
+      console.log('[OAUTH] Login erfolgreich; HttpOnly-Session-Cookie wurde gesetzt');
+      const separator = ret.includes('?') ? '&' : '?';
+      return redirect(res, ret + separator + 'auth_done=1');
     } catch (e) {
       if (e && e.code === 'DISCORD_RATE_LIMITED') {
         console.warn('[Discord OAuth] Rate-Limit aktiv. Login wird sofort beendet statt zu warten.');
@@ -284,10 +334,16 @@ async function handleAuth(req, res, url) {
 
   // 3) Token prüfen (Website fragt beim Laden nach)
   if (url.pathname === '/auth/me') {
-    const h = req.headers.authorization || '';
-    const p = verify(h.replace(/^Bearer\s+/i, ''));
-    res.writeHead(p ? 200 : 401, { 'Content-Type': 'application/json' });
-    return res.end(JSON.stringify(p ? { ok: true, name: p.name, admin: p.admin, lib: p.lib, healer: !!(p.admin || p.healer), exp: p.exp } : { ok: false }));
+    const p = sessionFromRequest(req);
+    res.writeHead(p ? 200 : 401, {
+      'Content-Type': 'application/json',
+      'Cache-Control': 'no-store'
+    });
+    return res.end(JSON.stringify(
+      p
+        ? { ok: true, name: p.name, admin: p.admin, lib: p.lib, healer: !!(p.admin || p.healer), exp: p.exp }
+        : { ok: false }
+    ));
   }
 
   res.writeHead(404); res.end('Not found');
@@ -355,7 +411,12 @@ function healerEmbed(body) {
 
 const server = http.createServer(async (req, res) => {
   // CORS – damit die Website aufrufen darf
-  res.setHeader('Access-Control-Allow-Origin', '*');
+  const requestOrigin = String(req.headers.origin || '').replace(/\/$/, '');
+  if (requestOrigin && ALLOWED_ORIGINS.includes(requestOrigin)) {
+    res.setHeader('Access-Control-Allow-Origin', requestOrigin);
+    res.setHeader('Vary', 'Origin');
+    res.setHeader('Access-Control-Allow-Credentials', 'true');
+  }
   res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, Cache-Control');
 
@@ -385,7 +446,7 @@ const server = http.createServer(async (req, res) => {
       }
 
       if (req.method === 'PUT') {
-        const session = verify(bearer(req));
+        const session = sessionFromRequest(req);
         const parsed = JSON.parse((await readBody(req)) || '{}');
         const input = single
           ? { [single]: parsed.value }
@@ -431,8 +492,7 @@ const server = http.createServer(async (req, res) => {
   }
 
   if (req.method === 'POST' && url.pathname === '/weather/set') {
-    const auth = String(req.headers.authorization || '').replace(/^Bearer\s+/i, '');
-    const session = verify(auth);
+    const session = sessionFromRequest(req);
     if (!session || !session.admin) {
       res.writeHead(403, { 'Content-Type': 'application/json', 'Cache-Control': 'no-store' });
       res.end(JSON.stringify({ ok: false, error: 'Nur Admins dürfen das Wetter setzen.' }));
