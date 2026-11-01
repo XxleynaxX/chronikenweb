@@ -141,7 +141,7 @@
       const controller = typeof AbortController !== "undefined" ? new AbortController() : null;
       if (controller) timer = setTimeout(function () { controller.abort(); }, 12000);
 
-      const options = { cache: "no-store" };
+      const options = { cache: "no-store", credentials: "include" };
       if (controller) options.signal = controller.signal;
 
       const res = await fetch(proxyBase() + "/auth/start?return=" + encodeURIComponent(returnUrl), options);
@@ -186,12 +186,14 @@
     finishing = true;
     setLoading(true, "Anmeldung wird geprüft …");
     try {
-      const res = await fetch(proxyBase() + "/auth/me", { headers: { Authorization: "Bearer " + val } });
-      const info = await res.json();
-      if (!res.ok || !info.ok) throw new Error("Token ungültig");
-      // Eine erfolgreiche neue Anmeldung hebt den Logout-Schutz wieder auf.
+      const res = await fetch(proxyBase() + "/auth/me", {
+        cache: "no-store",
+        credentials: "include"
+      });
+      const info = await res.json().catch(function () { return {}; });
+      if (!res.ok || !info.ok) throw new Error("Session ungültig");
       try { localStorage.removeItem(LOGOUT_KEY); } catch (e) {}
-      sessionStorage.setItem(TOKEN_KEY, val);
+      sessionStorage.removeItem(TOKEN_KEY);
       sessionStorage.setItem(NAME_KEY, info.name || "");
       if (info.admin) sessionStorage.setItem(ADMIN_KEY, "1"); else sessionStorage.removeItem(ADMIN_KEY);
       if (info.admin || info.lib) sessionStorage.setItem(LIB_KEY, "1"); else sessionStorage.removeItem(LIB_KEY);
@@ -213,26 +215,44 @@
     const r = readHash();
     const params = new URLSearchParams(location.search);
     const inPopup = params.get(POPUP_PARAM) === "1";
-    if (inPopup) {
+    const authDone = params.get("auth_done") === "1";
+
+    if (r) {
       params.delete(POPUP_PARAM);
+      params.delete("auth_done");
       const q = params.toString();
-      history.replaceState(null, "", location.pathname + (q ? "?" + q : "") + (r ? "" : location.hash));
-    } else if (r) {
-      history.replaceState(null, "", location.pathname + location.search);
+      history.replaceState(null, "", location.pathname + (q ? "?" + q : ""));
+
+      if (inPopup) {
+        const msg = { type: "chroniken-auth", kind: r.kind, val: r.val, t: Date.now() };
+        try { localStorage.setItem(HANDOFF_KEY, JSON.stringify(msg)); } catch (e) {}
+        try { if (global.opener && !global.opener.closed) global.opener.postMessage(msg, location.origin); } catch (e) {}
+        document.documentElement.innerHTML = '<body style="margin:0;height:100vh;display:flex;align-items:center;justify-content:center;background:#0e0e10;color:#e4e4e8;font-family:system-ui,sans-serif"><p>✓ Angemeldet – dieses Fenster schließt sich …</p></body>';
+        setTimeout(function () { try { global.close(); } catch (e) {} }, 150);
+        setTimeout(function () { finish(r.kind, r.val); }, 1500);
+        return true;
+      }
+      finish(r.kind, r.val);
+      return true;
     }
-    if (!r) return;
+
+    if (!authDone) return false;
+
+    params.delete(POPUP_PARAM);
+    params.delete("auth_done");
+    history.replaceState(null, "", location.pathname + (params.toString() ? "?" + params.toString() : ""));
+
     if (inPopup) {
-      // Ergebnis an das Hauptfenster geben und Popup schließen
-      const msg = { type: "chroniken-auth", kind: r.kind, val: r.val, t: Date.now() };
-      try { localStorage.setItem(HANDOFF_KEY, JSON.stringify(msg)); } catch (e) {}
+      const msg = { type: "chroniken-auth", kind: "auth_done", t: Date.now() };
       try { if (global.opener && !global.opener.closed) global.opener.postMessage(msg, location.origin); } catch (e) {}
       document.documentElement.innerHTML = '<body style="margin:0;height:100vh;display:flex;align-items:center;justify-content:center;background:#0e0e10;color:#e4e4e8;font-family:system-ui,sans-serif"><p>✓ Angemeldet – dieses Fenster schließt sich …</p></body>';
       setTimeout(function () { try { global.close(); } catch (e) {} }, 150);
-      // Falls sich das Fenster nicht schließen lässt (z. B. als Tab geöffnet): hier selbst anmelden
-      setTimeout(function () { finish(r.kind, r.val); }, 1500);
-      return;
+      setTimeout(function () { finish("auth_done", ""); }, 1500);
+      return true;
     }
-    finish(r.kind, r.val);
+
+    finish("auth_done", "");
+    return true;
   }
 
   global.addEventListener("message", function (e) {
@@ -319,13 +339,40 @@
     }
   });
 
+  async function restoreSession() {
+    try {
+      const res = await fetch(proxyBase() + "/auth/me", {
+        cache: "no-store",
+        credentials: "include"
+      });
+      const info = await res.json().catch(function () { return {}; });
+      if (!res.ok || !info.ok) {
+        sessionStorage.removeItem(TOKEN_KEY);
+        sessionStorage.removeItem(NAME_KEY);
+        sessionStorage.removeItem(ADMIN_KEY);
+        sessionStorage.removeItem(LIB_KEY);
+        sessionStorage.removeItem(HEALER_KEY);
+        return false;
+      }
+      sessionStorage.removeItem(TOKEN_KEY);
+      sessionStorage.setItem(NAME_KEY, info.name || "");
+      if (info.admin) sessionStorage.setItem(ADMIN_KEY, "1"); else sessionStorage.removeItem(ADMIN_KEY);
+      if (info.admin || info.lib) sessionStorage.setItem(LIB_KEY, "1"); else sessionStorage.removeItem(LIB_KEY);
+      if (info.admin || info.healer) sessionStorage.setItem(HEALER_KEY, "1"); else sessionStorage.removeItem(HEALER_KEY);
+      return true;
+    } catch (e) {
+      return false;
+    }
+  }
+
   global.ChronikenAuth = { syncAdminNav: syncAdminNav, login: login, clear: clear, logout: logout, name: name };
-  function start() {
+  async function start() {
+    if (handleReturn()) return;
+    await restoreSession();
     syncAdminNav();
     navWidget();
     bind();
-    handleReturn();
-    if (document.querySelector("[data-discord-login]") && !sessionStorage.getItem(TOKEN_KEY)) warmUp();
+    if (!isLogoutBlocked()) warmUp();
   }
   if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", start);
   else start();
