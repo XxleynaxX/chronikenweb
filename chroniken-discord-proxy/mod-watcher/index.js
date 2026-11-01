@@ -11,6 +11,7 @@
 
 const fs = require("fs");
 const path = require("path");
+const { discordFetch } = require("../discord-rate-limit");
 
 const WEBHOOK = process.env.MOD_WEBHOOK || process.env.DISCORD_WEBHOOK_URL || "";
 const INTERVAL_MIN = Math.max(1, parseInt(process.env.CHECK_INTERVAL_MIN || "180", 10) || 180);
@@ -66,35 +67,30 @@ async function fetchDetails(ids) {
   return list;
 }
 
-let blockedUntil = 0;
-
 async function postDiscord(content, embeds) {
   if (!WEBHOOK) {
     console.log("[Discord] Kein WEBHOOK gesetzt – würde senden:", content);
     if (embeds) console.log(JSON.stringify(embeds, null, 2));
     return;
   }
+
   const payload = { content: content || undefined, embeds: embeds || undefined };
-  if (Date.now() < blockedUntil) throw new Error("Discord blockiert uns gerade (429) – Senden pausiert bis " + new Date(blockedUntil).toISOString());
-  const res = await fetch(WEBHOOK, {
+  const body = JSON.stringify(payload);
+
+  const res = await discordFetch(WEBHOOK, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(payload)
+    body
   });
-  if (res.status === 429) {
-    // Nicht erneut hämmern: Pause einlegen (Retry-After, mindestens 30 Min, bei globalem Block)
-    const t = await res.text();
-    const ra = Number(res.headers.get("retry-after")) || 0;
-    blockedUntil = Date.now() + Math.max(ra * 1000, 30 * 60 * 1000);
-    throw new Error(`Discord Webhook HTTP 429: ${t}`);
-  }
+
   if (!res.ok) {
     const t = await res.text();
     throw new Error(`Discord Webhook HTTP ${res.status}: ${t}`);
   }
-  await new Promise((r) => setTimeout(r, 1500)); // Abstand zwischen Nachrichten
-}
 
+  // Die zentrale Queue regelt Rate-Limits. Kein eigener Sleep und
+  // kein zweiter 429-Mechanismus nötig.
+}
 async function runOnce() {
   const mods = loadJson(MODS_PATH, []);
   if (!mods.length) {
