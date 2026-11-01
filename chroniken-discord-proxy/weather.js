@@ -248,7 +248,7 @@ async function sendMoon(moon) {
   const webhookUrl = await discordWebhookUrl();
   const now = new Date();
 
-  const r = await fetch(webhookUrl, {
+  const r = await discordFetch(webhookUrl, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
