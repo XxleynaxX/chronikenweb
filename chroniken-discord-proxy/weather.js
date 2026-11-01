@@ -18,6 +18,7 @@
  */
 const path = require('path');
 const { discordFetch } = require('./discord-rate-limit');
+const db = require('./db');
 
 const WEBHOOK = process.env.DISCORD_WEATHER_WEBHOOK || '';
 const WINDOW_MS = (Number(process.env.WEATHER_WINDOW_MIN) || 10) * 60 * 1000;
@@ -45,6 +46,7 @@ let lastMoonSentKey = null;
 let lastResult = null;
 let lastMoonResult = null;
 let reloadChain = Promise.resolve();
+let tickRunning = false;
 
 function cleanWeather(w) {
   w = w || {};
@@ -265,12 +267,13 @@ async function tickMoon() {
 
   const moon = computeMoon();
 
-  if (lastMoonSentKey === null) {
+  if (lastMoonSentKey === moon.key) return false;
+
+  const claimed = await db.claimNotificationKey('moon:' + moon.key);
+  if (!claimed) {
     lastMoonSentKey = moon.key;
     return false;
   }
-
-  if (lastMoonSentKey === moon.key) return false;
 
   try {
     await sendMoon(moon);
@@ -306,6 +309,11 @@ async function setCurrentWeather(weather) {
   shared.updatedAt = now;
 
   const current = compute(shared, now);
+  const claimed = await db.claimNotificationKey('weather:' + current.key);
+  if (!claimed) {
+    lastSentKey = current.key;
+    return current;
+  }
   await send(shared, current);
   lastSentKey = current.key;
   lastResult = {
@@ -339,34 +347,39 @@ async function sendCurrentMoon() {
 }
 
 async function tick() {
-  if (!shared) await loadState();
-
-  await tickMoon();
-
-  const st = shared;
-  const w = compute(st);
-
-  if (!WEBHOOK || lastSentKey === w.key) return false;
-  if (w.msIntoSlot > Math.min(WINDOW_MS, st.intervalMinutes * 60000)) return false;
+  // Keine überlappenden Ticks innerhalb derselben Render-Instanz.
+  if (tickRunning) return false;
+  tickRunning = true;
 
   try {
-    await send(st, w);
-    lastSentKey = w.key;
-    lastResult = {
-      ok: true,
-      at: new Date().toISOString(),
-      name: w.name
-    };
-    console.log('Wetter gemeldet:', w.icon, w.name, '(' + w.key + ')');
-    return true;
-  } catch (e) {
-    lastResult = {
-      ok: false,
-      at: new Date().toISOString(),
-      error: e.message
-    };
-    console.error('Wetter-Fehler:', e.message);
-    return false;
+    if (!shared) await loadState();
+    await tickMoon();
+
+    const st = shared;
+    const w = compute(st);
+    if (!WEBHOOK || lastSentKey === w.key) return false;
+    if (w.msIntoSlot > Math.min(WINDOW_MS, st.intervalMinutes * 60000)) return false;
+
+    // MySQL entscheidet atomar, welcher Prozess diesen Wetter-Key senden darf.
+    const claimed = await db.claimNotificationKey('weather:' + w.key);
+    if (!claimed) {
+      lastSentKey = w.key;
+      return false;
+    }
+
+    try {
+      await send(st, w);
+      lastSentKey = w.key;
+      lastResult = { ok: true, at: new Date().toISOString(), name: w.name };
+      console.log('Wetter gemeldet:', w.icon, w.name, '(' + w.key + ')');
+      return true;
+    } catch (e) {
+      lastResult = { ok: false, at: new Date().toISOString(), error: e.message };
+      console.error('Wetter-Fehler:', e.message);
+      return false;
+    }
+  } finally {
+    tickRunning = false;
   }
 }
 
@@ -438,6 +451,11 @@ async function handle(req, res, url, authSecret) {
 
       await loadState();
       const w = compute(shared);
+      const claimed = await db.claimNotificationKey('weather:' + w.key);
+      if (!claimed) {
+        lastSentKey = w.key;
+        return json(200, { ok: true, sent: false, alreadySent: true, name: w.name, webhook: true });
+      }
       await send(shared, w);
       lastSentKey = w.key;
       lastResult = {
