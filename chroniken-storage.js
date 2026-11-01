@@ -83,12 +83,9 @@
     const controller = typeof AbortController !== "undefined" ? new AbortController() : null;
     const timer = controller ? setTimeout(function () { controller.abort(); }, REQUEST_TIMEOUT_MS) : null;
     const headers = Object.assign({ "Cache-Control": "no-cache" }, (options && options.headers) || {});
-    const token = authToken();
-    if (token) headers.Authorization = "Bearer " + token;
-
     let res;
     try {
-      res = await fetch(apiBase() + path, Object.assign({ cache: "no-store" }, options, {
+      res = await fetch(apiBase() + path, Object.assign({ cache: "no-store", credentials: "include" }, options, {
         headers: headers,
         signal: controller ? controller.signal : undefined
       }));
