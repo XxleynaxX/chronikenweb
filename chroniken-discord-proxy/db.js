@@ -132,6 +132,14 @@ const CREATE_TABLE = `
   ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
     COMMENT='Zentrale RP-Daten der Chroniken (Key-Value mit JSON)'`;
 
+const CREATE_NOTIFICATION_TABLE = `
+  CREATE TABLE IF NOT EXISTS chroniken_notification_sent (
+    notification_key VARCHAR(191) NOT NULL,
+    sent_at TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
+    PRIMARY KEY (notification_key)
+  ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+    COMMENT='Idempotenz-Sperre für Discord-Benachrichtigungen'`;
+
 const CREATE_VIEW = `
   CREATE OR REPLACE VIEW chroniken_overview AS
   SELECT \`key\`, label, description,
@@ -160,6 +168,7 @@ function ensureSchema() {
         [key, empty, k.label, k.description]
       );
     }
+    await p.query(CREATE_NOTIFICATION_TABLE);
     try { await p.query(CREATE_VIEW); } catch (e) { console.warn('[DB] Übersicht-View nicht angelegt:', e.message); }
     console.log('[DB] MySQL bereit (' + Object.keys(KEYS).length + ' Schlüssel).');
   })().catch(e => { schemaPromise = null; throw e; });
@@ -210,6 +219,12 @@ async function setMany(entries) {
   }
 }
 
+async function claimNotificationKey(key) {
+  await ensureSchema();
+  const [result] = await getPool().query('INSERT IGNORE INTO chroniken_notification_sent (notification_key) VALUES (?)', [String(key)]);
+  return Number(result.affectedRows) === 1;
+}
+
 async function status() {
   await ensureSchema();
   const [rows] = await getPool().query(
@@ -222,5 +237,5 @@ async function status() {
 
 module.exports = {
   KEYS, normalizeKey, canWrite, validValue,
-  configured, ensureSchema, getAll, getOne, setMany, status
+  configured, ensureSchema, getAll, getOne, setMany, claimNotificationKey, status
 };
