@@ -157,8 +157,16 @@ function compute(st, now = Date.now()) {
 }
 
 async function loadState() {
-  shared = normalize(null);
-  source = 'file';
+  try {
+    const saved = await db.getOne('weather');
+    shared = normalize(saved);
+    source = saved && typeof saved === 'object' && Object.keys(saved).length ? 'mysql' : 'file';
+  } catch (e) {
+    console.error('[Wetter] MySQL-Lesen fehlgeschlagen, nutze Standardwerte:', e.message);
+    shared = normalize(null);
+    source = 'file';
+  }
+
   loadedAt = Date.now();
   return shared;
 }
@@ -307,6 +315,11 @@ async function setCurrentWeather(weather) {
   shared.forced = cleanWeather(weather);
   shared.forcedSlot = 0;
   shared.updatedAt = now;
+
+  // Erzwungenes Wetter und der laufende 6-Stunden-Timer werden dauerhaft
+  // in MySQL gespeichert. Dadurch geht die Einstellung bei Render-Neustarts
+  // oder beim 30-Minuten-Reload nicht verloren.
+  await db.setMany([{ key: 'weather', value: shared }]);
 
   const current = compute(shared, now);
   const claimed = await db.claimNotificationKey('weather:' + current.key);
