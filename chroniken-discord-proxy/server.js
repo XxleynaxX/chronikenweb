@@ -2,7 +2,7 @@ const http = require('http');
 const crypto = require('crypto');
 const weather = require('./weather');
 const moon = require('./mond');
-const { discordFetch, discordOAuthFetch } = require('./discord-rate-limit');
+const { discordFetch, discordOAuthFetch, discordOAuthCooldownStatus } = require('./discord-rate-limit');
 
 const PORT = process.env.PORT || 3000;
 const CHAR_WEBHOOK = process.env.CHAR_WEBHOOK || '';
@@ -159,6 +159,18 @@ function discordRateLimitMetadata(response) {
   };
 }
 
+function formatOAuthWait(ms) {
+  const totalSeconds = Math.max(1, Math.ceil(Number(ms) / 1000));
+  const minutes = Math.floor(totalSeconds / 60);
+  const seconds = totalSeconds % 60;
+  if (minutes) return minutes + ' Min. ' + seconds + ' Sek.';
+  return seconds + ' Sek.';
+}
+
+function oauthCooldownMessage(ms) {
+  return 'Discord begrenzt gerade Anmeldungen. Bitte warte noch ' + formatOAuthWait(ms) + ' und versuche es dann erneut.';
+}
+
 function claimOAuthCallback(code) {
   const now = Date.now();
   for (const [key, expiresAt] of oauthCallbackClaims) {
@@ -239,6 +251,15 @@ async function handleAuth(req, res, url) {
       oauthLog(requestId, 'login', 'rejected_return_origin', startedAt, { status: 400 });
       return page(res, 400, 'Rückkehr-Adresse nicht erlaubt. ALLOWED_RETURN_ORIGINS prüfen.');
     }
+    const cooldown = discordOAuthCooldownStatus();
+    if (cooldown.retryAfterMs > 0) {
+      oauthLog(requestId, 'login', 'rate_limit_cooldown_active', startedAt, {
+        status: 429,
+        ...cooldown
+      });
+      res.setHeader('Retry-After', String(Math.ceil(cooldown.retryAfterMs / 1000)));
+      return page(res, 429, oauthCooldownMessage(cooldown.retryAfterMs));
+    }
     oauthLog(requestId, 'login', 'started', startedAt, { status: 302 });
     return redirect(res, discordAuthorizeUrl(ret));
   }
@@ -253,6 +274,23 @@ async function handleAuth(req, res, url) {
       oauthLog(requestId, 'start', 'rejected_return_origin', startedAt, { status: 400 });
       res.writeHead(400, { 'Content-Type': 'application/json' });
       return res.end(JSON.stringify({ ok: false, error: 'Rückkehr-Adresse nicht erlaubt. ALLOWED_RETURN_ORIGINS prüfen.' }));
+    }
+    const cooldown = discordOAuthCooldownStatus();
+    if (cooldown.retryAfterMs > 0) {
+      oauthLog(requestId, 'start', 'rate_limit_cooldown_active', startedAt, {
+        status: 429,
+        ...cooldown
+      });
+      res.writeHead(429, {
+        'Content-Type': 'application/json',
+        'Retry-After': String(Math.ceil(cooldown.retryAfterMs / 1000))
+      });
+      return res.end(JSON.stringify({
+        ok: false,
+        error: oauthCooldownMessage(cooldown.retryAfterMs),
+        retryAfterMs: cooldown.retryAfterMs,
+        resumeAt: cooldown.resumeAt
+      }));
     }
     const authUrl = discordAuthorizeUrl(ret);
     oauthLog(requestId, 'start', 'authorization_url_created', startedAt, { status: 200 });
@@ -313,15 +351,19 @@ async function handleAuth(req, res, url) {
       const tokenResponseMeta = discordRateLimitMetadata(tr);
 
       if (!tr.ok) {
+        const cooldown = tr.status === 429 ? discordOAuthCooldownStatus() : null;
         oauthLog(requestId, 'token_exchange', 'failed', tokenStartedAt, {
           ...tokenResponseMeta,
+          ...(cooldown && { retryAfterMs: cooldown.retryAfterMs, resumeAt: cooldown.resumeAt }),
           discordError: sanitizedDiscordError(tokenText, [CLIENT_SECRET, code])
         });
 
         return backWithError(
           res,
           ret,
-          'Discord-Anmeldung fehlgeschlagen (Token ' + tr.status + ').'
+          tr.status === 429 && cooldown.retryAfterMs > 0
+            ? oauthCooldownMessage(cooldown.retryAfterMs)
+            : 'Discord-Anmeldung fehlgeschlagen (Token ' + tr.status + ').'
         );
       }
 
@@ -360,8 +402,10 @@ async function handleAuth(req, res, url) {
       const memberResponseMeta = discordRateLimitMetadata(mr);
       if (!mr.ok) {
         const errorBody = await mr.text().catch(() => '');
+        const cooldown = mr.status === 429 ? discordOAuthCooldownStatus() : null;
         const errorMetadata = {
           ...memberResponseMeta,
+          ...(cooldown && { retryAfterMs: cooldown.retryAfterMs, resumeAt: cooldown.resumeAt }),
           discordError: sanitizedDiscordError(errorBody, [CLIENT_SECRET, code, tok.access_token, tok.refresh_token])
         };
         if (mr.status === 404 || mr.status === 403) {
@@ -369,7 +413,9 @@ async function handleAuth(req, res, url) {
           return backWithError(res, ret, 'Du bist nicht auf dem Discord-Server.');
         }
         oauthLog(requestId, 'member_role_lookup', 'failed', memberStartedAt, errorMetadata);
-        return backWithError(res, ret, 'Rollen konnten nicht gelesen werden.');
+        return backWithError(res, ret, mr.status === 429 && cooldown.retryAfterMs > 0
+          ? oauthCooldownMessage(cooldown.retryAfterMs)
+          : 'Rollen konnten nicht gelesen werden.');
       }
       let m;
       try {
@@ -408,7 +454,7 @@ async function handleAuth(req, res, url) {
         return backWithError(
           res,
           ret,
-          'Discord ist gerade ausgelastet. Bitte in 30–60 Sekunden erneut anmelden.'
+          oauthCooldownMessage(e.retryAfterMs)
         );
       }
       oauthLog(requestId, activeOAuthPhase, 'request_error', activePhaseStartedAt, {
