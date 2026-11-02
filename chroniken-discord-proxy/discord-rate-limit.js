@@ -124,7 +124,15 @@ function discordOAuthFetch(url, options = {}) {
       const bodyText = await response.clone().text().catch(() => '');
       const retryAfter = oauthRetryAfterMs(response, bodyText);
       oauthBlockedUntil = Math.max(oauthBlockedUntil, Date.now() + retryAfter);
-      console.warn('[Discord OAuth] 429; weitere OAuth-Anfragen pausiert für ' + retryAfter + ' ms.');
+      console.warn('[Discord OAuth]', JSON.stringify({
+        event: 'rate_limited',
+        status: 429,
+        retryAfterMs: retryAfter,
+        retryAfterSeconds: Number((retryAfter / 1000).toFixed(3)),
+        resumeAt: new Date(oauthBlockedUntil).toISOString(),
+        rateLimitScope: response.headers.get('x-ratelimit-scope'),
+        rateLimitResetAfter: response.headers.get('x-ratelimit-reset-after')
+      }));
     }
     return response;
   });
