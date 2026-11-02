@@ -358,16 +358,17 @@ async function handleAuth(req, res, url) {
         headers: { Authorization: 'Bearer ' + tok.access_token }
       });
       const memberResponseMeta = discordRateLimitMetadata(mr);
-      if (mr.status === 404 || mr.status === 403) {
-        oauthLog(requestId, 'member_role_lookup', 'not_member_or_forbidden', memberStartedAt, memberResponseMeta);
-        return backWithError(res, ret, 'Du bist nicht auf dem Discord-Server.');
-      }
       if (!mr.ok) {
         const errorBody = await mr.text().catch(() => '');
-        oauthLog(requestId, 'member_role_lookup', 'failed', memberStartedAt, {
+        const errorMetadata = {
           ...memberResponseMeta,
           discordError: sanitizedDiscordError(errorBody, [CLIENT_SECRET, code, tok.access_token, tok.refresh_token])
-        });
+        };
+        if (mr.status === 404 || mr.status === 403) {
+          oauthLog(requestId, 'member_role_lookup', 'not_member_or_forbidden', memberStartedAt, errorMetadata);
+          return backWithError(res, ret, 'Du bist nicht auf dem Discord-Server.');
+        }
+        oauthLog(requestId, 'member_role_lookup', 'failed', memberStartedAt, errorMetadata);
         return backWithError(res, ret, 'Rollen konnten nicht gelesen werden.');
       }
       let m;
