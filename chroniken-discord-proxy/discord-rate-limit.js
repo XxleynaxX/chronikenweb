@@ -59,6 +59,14 @@ function oauthRetryAfterMs(response, bodyText) {
   return 1000;
 }
 
+function discordOAuthCooldownStatus() {
+  const retryAfterMs = Math.max(0, oauthBlockedUntil - Date.now());
+  return {
+    retryAfterMs,
+    resumeAt: retryAfterMs > 0 ? new Date(oauthBlockedUntil).toISOString() : null
+  };
+}
+
 async function runWebhook(request) {
   for (let attempt = 0; ; attempt++) {
     const now = Date.now();
@@ -142,6 +150,7 @@ function discordOAuthFetch(url, options = {}) {
 
 module.exports = {
   discordFetch,
-  discordOAuthFetch
+  discordOAuthFetch,
+  discordOAuthCooldownStatus
 };
 
