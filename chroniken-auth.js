@@ -168,6 +168,11 @@
       }
       if (/Status 404/.test(e.message || "")) { loginInProgress = false; redirectLogin(); return; }
       loginInProgress = false;
+      if (/^Discord begrenzt gerade Anmeldungen/.test(e && e.message ? e.message : "")) {
+        setLoading(false);
+        showError(e.message);
+        return;
+      }
       loginCooldownUntil = Date.now() + 5000;
       setLoading(false);
       showError("Server nicht erreichbar (" + (e.message || "unbekannter Fehler") + "). Bitte gleich nochmal versuchen.");
@@ -384,3 +389,4 @@
   if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", start);
   else start();
 })(typeof window !== "undefined" ? window : globalThis);
+
