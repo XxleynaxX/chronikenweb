@@ -65,8 +65,7 @@ portal-website/
 Button „Mit Discord anmelden“ auf Startseite und Admin-Seite. Der Proxy prüft die Rollen auf dem Server:
 Admin-Rollen → Admin (+ Bibliothek), Bibliotheks-Rolle → Bibliothek.
 Render → Environment: `DISCORD_CLIENT_ID`, `DISCORD_CLIENT_SECRET`, `AUTH_SECRET` (lange Zufallsfolge),
-`ALLOWED_RETURN_ORIGINS` (Adresse der Website). Discord Developer Portal → OAuth2 → Redirect:
-`https://chronikenweb-1.onrender.com/auth/callback`.
+`ALLOWED_RETURN_ORIGINS` (Adresse der Website). Discord Developer Portal → OAuth2 → Redirect.
 
 ## 📅 Ingame-Zeitrechnung
 
