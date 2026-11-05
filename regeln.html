@@ -830,6 +830,16 @@ Dein Regeltext kommt hier hinein.
         if (!exists) result[category].push(rule);
       };
 
+      // Muss vor der ersten Verwendung definiert sein.
+      const removeRules = (names) => {
+        const unwanted = new Set(names.map(n => n.toLowerCase()));
+        Object.keys(result).forEach(category => {
+          result[category] = (result[category] || []).filter(rule =>
+            !unwanted.has(String(rule.name || "").trim().toLowerCase())
+          );
+        });
+      };
+
       // Nur die tatsächlich getrennten Regeln aus der alten Sammelregel ergänzen.
       const oldMixed = Object.values(data || {}).flat().find(r => String(r?.name || "").trim().toLowerCase() === "erp, abwesenheit & sonstiges");
       if (oldMixed) {
@@ -854,15 +864,6 @@ Dein Regeltext kommt hier hinein.
           if (found) return found;
         }
         return null;
-      };
-
-      const removeRules = (names) => {
-        const unwanted = new Set(names.map(n => n.toLowerCase()));
-        Object.keys(result).forEach(category => {
-          result[category] = (result[category] || []).filter(rule =>
-            !unwanted.has(String(rule.name || "").trim().toLowerCase())
-          );
-        });
       };
 
       const combine = (category, name, domain, short, names, fallback) => {
