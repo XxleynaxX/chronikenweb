@@ -317,6 +317,49 @@ Dein Regeltext kommt hier hinein.
 </ul>`
         },
         {
+          name: "RP-Begriffe & Codewörter",
+          domain: "RP · Begriffe · Grundlagen",
+          short: "Klare Begriffe für Meta, Power-RP, Fail-RP, IC, OOC und Consent.",
+          full: `<p>Diese Begriffe sollten von allen verstanden werden. Sie beschreiben, was im RP erlaubt ist und was nicht.</p>
+<h3>IC – In Character</h3>
+<ul>
+  <li>Alles, was dein Charakter innerhalb der Spielwelt sagt, weiß oder erlebt.</li>
+</ul>
+<h3>OOC – Out of Character</h3>
+<ul>
+  <li>Alles, was außerhalb des Charakters passiert, zum Beispiel Discord, Support oder Gespräche zwischen Spielern.</li>
+</ul>
+<h3>Metagaming</h3>
+<ul>
+  <li>Wissen aus dem OOC-Bereich darf nicht im RP verwendet werden, wenn dein Charakter dieses Wissen nicht selbst erhalten hat.</li>
+  <li>Beispiel: Du liest im Discord, dass jemand angegriffen wurde. Dein Charakter darf davon nicht automatisch wissen.</li>
+</ul>
+<h3>Power-RP</h3>
+<ul>
+  <li>Power-RP bedeutet, einem anderen Charakter Handlungen, Treffer, Verletzungen oder Reaktionen ohne dessen Möglichkeit zur Reaktion aufzuzwingen.</li>
+  <li>Der Ausgang einer Handlung gegen einen anderen Charakter muss im RP ausgespielt werden.</li>
+</ul>
+<h3>Fail-RP</h3>
+<ul>
+  <li>Fail-RP bezeichnet unrealistisches oder unpassendes Verhalten, das die Logik und Glaubwürdigkeit der Spielwelt deutlich verletzt.</li>
+</ul>
+<h3>Consent</h3>
+<ul>
+  <li>Consent bedeutet ausdrückliche Zustimmung aller beteiligten Spieler zu bestimmten RP-Inhalten.</li>
+  <li>Besonders bei ERP, Gewalt, Gefangenschaft oder anderen sensiblen Inhalten ist die Zustimmung der Beteiligten zu beachten.</li>
+</ul>
+<h3>ERP</h3>
+<ul>
+  <li>ERP steht für Erotic Roleplay. Es handelt sich um sexuelle Inhalte im Rollenspiel.</li>
+  <li>ERP ist niemals verpflichtend und darf nicht ohne Zustimmung der beteiligten Spieler durchgeführt werden.</li>
+</ul>
+<h3>RP-Codewörter</h3>
+<ul>
+  <li>Serverinterne Codewörter werden verwendet, wenn ein Spieler im RP eine klare Grenze oder einen Abbruch signalisieren möchte.</li>
+  <li>Die konkret gültigen Codewörter werden vom Team festgelegt und sollten von allen Beteiligten bekannt sein.</li>
+</ul>`
+        },
+        {
           name: "Sklavenregelung",
           domain: "RP · Sklaverei · Consent",
           short: "Nichts ohne OOC-Absprache. Consent-Sheet Pflicht. Max. 3 Sklaven für Treiber/Ausbilder.",
@@ -427,11 +470,44 @@ Dein Regeltext kommt hier hinein.
 
     function categoryLabel(key) {
       const labels = {
+        grund: "Grundregeln",
+        erp: "ERP-Regeln",
+        abwesenheit: "Abwesenheit",
+        charakter: "Charakterwechsel & Grenzen",
+        begriffe: "RP-Begriffe & Codewörter",
         bau: "Bauregeln",
-        rp: "Rollenspielregeln",
-        char: "Charakter & Magie"
+        magie: "Magie"
       };
       return labels[key] || key;
+    }
+
+    function reorganizeRules(data) {
+      const result = {};
+      const ensure = key => { if (!Array.isArray(result[key])) result[key] = []; };
+
+      Object.keys(data || {}).forEach(category => {
+        if (!Array.isArray(data[category])) return;
+
+        data[category].forEach(rule => {
+          const name = String(rule.name || "").toLowerCase();
+          let target = category;
+
+          if (name.includes("erp") || name.includes("sklaven")) target = "erp";
+          else if (name.includes("abwesenheit")) target = "abwesenheit";
+          else if (name.includes("charakterwechsel") || name.includes("charakter-änderung") || name.includes("charakteränderung")) target = "charakter";
+          else if (name.includes("magieregel")) target = "magie";
+          else if (name.includes("bau")) target = "bau";
+          else if (name.includes("grundregeln")) target = "grund";
+          else if (name.includes("rp-begriff") || name.includes("codewörter")) target = "begriffe";
+          else if (category === "rp") target = "grund";
+          else if (category === "char") target = "charakter";
+
+          ensure(target);
+          result[target].push(rule);
+        });
+      });
+
+      return result;
     }
 
     function categoryKey(name) {
@@ -620,6 +696,7 @@ Dein Regeltext kommt hier hinein.
     function render() {
       let data = getData();
       data = addErpRuleIfMissing(data);
+      data = reorganizeRules(data);
 
       el("adminPanel").style.display = admin() ? "block" : "none";
 
@@ -656,7 +733,7 @@ Dein Regeltext kommt hier hinein.
     }
 
     function startEdit(category, index) {
-      const data = getData();
+      const data = reorganizeRules(getData());
       const rule = data[category]?.[index];
       if (!rule) return;
 
@@ -674,7 +751,7 @@ Dein Regeltext kommt hier hinein.
     }
 
     async function removeRule(category, index) {
-      const data = getData();
+      const data = reorganizeRules(getData());
       const rule = data[category]?.[index];
       if (!rule) return;
 
@@ -716,7 +793,7 @@ Dein Regeltext kommt hier hinein.
         return;
       }
 
-      const data = addErpRuleIfMissing(getData());
+      const data = reorganizeRules(addErpRuleIfMissing(getData()));
       const entry = { name, domain, full };
 
       if (editCategory !== null && editIndex !== null && data[editCategory]?.[editIndex]) {
