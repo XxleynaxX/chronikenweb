@@ -824,7 +824,7 @@ Dein Regeltext kommt hier hinein.
       };
 
       const combine = (category, name, domain, short, names, fallback) => {
-        const sources = names.map(findRule).filter(Boolean);
+        const sources = names.map(name => findRule([name])).filter(Boolean);
         const existing = findRule([name]);
 
         if (!sources.length && existing) return;
