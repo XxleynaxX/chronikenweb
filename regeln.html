@@ -131,8 +131,14 @@
             <input id="fDomain" placeholder="RP · ERP · Grenzen">
           </div>
           <div class="admin-field full">
-            <label>Kompletter Text</label>
-            <textarea id="fFull" rows="10" placeholder="Hier kommt der vollständige Regeltext hinein."></textarea>
+            <label>Regeltext</label>
+            <textarea id="fFull" rows="12" placeholder="- Überschrift -
+
+Dein Regeltext kommt hier hinein.
+
+- Weitere Regel -
+- Erster Punkt
+- Zweiter Punkt"></textarea>
           </div>
         </div>
 
@@ -522,6 +528,59 @@
       return parts.join("");
     }
 
+    function htmlToEditorText(value) {
+      if (!value) return "";
+
+      const source = String(value).trim();
+      if (!/<[a-z][\\s\\S]*>/i.test(source)) return source;
+
+      const parser = new DOMParser();
+      const doc = parser.parseFromString(source, "text/html");
+      const lines = [];
+
+      function walk(node) {
+        if (node.nodeType !== Node.ELEMENT_NODE) return;
+
+        const tag = node.tagName.toLowerCase();
+
+        if (/^h[1-6]$/.test(tag)) {
+          const text = node.textContent.trim();
+          if (text) lines.push("- " + text + " -");
+          lines.push("");
+          return;
+        }
+
+        if (tag === "li") {
+          const text = node.textContent.trim();
+          if (text) lines.push("- " + text);
+          return;
+        }
+
+        if (tag === "p") {
+          const text = node.textContent.trim();
+          if (text) lines.push(text);
+          lines.push("");
+          return;
+        }
+
+        if (tag === "ul" || tag === "ol") {
+          Array.from(node.children).forEach(walk);
+          lines.push("");
+          return;
+        }
+
+        Array.from(node.children).forEach(walk);
+      }
+
+      Array.from(doc.body.children).forEach(walk);
+
+      if (!lines.length) return doc.body.textContent.trim();
+
+      return lines.join("\n")
+        .replace(/\n{3,}/g, "\n\n")
+        .trim();
+    }
+
     function makeCard(item, category, index) {
       const card = document.createElement("article");
       const key = category + "-" + index;
@@ -608,7 +667,7 @@
       el("fCategory").value = categoryLabel(category);
       el("fName").value = rule.name || "";
       el("fDomain").value = rule.domain || "";
-      el("fFull").value = rule.full || rule.short || "";
+      el("fFull").value = htmlToEditorText(rule.full || rule.short || "");
       el("btnSave").textContent = "Änderungen speichern";
       el("btnCancel").style.display = "inline-block";
       window.scrollTo({ top: 0, behavior: "smooth" });
