@@ -459,12 +459,12 @@
       if (!text) return "";
 
       const value = String(text)
-        .replace(/\\r\\n/g, "\n")
-        .replace(/\\n/g, "\n")
-        .replace(/\\r/g, "\n");
+        .replace(/\r\n/g, "\n")
+        .replace(/\n/g, "\n")
+        .replace(/\r/g, "\n");
 
       // Bestehende Regeln dürfen weiterhin HTML enthalten.
-      if (/<[a-z][\\s\\S]*>/i.test(value)) return value;
+      if (/<[a-z][\s\S]*>/i.test(value)) return value;
 
       const parts = [];
       let listItems = [];
