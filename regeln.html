@@ -1235,6 +1235,15 @@ Dein Regeltext kommt hier hinein.
 
     // Alte lokale Regeldaten werden einmalig als Ausgangspunkt übernommen.
     (async function init() {
+      // Vor der Bereinigung zuerst den aktuellen Stand aus MySQL laden.
+      // So arbeitet die Admin-Seite nicht versehentlich mit alten lokalen Regeln.
+      try {
+        await ChronikenStorage.load(KEY);
+        await ChronikenData.syncFromRemote();
+      } catch (e) {
+        console.warn("[Regeln] Remote-Daten konnten vor der Bereinigung nicht geladen werden:", e);
+      }
+
       let data = getData();
       const before = JSON.stringify(data);
 
