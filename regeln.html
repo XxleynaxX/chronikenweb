@@ -5,81 +5,82 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Regeln – Chroniken</title>
   <link rel="stylesheet" href="style.css">
+  <link rel="stylesheet" href="chroniken-admin.css">
   <style>
+    .wrap { max-width: 1100px; margin: auto; padding: 2rem 1.5rem; }
+    .rule-section { margin-bottom: 2rem; }
+    .rule-section h2 { margin-bottom: 1rem; }
+    .rule-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      gap: 1.2rem;
+    }
     .rule-card {
       cursor: pointer;
       position: relative;
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 1.3rem;
+      transition: border-color .2s, box-shadow .2s, background .2s;
+      backdrop-filter: blur(10px);
+      -webkit-backdrop-filter: blur(10px);
     }
-    .rule-card .short-text {
-      font-size: 0.95rem;
-      color: var(--text-muted);
-      display: -webkit-box;
-      -webkit-line-clamp: 3;
-      -webkit-box-orient: vertical;
-      overflow: hidden;
-    }
-    .rule-card .click-hint {
-      font-size: 0.75rem;
-      color: var(--purple);
-      margin-top: 0.6rem;
-    }
+    .rule-card:hover { border-color: var(--accent-soft); background: var(--bg-hover); box-shadow: 0 0 20px rgba(168,85,247,.22); }
+    .rule-card h3 { margin: 0 0 .3rem; color: var(--accent-soft); font-size: 1.25rem; }
+    .rule-card .domain { font-size: .85rem; color: var(--accent); margin-bottom: .6rem; font-weight: 600; }
+    .rule-card .short-text { font-size: .95rem; color: var(--text-muted); line-height: 1.55; }
+    .rule-card .click-hint { font-size: .75rem; color: var(--purple); margin-top: .7rem; }
     .rule-card.expanded {
       grid-column: 1 / -1;
       border-color: var(--purple);
-      box-shadow: 0 0 24px rgba(124, 58, 237, 0.3);
-    }
-    .rule-card.expanded .short-text {
-      display: none;
+      box-shadow: 0 0 24px rgba(124,58,237,.3);
     }
     .rule-card .full-text {
       display: none;
       font-size: 1rem;
       color: var(--text);
       line-height: 1.7;
-      margin-top: 0.5rem;
+      margin-top: .8rem;
     }
-    .rule-card.expanded .full-text {
-      display: block;
-    }
-    .rule-card.expanded .click-hint {
-      display: none;
-    }
-    .rule-card .close-btn {
-      display: none;
-      margin-top: 1rem;
-    }
-    .rule-card.expanded .close-btn {
-      display: inline-block;
-    }
-    .full-text ul {
-      margin: 0.6rem 0 0.6rem 1.2rem;
-      padding: 0;
-    }
-    .full-text li {
-      margin-bottom: 0.35rem;
-    }
-    .full-text h3 {
-      margin: 1.2rem 0 0.5rem;
+    .rule-card.expanded .full-text { display: block; }
+    .rule-card.expanded .short-text { display: none; }
+    .rule-card.expanded .click-hint { display: none; }
+    .rule-card .tile-actions { display: flex; gap: .55rem; margin-top: 1rem; flex-wrap: wrap; }
+    .rule-card .tile-actions .btn { cursor: pointer; }
+    .rule-card .lore-heading {
+      color: var(--accent-soft);
       font-size: 1.1rem;
-      color: var(--purple);
+      font-weight: 700;
+      margin: 1.2rem 0 .45rem;
     }
-    .full-text h3:first-child {
-      margin-top: 0.4rem;
-    }
-    .full-text p {
-      margin: 0.5rem 0;
-    }
-    .full-text strong {
+    .rule-card .lore-heading:first-child { margin-top: 0; }
+    .rule-card .lore-paragraph { margin: 0 0 .9rem; }
+    .rule-card .lore-list { margin: .35rem 0 1rem 1.4rem; padding: 0; }
+    .rule-card .lore-list li { margin-bottom: .35rem; }
+    .lore-help {
+      margin: 0 0 1rem;
+      padding: .9rem 1rem;
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      background: rgba(124,58,237,.08);
       color: var(--text);
+      line-height: 1.6;
+      font-size: .9rem;
+    }
+    .lore-help strong { color: var(--accent-soft); }
+    .lore-help code {
+      padding: .12rem .35rem;
+      border-radius: 5px;
+      background: rgba(0,0,0,.22);
+      color: var(--accent-soft);
     }
   </style>
 </head>
 <body>
   <div class="bg-overlay"></div>
   <header>
-    <div class="logo-wrap">
-      <div class="logo">Chroniken</div>
-    </div>
+    <div class="logo-wrap"><div class="logo">Chroniken</div></div>
     <nav>
       <a href="index.html">Start</a>
       <a href="news.html">News</a>
@@ -100,64 +101,87 @@
     </nav>
   </header>
 
-  <main>
+  <main class="wrap">
     <h1 class="page-title">Regeln</h1>
     <p class="page-desc">Die Gesetze und Richtlinien, die im Portal gelten. Klicke auf eine Kachel für den vollen Text.</p>
 
-    <div class="wiki-controls">
-      <button class="btn secondary" id="btnEdit" style="display:none;">Bearbeiten</button>
-    </div>
+    <section class="admin-panel" id="adminPanel" style="display:none;">
+      <div class="admin-form">
+        <h2 id="formTitle">Neue Regel anlegen</h2>
+
+        <div class="lore-help">
+          <strong>So kannst du den Regeltext schreiben:</strong><br>
+          Leerzeilen erzeugen neue Absätze. Überschriften kannst du mit
+          <code>- Überschrift -</code> oder <code>## Überschrift</code> schreiben.
+          Aufzählungen funktionieren mit <code>- Punkt</code>, <code>• Punkt</code>,
+          <code>* Punkt</code> oder <code>1. Punkt</code>. Du musst kein HTML schreiben.
+        </div>
+
+        <div class="admin-grid">
+          <div class="admin-field">
+            <label>Kategorie *</label>
+            <select id="fCategory">
+              <option value="bau">Bauregeln</option>
+              <option value="rp">Rollenspielregeln</option>
+              <option value="char">Charakter &amp; Magie</option>
+            </select>
+          </div>
+          <div class="admin-field">
+            <label>Name *</label>
+            <input id="fName" placeholder="z. B. ERP &amp; Tierdarstellung">
+          </div>
+          <div class="admin-field full">
+            <label>Bereich / Kurzinfo</label>
+            <input id="fDomain" placeholder="RP · ERP · Grenzen">
+          </div>
+          <div class="admin-field full">
+            <label>Kurzbeschreibung</label>
+            <input id="fShort" placeholder="Kurze Zusammenfassung, die auf der Kachel angezeigt wird.">
+          </div>
+          <div class="admin-field full">
+            <label>Kompletter Text</label>
+            <textarea id="fFull" rows="10" placeholder="Hier kommt der vollständige Regeltext hinein."></textarea>
+          </div>
+        </div>
+
+        <div class="admin-actions">
+          <button class="btn" id="btnSave">Speichern</button>
+          <button class="btn secondary" id="btnCancel" style="display:none;">Abbrechen</button>
+          <span class="admin-status" id="status"></span>
+        </div>
+      </div>
+      <h2 class="admin-sub-title">Vorhandene Regeln</h2>
+    </section>
 
     <div id="contentView">
-      <div class="content-block">
+      <section class="rule-section">
         <h2>Bauregeln</h2>
-        <div class="god-grid" id="bauGrid"></div>
-      </div>
-      <div class="content-block">
-        <h2>Rollenspielregeln</h2>
-        <div class="god-grid" id="rpGrid"></div>
-      </div>
-      <div class="content-block">
-        <h2>Charakter &amp; Magie</h2>
-        <div class="god-grid" id="charGrid"></div>
-      </div>
-      <div class="content-block">
-        <h2>Hinweis</h2>
-        <p>
-          Bei Fragen oder Unklarheiten könnt ihr euch jederzeit an das Support-Team wenden.
-          Diese Regeln sorgen für eine immersive und respektvolle Spielwelt für alle Spieler.
-        </p>
-      </div>
-    </div>
+        <div class="rule-grid" id="bauGrid"></div>
+      </section>
 
-    <div class="editor-area" id="editorArea">
-      <div class="card">
-        <h3>Regeln bearbeiten (JSON)</h3>
-        <p style="color:var(--text-muted); font-size:0.9rem; margin-bottom:1rem;">
-          Format: bau, rp und char – jeweils name, domain, short, full (full darf HTML enthalten).
-        </p>
-        <div class="form-group">
-          <label for="inputContent">Daten (JSON)</label>
-          <textarea id="inputContent" style="min-height:420px; font-family:monospace; font-size:0.85rem;"></textarea>
-        </div>
-        <div style="display:flex; gap:0.8rem;">
-          <button class="btn" id="btnSave">Speichern</button>
-          <button class="btn secondary" id="btnCancel">Abbrechen</button>
-        </div>
-      </div>
+      <section class="rule-section">
+        <h2>Rollenspielregeln</h2>
+        <div class="rule-grid" id="rpGrid"></div>
+      </section>
+
+      <section class="rule-section">
+        <h2>Charakter &amp; Magie</h2>
+        <div class="rule-grid" id="charGrid"></div>
+      </section>
+
+      <section class="content-block">
+        <h2>Hinweis</h2>
+        <p>Bei Fragen oder Unklarheiten könnt ihr euch jederzeit an das Support-Team wenden. Diese Regeln sorgen für eine immersive und respektvolle Spielwelt für alle Spieler.</p>
+      </section>
     </div>
   </main>
 
-  </div>
+  <footer><p>© 2026 Kiyasha · Chroniken – Alle Rechte vorbehalten · <a href="#" class="legal-link" onclick="openLegalNotice(); return false;">Hinweis</a></p></footer>
 
-  <footer>
-    <p>© 2026 Kiyasha · Chroniken – Alle Rechte vorbehalten · <a href="#" class="legal-link" onclick="openLegalNotice(); return false;">Hinweis</a></p>
-  </footer>
-
+  <script src="chroniken-auth.js"></script>
+  <script src="chroniken-storage.js"></script>
+  <script src="chroniken-data.js"></script>
   <script>
-    const STORAGE_KEY = "portal_regeln_data_v2";
-    const AUTH_KEY = "portal_admin_auth";
-
     const DEFAULT_DATA = {
       bau: [
         {
@@ -376,120 +400,297 @@
       ]
     };
 
-    let unlocked = false;
+    const KEY = "regeln";
+    const ERP_RULE = {
+      name: "ERP & Tierdarstellung",
+      domain: "RP · ERP · Grenzen",
+      short: "Sexuelle Handlungen oder Darstellungen mit Tieren sind verboten. Alle Völker und Rassen werden grundsätzlich humanoid dargestellt.",
+      full: "Sexuelle Handlungen oder Darstellungen mit Tieren sind verboten. Alle Völker und Rassen werden grundsätzlich humanoid dargestellt. Tierische Merkmale wie Ohren, Fell oder Schwänze sind erlaubt, solange der Charakter eindeutig humanoid bleibt."
+    };
+
+    let editCategory = null;
+    let editIndex = null;
     let expandedKey = null;
 
-    const bauGrid = document.getElementById("bauGrid");
-    const rpGrid = document.getElementById("rpGrid");
-    const charGrid = document.getElementById("charGrid");
-    const contentView = document.getElementById("contentView");
-    const editorArea = document.getElementById("editorArea");
-    const statusEl = document.getElementById("status");
-    const btnEdit = document.getElementById("btnEdit");
-    const inputContent = document.getElementById("inputContent");
+    const el = id => document.getElementById(id);
+    const esc = ChronikenData.esc;
 
-    function loadData() {
+    function admin() {
+      return ChronikenData.isAdmin();
+    }
+
+    function getLocalData() {
       try {
-        const raw = localStorage.getItem(STORAGE_KEY);
+        const raw = localStorage.getItem("portal_regeln_data_v2");
         if (raw) return JSON.parse(raw);
-      } catch {}
-      return JSON.parse(JSON.stringify(DEFAULT_DATA));
+      } catch (e) {}
+      return null;
     }
 
-    function saveData(data) {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+    function ensureShape(data) {
+      return {
+        bau: Array.isArray(data && data.bau) ? data.bau : [],
+        rp: Array.isArray(data && data.rp) ? data.rp : [],
+        char: Array.isArray(data && data.char) ? data.char : []
+      };
     }
 
-    function escapeHtml(s) {
-      return String(s)
-        .replace(/&/g, "&amp;").replace(/</g, "&lt;")
-        .replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+    function getData() {
+      const shared = ChronikenData.load(KEY);
+      if (shared && (shared.bau || shared.rp || shared.char)) {
+        return ensureShape(shared);
+      }
+
+      const localOld = getLocalData();
+      if (localOld && (localOld.bau || localOld.rp || localOld.char)) {
+        return ensureShape(localOld);
+      }
+
+      return ensureShape(DEFAULT_DATA);
     }
 
-    function makeCard(item, key) {
-      const card = document.createElement("div");
-      card.className = "rule-card god-card" + (expandedKey === key ? " expanded" : "");
-      card.innerHTML = `
-        <h3>${escapeHtml(item.name)}</h3>
-        <div class="domain">${escapeHtml(item.domain)}</div>
-        <p class="short-text">${escapeHtml(item.short)}</p>
-        <div class="full-text">${item.full}</div>
-        <div class="click-hint">Klicken zum Aufklappen →</div>
-        <button type="button" class="btn secondary close-btn">Zuklappen</button>
-      `;
-      card.addEventListener("click", (e) => {
-        if (e.target.classList.contains("close-btn")) {
-          expandedKey = null;
-          render();
+    function addErpRuleIfMissing(data) {
+      const exists = data.rp.some(r => String(r.name || "").trim().toLowerCase() === ERP_RULE.name.toLowerCase());
+      if (!exists) data.rp.push({ ...ERP_RULE });
+      return data;
+    }
+
+    function formatRuleText(text) {
+      if (!text) return "";
+
+      const value = String(text)
+        .replace(/\\r\\n/g, "\n")
+        .replace(/\\n/g, "\n")
+        .replace(/\\r/g, "\n");
+
+      // Bestehende Regeln dürfen weiterhin HTML enthalten.
+      if (/<[a-z][\\s\\S]*>/i.test(value)) return value;
+
+      const parts = [];
+      let listItems = [];
+
+      const flushList = () => {
+        if (!listItems.length) return;
+        parts.push("<ul class=\"lore-list\">" + listItems.map(item => "<li>" + esc(item) + "</li>").join("") + "</ul>");
+        listItems = [];
+      };
+
+      value.split("\n").forEach(line => {
+        const trimmed = line.trim();
+        if (!trimmed) {
+          flushList();
           return;
         }
+
+        const bullet = trimmed.match(/^(?:[-*•]|\d+[.)])\s+(.*)$/);
+        if (bullet) {
+          listItems.push(bullet[1]);
+          return;
+        }
+
+        flushList();
+
+        const heading = trimmed.match(/^-+\s*(.+?)\s*-+$/);
+        if (heading) {
+          parts.push("<h4 class=\"lore-heading\">" + esc(heading[1]) + "</h4>");
+          return;
+        }
+
+        const markdownHeading = trimmed.match(/^#{1,4}\s+(.+)$/);
+        if (markdownHeading) {
+          parts.push("<h4 class=\"lore-heading\">" + esc(markdownHeading[1]) + "</h4>");
+          return;
+        }
+
+        parts.push("<p class=\"lore-paragraph\">" + esc(trimmed) + "</p>");
+      });
+
+      flushList();
+      return parts.join("");
+    }
+
+    function makeCard(item, category, index) {
+      const card = document.createElement("article");
+      const key = category + "-" + index;
+      card.className = "rule-card" + (expandedKey === key ? " expanded" : "");
+
+      card.innerHTML = `
+        <h3>${esc(item.name || "Unbenannte Regel")}</h3>
+        <div class="domain">${esc(item.domain || "")}</div>
+        <p class="short-text">${esc(item.short || "")}</p>
+        <div class="full-text">${formatRuleText(item.full || item.short || "")}</div>
+        <div class="click-hint">Klicken zum Aufklappen →</div>
+        ${admin() ? `<div class="tile-actions">
+          <button class="btn secondary" data-edit>Bearbeiten</button>
+          <button class="btn danger" data-del>Löschen</button>
+        </div>` : ""}
+      `;
+
+      card.querySelector("[data-edit]")?.addEventListener("click", e => {
+        e.stopPropagation();
+        startEdit(category, index);
+      });
+
+      card.querySelector("[data-del]")?.addEventListener("click", e => {
+        e.stopPropagation();
+        removeRule(category, index);
+      });
+
+      card.addEventListener("click", e => {
+        if (e.target.closest("button")) return;
         expandedKey = expandedKey === key ? null : key;
         render();
       });
+
       return card;
     }
 
     function render() {
-      const data = loadData();
-      bauGrid.innerHTML = "";
-      rpGrid.innerHTML = "";
-      charGrid.innerHTML = "";
-      (data.bau || []).forEach((item, i) => {
-        bauGrid.appendChild(makeCard(item, "bau-" + i));
-      });
-      (data.rp || []).forEach((item, i) => {
-        rpGrid.appendChild(makeCard(item, "rp-" + i));
-      });
-      (data.char || []).forEach((item, i) => {
-        charGrid.appendChild(makeCard(item, "char-" + i));
-      });
+      let data = getData();
+      data = addErpRuleIfMissing(data);
+
+      el("adminPanel").style.display = admin() ? "block" : "none";
+
+      el("bauGrid").innerHTML = "";
+      el("rpGrid").innerHTML = "";
+      el("charGrid").innerHTML = "";
+
+      data.bau.forEach((item, i) => el("bauGrid").appendChild(makeCard(item, "bau", i)));
+      data.rp.forEach((item, i) => el("rpGrid").appendChild(makeCard(item, "rp", i)));
+      data.char.forEach((item, i) => el("charGrid").appendChild(makeCard(item, "char", i)));
     }
 
-    function isAdmin() {
-      try { return sessionStorage.getItem(AUTH_KEY) === "1"; } catch { return false; }
+    function resetForm() {
+      editCategory = null;
+      editIndex = null;
+      el("formTitle").textContent = "Neue Regel anlegen";
+      el("fCategory").value = "rp";
+      el("fName").value = "";
+      el("fDomain").value = "";
+      el("fShort").value = "";
+      el("fFull").value = "";
+      el("btnSave").textContent = "Speichern";
+      el("btnCancel").style.display = "none";
+      el("status").textContent = "";
     }
 
-    function setUnlocked(state) {
-      unlocked = state;
-      if (statusEl) {
-        statusEl.textContent = state ? "Schreibmodus: freigeschaltet (Admin)" : "Schreibmodus: gesperrt";
-        statusEl.classList.toggle("unlocked", state);
-      }
-      btnEdit.style.display = state ? "inline-block" : "none";
+    function startEdit(category, index) {
+      const data = getData();
+      const rule = data[category]?.[index];
+      if (!rule) return;
+
+      editCategory = category;
+      editIndex = index;
+
+      el("formTitle").textContent = "Regel bearbeiten";
+      el("fCategory").value = category;
+      el("fName").value = rule.name || "";
+      el("fDomain").value = rule.domain || "";
+      el("fShort").value = rule.short || "";
+      el("fFull").value = rule.full || rule.short || "";
+      el("btnSave").textContent = "Änderungen speichern";
+      el("btnCancel").style.display = "inline-block";
+      window.scrollTo({ top: 0, behavior: "smooth" });
     }
 
-    function openEditor() {
-      inputContent.value = JSON.stringify(loadData(), null, 2);
-      contentView.style.display = "none";
-      editorArea.classList.add("visible");
-      inputContent.focus();
-    }
+    async function removeRule(category, index) {
+      const data = getData();
+      const rule = data[category]?.[index];
+      if (!rule) return;
 
-    function closeEditor() {
-      editorArea.classList.remove("visible");
-      contentView.style.display = "block";
-      render();
-    }
+      if (!confirm("Diese Regel wirklich löschen?")) return;
 
-    btnEdit.addEventListener("click", openEditor);
+      data[category].splice(index, 1);
 
-    setUnlocked(isAdmin());
-    document.getElementById("btnSave").addEventListener("click", () => {
       try {
-        const data = JSON.parse(inputContent.value);
-        if (!data.bau && !data.rp && !data.char) throw new Error("bau/rp/char fehlt");
-        saveData(data);
+        await ChronikenData.save(KEY, data);
+        if (editCategory === category && editIndex === index) resetForm();
         expandedKey = null;
-        closeEditor();
+        el("status").style.color = "#22c55e";
+        el("status").textContent = "✓ Regel gelöscht";
+        render();
+        setTimeout(() => { el("status").textContent = ""; }, 2000);
       } catch (err) {
-        alert("Ungültiges JSON: " + err.message);
+        console.error("[Regeln] Löschen fehlgeschlagen:", err);
+        el("status").style.color = "#f87171";
+        el("status").textContent = "✗ Löschen in der Datenbank fehlgeschlagen";
       }
-    });
-    document.getElementById("btnCancel").addEventListener("click", closeEditor);
+    }
 
-    render();
+    async function save() {
+      const category = el("fCategory").value;
+      const name = el("fName").value.trim();
+      const domain = el("fDomain").value.trim();
+      const short = el("fShort").value.trim();
+      const full = el("fFull").value.trim();
+
+      if (!name) {
+        el("status").style.color = "#f87171";
+        el("status").textContent = "Bitte einen Namen eingeben.";
+        return;
+      }
+
+      const data = addErpRuleIfMissing(getData());
+      const entry = { name, domain, short, full };
+
+      if (editCategory !== null && editIndex !== null && data[editCategory]?.[editIndex]) {
+        if (editCategory === category) {
+          data[category][editIndex] = entry;
+        } else {
+          data[editCategory].splice(editIndex, 1);
+          data[category].push(entry);
+        }
+      } else {
+        data[category].push(entry);
+      }
+
+      el("btnSave").disabled = true;
+      el("status").style.color = "";
+      el("status").textContent = "Speichere in der Datenbank …";
+
+      try {
+        await ChronikenData.save(KEY, data);
+        resetForm();
+        expandedKey = null;
+        el("status").style.color = "#22c55e";
+        el("status").textContent = "✓ In der Datenbank gespeichert";
+        render();
+        setTimeout(() => { el("status").textContent = ""; }, 2500);
+      } catch (err) {
+        console.error("[Regeln] Speichern fehlgeschlagen:", err);
+        el("status").style.color = "#f87171";
+        el("status").textContent = "✗ Speichern in der Datenbank fehlgeschlagen";
+      } finally {
+        el("btnSave").disabled = false;
+      }
+    }
+
+    el("btnSave").onclick = save;
+    el("btnCancel").onclick = resetForm;
+
+    // Alte lokale Regeldaten werden einmalig als Ausgangspunkt übernommen.
+    (async function init() {
+      let data = getData();
+      const hadRemote = !!(ChronikenData.load(KEY) && (ChronikenData.load(KEY).bau || ChronikenData.load(KEY).rp || ChronikenData.load(KEY).char));
+
+      if (admin()) {
+        data = addErpRuleIfMissing(data);
+        if (!hadRemote || getLocalData()) {
+          try {
+            await ChronikenData.save(KEY, data);
+            localStorage.removeItem("portal_regeln_data_v2");
+          } catch (e) {
+            console.warn("[Regeln] Initiale Synchronisierung fehlgeschlagen:", e);
+          }
+        }
+      }
+
+      render();
+    })();
+
+    window.addEventListener("storage", render);
+    document.addEventListener("chroniken-data-synced", render);
   </script>
-<script src="chroniken-auth.js"></script>
-<script src="legal-notice.js"></script>
+  <script src="legal-notice.js"></script>
 </body>
 </html>
