@@ -532,7 +532,7 @@ Dein Regeltext kommt hier hinein.
       if (!value) return "";
 
       const source = String(value).trim();
-      if (!/<[a-z][\\s\\S]*>/i.test(source)) return source;
+      if (!/<[a-z][\s\S]*>/i.test(source)) return source;
 
       const parser = new DOMParser();
       const doc = parser.parseFromString(source, "text/html");
