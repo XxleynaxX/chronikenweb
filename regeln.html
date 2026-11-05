@@ -120,11 +120,7 @@
         <div class="admin-grid">
           <div class="admin-field">
             <label>Kategorie *</label>
-            <select id="fCategory">
-              <option value="bau">Bauregeln</option>
-              <option value="rp">Rollenspielregeln</option>
-              <option value="char">Charakter &amp; Magie</option>
-            </select>
+            <input id="fCategory" placeholder="z. B. ERP, Bauregeln oder PvP" required>
           </div>
           <div class="admin-field">
             <label>Name *</label>
@@ -133,10 +129,6 @@
           <div class="admin-field full">
             <label>Bereich / Kurzinfo</label>
             <input id="fDomain" placeholder="RP · ERP · Grenzen">
-          </div>
-          <div class="admin-field full">
-            <label>Kurzbeschreibung</label>
-            <input id="fShort" placeholder="Kurze Zusammenfassung, die auf der Kachel angezeigt wird.">
           </div>
           <div class="admin-field full">
             <label>Kompletter Text</label>
@@ -154,20 +146,7 @@
     </section>
 
     <div id="contentView">
-      <section class="rule-section">
-        <h2>Bauregeln</h2>
-        <div class="rule-grid" id="bauGrid"></div>
-      </section>
-
-      <section class="rule-section">
-        <h2>Rollenspielregeln</h2>
-        <div class="rule-grid" id="rpGrid"></div>
-      </section>
-
-      <section class="rule-section">
-        <h2>Charakter &amp; Magie</h2>
-        <div class="rule-grid" id="charGrid"></div>
-      </section>
+      <div id="ruleSections"></div>
 
       <section class="content-block">
         <h2>Hinweis</h2>
@@ -428,11 +407,45 @@
     }
 
     function ensureShape(data) {
-      return {
-        bau: Array.isArray(data && data.bau) ? data.bau : [],
-        rp: Array.isArray(data && data.rp) ? data.rp : [],
-        char: Array.isArray(data && data.char) ? data.char : []
+      const result = {};
+      if (data && typeof data === "object") {
+        Object.keys(data).forEach(key => {
+          if (Array.isArray(data[key])) result[key] = data[key];
+        });
+      }
+      if (!Array.isArray(result.bau)) result.bau = [];
+      if (!Array.isArray(result.rp)) result.rp = [];
+      if (!Array.isArray(result.char)) result.char = [];
+      return result;
+    }
+
+    function categoryLabel(key) {
+      const labels = {
+        bau: "Bauregeln",
+        rp: "Rollenspielregeln",
+        char: "Charakter & Magie"
       };
+      return labels[key] || key;
+    }
+
+    function categoryKey(name) {
+      const value = String(name || "").trim();
+      if (!value) return "";
+      const known = {
+        "bauregeln": "bau",
+        "rollenspielregeln": "rp",
+        "charakter & magie": "char"
+      };
+      const lower = value.toLowerCase();
+      if (known[lower]) return known[lower];
+
+      return value
+        .toLowerCase()
+        .normalize("NFD")
+        .replace(/[\u0300-\u036f]/g, "")
+        .replace(/[^a-z0-9]+/g, "-")
+        .replace(/^-+|-+$/g, "")
+        .slice(0, 60) || "sonstige";
     }
 
     function getData() {
@@ -517,7 +530,7 @@
       card.innerHTML = `
         <h3>${esc(item.name || "Unbenannte Regel")}</h3>
         <div class="domain">${esc(item.domain || "")}</div>
-        <p class="short-text">${esc(item.short || "")}</p>
+        ${item.short ? `<p class="short-text">${esc(item.short)}</p>` : ""}
         <div class="full-text">${formatRuleText(item.full || item.short || "")}</div>
         <div class="click-hint">Klicken zum Aufklappen →</div>
         ${admin() ? `<div class="tile-actions">
@@ -567,7 +580,6 @@
       el("fCategory").value = "rp";
       el("fName").value = "";
       el("fDomain").value = "";
-      el("fShort").value = "";
       el("fFull").value = "";
       el("btnSave").textContent = "Speichern";
       el("btnCancel").style.display = "none";
@@ -583,10 +595,9 @@
       editIndex = index;
 
       el("formTitle").textContent = "Regel bearbeiten";
-      el("fCategory").value = category;
+      el("fCategory").value = categoryLabel(category);
       el("fName").value = rule.name || "";
       el("fDomain").value = rule.domain || "";
-      el("fShort").value = rule.short || "";
       el("fFull").value = rule.full || rule.short || "";
       el("btnSave").textContent = "Änderungen speichern";
       el("btnCancel").style.display = "inline-block";
@@ -618,11 +629,17 @@
     }
 
     async function save() {
-      const category = el("fCategory").value;
+      const categoryName = el("fCategory").value.trim();
+      const category = categoryKey(categoryName);
       const name = el("fName").value.trim();
       const domain = el("fDomain").value.trim();
-      const short = el("fShort").value.trim();
       const full = el("fFull").value.trim();
+
+      if (!categoryName) {
+        el("status").style.color = "#f87171";
+        el("status").textContent = "Bitte eine Kategorie eingeben.";
+        return;
+      }
 
       if (!name) {
         el("status").style.color = "#f87171";
@@ -631,7 +648,7 @@
       }
 
       const data = addErpRuleIfMissing(getData());
-      const entry = { name, domain, short, full };
+      const entry = { name, domain, full };
 
       if (editCategory !== null && editIndex !== null && data[editCategory]?.[editIndex]) {
         if (editCategory === category) {
