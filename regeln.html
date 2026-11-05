@@ -803,6 +803,109 @@ Dein Regeltext kommt hier hinein.
       if (typeof ERP_RULE !== "undefined") addUnique("erp", ERP_RULE);
       if (typeof ABSENCE_RULE !== "undefined") addUnique("abwesenheit", ABSENCE_RULE);
 
+      // Die RP-Regeln bewusst zu wenigen, verständlichen Kacheln zusammenfassen.
+      // Ziel: "Was muss ich wissen?" statt einer langen Liste einzelner Kleinstregeln.
+      const findRule = (names) => {
+        const wanted = new Set(names.map(n => n.toLowerCase()));
+        for (const category of Object.keys(result)) {
+          const found = (result[category] || []).find(rule => wanted.has(String(rule.name || "").trim().toLowerCase()));
+          if (found) return found;
+        }
+        return null;
+      };
+
+      const removeRules = (names) => {
+        const unwanted = new Set(names.map(n => n.toLowerCase()));
+        Object.keys(result).forEach(category => {
+          result[category] = (result[category] || []).filter(rule =>
+            !unwanted.has(String(rule.name || "").trim().toLowerCase())
+          );
+        });
+      };
+
+      const combine = (category, name, domain, short, names, fallback) => {
+        const sources = names.map(findRule).filter(Boolean);
+        const existing = findRule([name]);
+
+        if (!sources.length && existing) return;
+        if (!sources.length && !fallback) return;
+
+        removeRules([name, ...names]);
+
+        const full = sources.length
+          ? sources.map(rule => rule.full || rule.short || "").filter(Boolean).join("\n")
+          : fallback;
+
+        addUnique(category, { name, domain, short, full });
+      };
+
+      // Grundregeln gehören nicht in den RP-Block.
+      const grund = findRule(["Grundregeln & Respekt"]);
+      if (grund) {
+        removeRules(["Grundregeln & Respekt"]);
+        addUnique("grund", grund);
+      }
+
+      combine(
+        "rp",
+        "RP-Spielweise & Fairness",
+        "RP · IC/OOC · Emotes · Konsequenzen",
+        "Die wichtigsten Regeln für faires und glaubwürdiges RP: Charakterwissen, Emotes, Konflikte, Verletzungen, Flucht und Konsequenzen.",
+        [
+          "Charakterwissen & Metagaming",
+          "Emotes & Handlungen",
+          "RP-Folgen & Charakterverhalten",
+          "RP-Konflikte",
+          "RP-Szenen & Loot",
+          "Realistisches Verletzungs-RP",
+          "Flucht & Verfolgung"
+        ],
+        "- Charakterwissen & Metagaming -\n\nNutze im RP nur Wissen, das dein Charakter IC erfahren hat. OOC-Wissen aus Discord, Streams oder Gesprächen darf nicht als Vorteil verwendet werden.\n\n- Emotes & Handlungen -\n\nWichtige Handlungen werden ausgespielt. Schreibe anderen Spielern keine Treffer, Verletzungen oder Reaktionen vor.\n\n- Konsequenzen -\n\nHandlungen können Folgen haben. Charaktere sind nicht unverwundbar und sollen glaubwürdig auf Situationen und Verletzungen reagieren.\n\n- Konflikte -\n\nIC-Konflikte bleiben IC. OOC-Streit wird nicht über das RP ausgetragen. Bei Regelproblemen hilft der Support.\n\n- Szenen & Besitz -\n\nLaufendes RP wird nicht grundlos gestört. Gegenstände anderer Charaktere werden nicht ohne passende RP-Situation genommen.\n\n- Flucht & Verfolgung -\n\nNiemand gewinnt eine Flucht oder Verfolgung automatisch. Beide Seiten bekommen die Möglichkeit zu reagieren."
+      );
+
+      combine(
+        "charakter",
+        "Charakter & Entwicklung",
+        "Charakter · Wechsel · Entwicklung · Beziehungen",
+        "Charakterwechsel, Entwicklung, Beziehungen, Verletzungen und Charaktertod sollen nachvollziehbar und fair ausgespielt werden.",
+        [
+          "Charakterwechsel & Grenzen",
+          "Charakterentwicklung",
+          "Beziehungen im RP",
+          "Tod & Charakterverlust",
+          "Gedächtnis nach Charaktertod"
+        ],
+        "- Charakterwechsel -\n\nCharakterwechsel und Main-Twink-Wechsel haben eine Frist von 1 Monat und müssen per Ticket angemeldet werden.\n\n- Entwicklung -\n\nCharaktere dürfen sich durch Erlebnisse, Fehler und Erfahrungen nachvollziehbar verändern.\n\n- Beziehungen -\n\nBeziehungen entstehen aus dem RP und dürfen niemandem aufgezwungen werden. OOC-Beziehungen werden nicht automatisch auf Charaktere übertragen.\n\n- Charaktertod -\n\nEin dauerhafter Charaktertod wird nicht leichtfertig entschieden und erfolgt nur mit Zustimmung der betroffenen Person oder einer vorher festgelegten RP-Regelung.\n\n- Neues Charakterleben -\n\nEin neuer Charakter übernimmt nicht automatisch Wissen, Beziehungen oder Feindschaften eines früheren Charakters."
+      );
+
+      combine(
+        "rp",
+        "Welt, Lore & NPCs",
+        "RP · Lore · NPCs · Weltveränderungen",
+        "NPCs und eigene Ideen sind erlaubt, müssen aber zur Welt passen und dürfen nicht für unangemessene Vorteile genutzt werden.",
+        [
+          "NPCs im RP",
+          "Lore-Treue",
+          "Wichtige RP-Entscheidungen"
+        ],
+        "- NPCs -\n\nNPCs dürfen das RP unterstützen, aber nicht dazu genutzt werden, den eigenen Charakter unangemessen mächtig zu machen. Wichtige NPCs werden vorher mit dem Team abgesprochen.\n\n- Lore -\n\nCharaktere und Handlungen sollen zur Welt von Die Chroniken passen. Besondere Fähigkeiten, mächtige Wesen oder größere Lore-Ereignisse müssen gegebenenfalls mit dem Team abgesprochen werden.\n\n- Große Entscheidungen -\n\nGrößere Veränderungen an Welt, Städten oder Fraktionen werden nicht allein entschieden, wenn andere Spieler davon betroffen sind."
+      );
+
+      // Bauregeln ebenfalls auf eine verständliche Hauptkachel reduzieren.
+      const bau1 = findRule(["Bauteile-Beschränkungen"]);
+      const bau2 = findRule(["Bauplatz & Fertighäuser"]);
+      if (bau1 || bau2) {
+        removeRules(["Bauregeln"]);
+        const bauRules = [bau1, bau2].filter(Boolean);
+        removeRules(bauRules.map(r => r.name));
+        addUnique("bau", {
+          name: "Bauen & Bauplätze",
+          domain: "Bauen · Limits · Bauplätze",
+          short: "Bauteile, Bauplätze, Fertighäuser, Clangröße und Werkbänke auf einen Blick.",
+          full: bauRules.map(r => r.full || r.short || "").join("\n")
+        });
+      }
+
       return result;
     }
 
