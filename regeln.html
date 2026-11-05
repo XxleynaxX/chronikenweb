@@ -840,7 +840,8 @@ Dein Regeltext kommt hier hinein.
         addUnique("chat", legacySplit.chat2);
       }
 
-      // Bestehende ERP-Regel behalten, falls sie bereits sauber vorhanden ist.
+      // Alte ERP-Kacheln entfernen und durch die gemeinsame, vollständige ERP-Regel ersetzen.
+      removeRules(["ERP & Consent", "ERP & Grenzen", "ERP & Tierdarstellung"]);
       if (typeof ERP_RULE !== "undefined") addUnique("erp", ERP_RULE);
       if (typeof ABSENCE_RULE !== "undefined") addUnique("abwesenheit", ABSENCE_RULE);
 
