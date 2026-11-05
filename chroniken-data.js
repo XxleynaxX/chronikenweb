@@ -78,7 +78,7 @@
   };
 
   // Alle Keys die über die Datenbank geteilt werden
-  const SHARED_KEYS = ["voelker", "berufe", "goetter"];
+  const SHARED_KEYS = ["voelker", "berufe", "goetter", "regeln"];
 
   const memCache = Object.create(null);
 
