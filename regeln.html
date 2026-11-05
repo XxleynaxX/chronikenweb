@@ -429,11 +429,18 @@ Dein Regeltext kommt hier hinein.
     };
 
     const KEY = "regeln";
+    const ABSENCE_RULE = {
+      name: "Abwesenheit",
+      domain: "Abwesenheit · Inaktivität",
+      short: "Längere Abwesenheit sollte angekündigt werden, damit Charaktere und laufendes RP sinnvoll berücksichtigt werden können.",
+      full: "Längere Abwesenheit sollte im vorgesehenen Abwesenheitsbereich angekündigt werden. So können Team und Mitspieler erkennen, dass ein Charakter vorübergehend nicht aktiv gespielt werden kann. Bei längerer Inaktivität können besondere Regelungen für laufendes RP, Charaktere und Besitz greifen."
+    };
+
     const ERP_RULE = {
       name: "ERP & Tierdarstellung",
-      domain: "RP · ERP · Grenzen",
-      short: "Sexuelle Handlungen oder Darstellungen mit Tieren sind verboten. Alle Völker und Rassen werden grundsätzlich humanoid dargestellt.",
-      full: "Sexuelle Handlungen oder Darstellungen mit Tieren sind verboten. Alle Völker und Rassen werden grundsätzlich humanoid dargestellt. Tierische Merkmale wie Ohren, Fell oder Schwänze sind erlaubt, solange der Charakter eindeutig humanoid bleibt."
+      domain: "ERP · Grenzen · Tierdarstellung",
+      short: "Zoophilie sowie sexuelle Handlungen oder Darstellungen mit Tieren sind verboten. Völker und Rassen werden grundsätzlich humanoid dargestellt.",
+      full: "Zoophilie sowie sexuelle Handlungen oder sexuelle Darstellungen mit Tieren sind verboten. Alle Völker und Rassen werden grundsätzlich humanoid dargestellt. Tierische Merkmale wie Ohren, Fell oder Schwänze sind erlaubt, solange der Charakter eindeutig humanoid bleibt."
     };
 
     let editCategory = null;
@@ -492,7 +499,7 @@ Dein Regeltext kommt hier hinein.
           const name = String(rule.name || "").toLowerCase();
           let target = category;
 
-          if (name.includes("erp") || name.includes("sklaven")) target = "erp";
+          if (name.includes("erp") || name.includes("sklaven") || name.includes("tierdarstellung") || name.includes("zoophilie")) target = "erp";
           else if (name.includes("abwesenheit")) target = "abwesenheit";
           else if (name.includes("charakterwechsel") || name.includes("charakter-änderung") || name.includes("charakteränderung")) target = "charakter";
           else if (name.includes("magieregel")) target = "magie";
@@ -545,8 +552,15 @@ Dein Regeltext kommt hier hinein.
     }
 
     function addErpRuleIfMissing(data) {
-      const exists = data.rp.some(r => String(r.name || "").trim().toLowerCase() === ERP_RULE.name.toLowerCase());
-      if (!exists) data.rp.push({ ...ERP_RULE });
+      const erp = data.erp || (data.rp = data.rp || []);
+      const absence = data.abwesenheit || (data.abwesenheit = []);
+
+      const erpExists = erp.some(r => String(r.name || "").trim().toLowerCase() === ERP_RULE.name.toLowerCase());
+      if (!erpExists) erp.push({ ...ERP_RULE });
+
+      const absenceExists = absence.some(r => String(r.name || "").trim().toLowerCase() === ABSENCE_RULE.name.toLowerCase());
+      if (!absenceExists) absence.push({ ...ABSENCE_RULE });
+
       return data;
     }
 
