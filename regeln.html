@@ -556,15 +556,179 @@ Dein Regeltext kommt hier hinein.
       return ensureShape(DEFAULT_DATA);
     }
 
+    const EXTRA_RULES = {
+      rp: [
+        {
+          name: "Power-RP",
+          domain: "RP · Fairness · Reaktion",
+          short: "Niemandem dürfen Handlungen oder Ergebnisse aufgezwungen werden.",
+          full: "- Grundsatz -\n\nBeschreibe, was dein Charakter versucht oder beabsichtigt. Lass dem Gegenüber immer eine faire Möglichkeit zu reagieren.\n\n- Nicht erlaubt -\n- Treffer, Verletzungen oder Reaktionen des anderen Charakters einfach festlegen.\n- Einen Ausgang einer Szene erzwingen.\n- OOC-Wissen oder Spielmechaniken benutzen, um eine Reaktion zu verhindern."
+        },
+        {
+          name: "Metagaming",
+          domain: "RP · IC/OOC · Wissen",
+          short: "Spielerwissen ist nicht automatisch Charakterwissen.",
+          full: "- Charakterwissen -\n\nDein Charakter darf nur Informationen verwenden, die er im RP erfahren hat. Informationen aus Discord, Streams, privaten Gesprächen oder anderen OOC-Quellen dürfen nicht als IC-Wissen verwendet werden.\n\nJeder Charakter besitzt sein eigenes Wissen. Wissen eines anderen Charakters wird nicht automatisch übernommen."
+        },
+        {
+          name: "Fail-RP",
+          domain: "RP · Glaubwürdigkeit · Immersion",
+          short: "Charaktere müssen passend zu Welt, Situation, Fähigkeiten und Folgen ausgespielt werden.",
+          full: "- Glaubwürdiges RP -\n\nVerhalten, Fähigkeiten und Entscheidungen müssen zum Charakter und zur Spielwelt passen. Verletzungen, Gefahren und andere Folgen werden angemessen ausgespielt. OOC-Begriffe oder offensichtlich unpassende Handlungen sollen laufendes RP nicht stören."
+        },
+        {
+          name: "Emotes",
+          domain: "RP · Szenen · Kommunikation",
+          short: "Emotes beschreiben die eigene Handlung und lassen dem Gegenüber Raum zur Reaktion.",
+          full: "- Richtig emoten -\n\nBeschreibe vor allem, was dein Charakter tut, versucht oder wahrnimmt. Das Ergebnis einer Handlung gegenüber einem anderen Charakter bleibt offen, damit dieser reagieren kann."
+        },
+        {
+          name: "Konflikte & Gewalt-RP",
+          domain: "RP · Konflikte · Konsequenzen",
+          short: "IC-Konflikte brauchen einen nachvollziehbaren Grund und dürfen nicht aus OOC-Streit entstehen.",
+          full: "- Konflikte -\n\nKonflikte müssen aus dem RP heraus entstehen. OOC-Streit ist kein Grund für Angriffe, Bestrafungen oder andere IC-Handlungen. Schwere Konsequenzen müssen nachvollziehbar ausgespielt werden. Ein Charaktertod darf nicht einfach ohne Grundlage erzwungen werden."
+        },
+        {
+          name: "Laufende RP-Szenen",
+          domain: "RP · Szenen · Rücksicht",
+          short: "Laufendes RP anderer Spieler wird nicht absichtlich gestört.",
+          full: "- Rücksicht -\n\nEine laufende Szene sollte nicht ohne nachvollziehbaren IC-Grund unterbrochen werden. Regelstreit, technische Probleme und persönliche Konflikte gehören in den Support oder den vorgesehenen OOC-Bereich."
+        }
+      ],
+      erp: [
+        {
+          name: "ERP & Consent",
+          domain: "ERP · Grenzen · Zustimmung",
+          short: "ERP ist freiwillig und nur mit ausdrücklicher Zustimmung aller Beteiligten erlaubt.",
+          full: "- Grundsatz -\n\nERP ist niemals Pflicht. Alle beteiligten Spieler müssen freiwillig zustimmen. Eine Zustimmung kann jederzeit zurückgezogen werden. Ein Nein, ein Abbruch oder ein vereinbartes Codewort ist sofort zu respektieren.\n\nERP darf niemals als Druckmittel oder Voraussetzung für normales RP verwendet werden."
+        },
+        {
+          name: "ERP & Grenzen",
+          domain: "ERP · Grenzen · OOC-Absprachen",
+          short: "Besondere Grenzen werden vor der Szene OOC geklärt und während der Szene respektiert.",
+          full: "- Vor der Szene -\n\nBesondere Grenzen und sensible Inhalte werden vorher eindeutig abgesprochen. Wenn eine Grenze unklar ist, wird nachgefragt.\n\n- Während der Szene -\n- Grenzen werden jederzeit respektiert.\n- Ein Abbruch beendet den betreffenden Inhalt sofort.\n- ERP darf keine Nachteile für Spieler verursachen, die kein ERP möchten."
+        },
+        {
+          name: "ERP & Tierdarstellung",
+          domain: "ERP · Tierdarstellung · Grenzen",
+          short: "Sexuelle Inhalte mit Tieren oder als Tiere dargestellten Wesen sind nicht erlaubt.",
+          full: "- Tierdarstellung -\n\nSexuelle Inhalte mit realen oder als Tiere dargestellten Wesen sind auf dem Server nicht erlaubt. Völker und Rassen werden grundsätzlich humanoid dargestellt. Tierische Merkmale wie Ohren, Fell oder Schwänze sind als Charaktermerkmale möglich, ändern aber nicht die humanoide Darstellung."
+        }
+      ],
+      gefangenschaft: [
+        {
+          name: "Gefangenschaft & Sklaverei",
+          domain: "RP · Gefangenschaft · Consent",
+          short: "Gefangenschaft darf niemanden dauerhaft aus dem RP nehmen und muss fair ausgespielt werden.",
+          full: "- Grundsatz -\n\nGefangenschaft und Sklaverei sind RP-Elemente. Sie dürfen nicht benutzt werden, um einen Spieler dauerhaft vom Spiel auszuschließen.\n\n- Regeln -\n- Die geltenden Consent-Absprachen müssen eingehalten werden.\n- Gefangene müssen weiterhin Möglichkeiten für sinnvolles RP haben.\n- Dauerhafte Konsequenzen benötigen die dafür vorgesehene Absprache.\n- OOC-Streit darf niemals Grundlage für Gefangenschaft oder Bestrafung sein."
+        }
+      ],
+      stadt: [
+        {
+          name: "Stadtordnung",
+          domain: "Stadt · Wege · öffentliche Bereiche",
+          short: "Städte sind gemeinschaftliche RP-Orte und müssen für andere Spieler bespielbar bleiben.",
+          full: "- Öffentliche Bereiche -\n\nStraßen, Plätze und öffentliche Gebäude dürfen nicht dauerhaft blockiert oder ohne Grund für andere Spieler unzugänglich gemacht werden. Gemeinschaftliche Bereiche sollen dem RP aller Spieler dienen.\n\nBauliche Änderungen an gemeinschaftlichen Bereichen erfolgen nur nach den dafür vorgesehenen Regeln oder mit Zustimmung des Teams."
+        },
+        {
+          name: "Fliegen über Städte & Spielerbasen",
+          domain: "Stadt · Reisen · Luftwege",
+          short: "Das Überfliegen von Städten und Spielerbasen ist verboten. Landen daneben ist erlaubt.",
+          full: "- Fliegen -\n\nDas Fliegen direkt über Städten oder Spielerbasen ist verboten. Das Landen neben einer Stadt oder Spielerbase ist erlaubt, sofern dadurch kein Zugang oder laufendes RP blockiert wird."
+        },
+        {
+          name: "Wachen",
+          domain: "Stadt · Wachen · RP",
+          short: "Mitgeführte Wachen müssen eingetragen und nachvollziehbar ausgespielt werden.",
+          full: "- Wachen -\n\nMitgeführte Wachen müssen im Consent-Sheet eingetragen werden. Sie können per POI an bestimmten Orten positioniert und beschrieben werden. In Emotes sollten Aussehen, Standort und Ausrüstung beschrieben werden. Wachen dürfen nicht als automatische Begründung benutzt werden, um anderen Spielern ohne RP eine Szene aufzuzwingen."
+        },
+        {
+          name: "Werkbänke & öffentliche Infrastruktur",
+          domain: "Stadt · Werkbänke · Infrastruktur",
+          short: "Werkbänke und öffentliche Infrastruktur folgen den besonderen Stadtvorgaben.",
+          full: "- Werkbänke -\n\nWerkbänke sind nur in den vorgesehenen Hauptstädten erlaubt und nicht im eigenen Clan. Öffentliche Infrastruktur soll dem gemeinschaftlichen RP dienen."
+        }
+      ],
+      charakter: [
+        {
+          name: "Charakterkonzept & Fähigkeiten",
+          domain: "Charakter · Lore · Balance",
+          short: "Alter, Herkunft, Fähigkeiten und Verhalten müssen zum Charakter passen.",
+          full: "- Charakterkonzept -\n\nEin Charakter darf außergewöhnlich sein, aber nicht ohne Grundlage alles können. Fähigkeiten müssen durch Hintergrund, Volk, Beruf und bisheriges RP nachvollziehbar sein. Keine unsterblichen oder unbesiegbaren Charaktere. Götter und Halbgötter sind nicht als normale Charaktere erlaubt."
+        },
+        {
+          name: "Charakterwechsel & Twinks",
+          domain: "Charakter · Wechsel · Wissen",
+          short: "Charakterwechsel und Main-Twink-Wechsel müssen angemeldet werden.",
+          full: "- Wechsel -\n\nEinem Charakterwechsel ist eine Frist von 1 Monat auferlegt. Dies gilt auch für Wechsel zwischen Main und Twink. Alle Charakterwechsel, Main-Twink-Wechsel und Story-Charaktere müssen per Ticket angemeldet werden. Wissen, Beziehungen und Feindschaften werden nicht automatisch auf einen neuen Charakter übertragen."
+        },
+        {
+          name: "Verletzungen & Konsequenzen",
+          domain: "Charakter · Verletzungen · Folgen",
+          short: "Schwere Verletzungen und wichtige Ereignisse sollen nachvollziehbare Folgen haben.",
+          full: "- Konsequenzen -\n\nSchwere Verletzungen, Krankheiten, Gefangenschaft und andere wichtige Ereignisse sollen im weiteren RP berücksichtigt werden. Ein Charakter sollte nicht unmittelbar so tun, als wäre nichts geschehen."
+        }
+      ],
+      abwesenheit: [
+        {
+          name: "Abwesenheit",
+          domain: "Abwesenheit · Inaktivität",
+          short: "Bei mehr als 31 Tagen Abwesenheit werden Charakter und Base gelöscht.",
+          full: "- Abwesenheit -\n\nWenn ihr länger als 31 Tage abwesend seid, werden euer Charakter und eure Base gelöscht. Längere Abwesenheiten sollten vorher im vorgesehenen Abwesenheitsbereich angekündigt werden."
+        }
+      ],
+      chat: [
+        {
+          name: "Chats & Screenshots",
+          domain: "OOC · Privatsphäre · Support",
+          short: "Private Chats dürfen nicht ohne Erlaubnis weitergegeben werden. Ausnahme: Support.",
+          full: "- Chats -\n\nDas Abfotografieren, Screenshotten oder Weitergeben privater Chats ist untersagt, außer wenn dies für einen Supportfall erforderlich ist."
+        },
+        {
+          name: "Rechtschreibung & Umgang",
+          domain: "Community · Respekt · Kommunikation",
+          short: "Niemand wird wegen Rechtschreibung oder Schreibfehlern lächerlich gemacht.",
+          full: "- Umgang -\n\nDas Belustigen über die Rechtschreibung anderer ist nicht erwünscht. Schreibfehler sind kein Grund, jemanden bloßzustellen oder auszugrenzen."
+        },
+        {
+          name: "OOC-Kommunikation",
+          domain: "OOC · Discord · Support",
+          short: "OOC-Themen gehören in die dafür vorgesehenen Bereiche.",
+          full: "- OOC -\n\nTechnische Probleme, Regelstreit und persönliche Konflikte gehören in die vorgesehenen OOC- oder Supportbereiche und sollen laufendes RP nicht unnötig unterbrechen."
+        }
+      ],
+      begriffe: [
+        {
+          name: "RP-Begriffe",
+          domain: "RP · Begriffe · Grundlagen",
+          short: "IC, OOC, Metagaming, Power-RP, Fail-RP, Consent, ERP und NLR kurz erklärt.",
+          full: "- IC – In Character -\nAlles innerhalb der Rolle des Charakters.\n\n- OOC – Out of Character -\nAlles außerhalb der Rolle.\n\n- Metagaming -\nOOC-Wissen wird als IC-Wissen verwendet.\n\n- Power-RP -\nHandlungen oder Ergebnisse werden einem anderen Charakter aufgezwungen.\n\n- Fail-RP -\nDeutlich unglaubwürdiges oder unpassendes Verhalten im RP.\n\n- Consent -\nAusdrückliche Zustimmung zu bestimmten RP-Inhalten.\n\n- ERP -\nFreiwilliges intimes RP. Es ist niemals Pflicht.\n\n- NLR -\nEine Regel, die festlegt, welches Wissen und welche Rückkehrmöglichkeiten nach bestimmten schweren Ereignissen gelten."
+        }
+      ]
+    };
+
     function addErpRuleIfMissing(data) {
-      const erp = data.erp || (data.erp = []);
-      const absence = data.abwesenheit || (data.abwesenheit = []);
+      const categories = ["rp", "erp", "gefangenschaft", "stadt", "charakter", "magie", "bau", "abwesenheit", "chat", "begriffe"];
+      categories.forEach(key => { if (!Array.isArray(data[key])) data[key] = []; });
 
-      const erpExists = erp.some(r => String(r.name || "").trim().toLowerCase() === ERP_RULE.name.toLowerCase());
-      if (!erpExists) erp.push({ ...ERP_RULE });
+      const oldNames = new Set(["erp, abwesenheit & sonstiges", "erp & tierdarstellung"]);
+      Object.keys(data).forEach(category => {
+        if (!Array.isArray(data[category])) return;
+        data[category] = data[category].filter(rule => !oldNames.has(String(rule.name || "").trim().toLowerCase()));
+      });
 
-      const absenceExists = absence.some(r => String(r.name || "").trim().toLowerCase() === ABSENCE_RULE.name.toLowerCase());
-      if (!absenceExists) absence.push({ ...ABSENCE_RULE });
+      const addUnique = (category, rule) => {
+        if (!data[category].some(r => String(r.name || "").trim().toLowerCase() === String(rule.name).toLowerCase())) {
+          data[category].push({ ...rule });
+        }
+      };
+
+      addUnique("erp", ERP_RULE);
+      addUnique("abwesenheit", ABSENCE_RULE);
+
+      Object.keys(EXTRA_RULES).forEach(category => {
+        EXTRA_RULES[category].forEach(rule => addUnique(category, rule));
+      });
 
       return data;
     }
