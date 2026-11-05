@@ -564,13 +564,23 @@
 
       el("adminPanel").style.display = admin() ? "block" : "none";
 
-      el("bauGrid").innerHTML = "";
-      el("rpGrid").innerHTML = "";
-      el("charGrid").innerHTML = "";
+      const sections = el("ruleSections");
+      sections.innerHTML = "";
 
-      data.bau.forEach((item, i) => el("bauGrid").appendChild(makeCard(item, "bau", i)));
-      data.rp.forEach((item, i) => el("rpGrid").appendChild(makeCard(item, "rp", i)));
-      data.char.forEach((item, i) => el("charGrid").appendChild(makeCard(item, "char", i)));
+      Object.keys(data).forEach(category => {
+        if (!Array.isArray(data[category]) || !data[category].length) return;
+
+        const section = document.createElement("section");
+        section.className = "rule-section";
+        section.innerHTML = `
+          <h2>${esc(categoryLabel(category))}</h2>
+          <div class="rule-grid"></div>
+        `;
+
+        const grid = section.querySelector(".rule-grid");
+        data[category].forEach((item, i) => grid.appendChild(makeCard(item, category, i)));
+        sections.appendChild(section);
+      });
     }
 
     function resetForm() {
