@@ -478,12 +478,16 @@ Dein Regeltext kommt hier hinein.
     function categoryLabel(key) {
       const labels = {
         grund: "Grundregeln",
-        erp: "ERP-Regeln",
-        abwesenheit: "Abwesenheit",
-        charakter: "Charakterwechsel & Grenzen",
-        begriffe: "RP-Begriffe & Codewörter",
+        rp: "Rollenspiel",
+        erp: "ERP & Consent",
+        gefangenschaft: "Gefangenschaft & Sklaverei",
+        stadt: "Stadtregeln",
+        charakter: "Charakter & Charakterwechsel",
+        magie: "Magie",
         bau: "Bauregeln",
-        magie: "Magie"
+        abwesenheit: "Abwesenheit",
+        chat: "Chat, OOC & Discord",
+        begriffe: "RP-Begriffe & Codewörter"
       };
       return labels[key] || key;
     }
@@ -494,26 +498,27 @@ Dein Regeltext kommt hier hinein.
 
       Object.keys(data || {}).forEach(category => {
         if (!Array.isArray(data[category])) return;
-
         data[category].forEach(rule => {
           const name = String(rule.name || "").toLowerCase();
           let target = category;
 
-          if (name.includes("erp") || name.includes("sklaven") || name.includes("tierdarstellung") || name.includes("zoophilie")) target = "erp";
+          if (name.includes("erp") || name.includes("tierdarstellung") || name.includes("zoophilie")) target = "erp";
+          else if (name.includes("sklaven") || name.includes("gefangenschaft")) target = "gefangenschaft";
+          else if (name.includes("wachen") || name.includes("fliegen") || name.includes("werkbank") || name.includes("stadt")) target = "stadt";
           else if (name.includes("abwesenheit")) target = "abwesenheit";
+          else if (name.includes("chat") || name.includes("screenshot") || name.includes("rechtschreibung") || name.includes("discord")) target = "chat";
           else if (name.includes("charakterwechsel") || name.includes("charakter-änderung") || name.includes("charakteränderung")) target = "charakter";
-          else if (name.includes("magieregel")) target = "magie";
+          else if (name.includes("magieregel") || name.includes("magie")) target = "magie";
           else if (name.includes("bau")) target = "bau";
-          else if (name.includes("grundregeln")) target = "grund";
           else if (name.includes("rp-begriff") || name.includes("codewörter")) target = "begriffe";
-          else if (category === "rp") target = "grund";
+          else if (name.includes("grundregeln")) target = "grund";
           else if (category === "char") target = "charakter";
+          else if (category === "rp") target = "rp";
 
           ensure(target);
           result[target].push(rule);
         });
       });
-
       return result;
     }
 
@@ -552,7 +557,7 @@ Dein Regeltext kommt hier hinein.
     }
 
     function addErpRuleIfMissing(data) {
-      const erp = data.erp || (data.rp = data.rp || []);
+      const erp = data.erp || (data.erp = []);
       const absence = data.abwesenheit || (data.abwesenheit = []);
 
       const erpExists = erp.some(r => String(r.name || "").trim().toLowerCase() === ERP_RULE.name.toLowerCase());
