@@ -28,7 +28,19 @@
 
   async function loadRuleIndex(){
     try{
-      const data=await ChronikenData.load("regeln");
+      // Regeln direkt aus dem zentralen Speicher laden.
+      // ChronikenData.load("regeln") kann hier auf einen leeren Default zurückfallen,
+      // weil "regeln" nicht in DEFAULTS von chroniken-data.js enthalten ist.
+      let data=[];
+      if(window.ChronikenStorage){
+        const remote=await ChronikenStorage.load("regeln");
+        if(Array.isArray(remote)) data=remote;
+      }
+      if(!data.length&&window.ChronikenData){
+        const cached=ChronikenData.load("regeln");
+        if(Array.isArray(cached)) data=cached;
+      }
+
       const index={};
       Object.keys(data||{}).forEach(category=>{
         if(!Array.isArray(data[category]))return;
