@@ -1,0 +1,112 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Die Chroniken · Charakterverwaltung</title>
+<link rel="stylesheet" href="admin.css">
+<style>
+#charAdmin{margin-top:0}
+.char-admin-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:1rem}
+.char-admin-full{grid-column:1/-1}
+.char-admin-grid label{display:block;font-size:.86rem;color:#aaa;margin-bottom:.35rem}
+.char-admin-grid input,.char-admin-grid textarea,.char-admin-grid select{width:100%;box-sizing:border-box;padding:.65rem .75rem;border:1px solid #3b3157;border-radius:7px;background:#110d1d;color:#fff}
+.char-admin-grid textarea{min-height:100px;resize:vertical}
+.char-admin-actions{display:flex;gap:.6rem;flex-wrap:wrap;margin-top:1rem}
+.char-admin-table{width:100%;border-collapse:collapse}
+.char-admin-table th,.char-admin-table td{padding:.7rem;border-bottom:1px solid #302642;text-align:left;vertical-align:top}
+.char-admin-table th{color:#c8b6ff}
+.char-admin-table-wrap{overflow-x:auto}
+.char-id{font-family:monospace;color:#c8b6ff}
+.warn-badge{display:inline-block;min-width:1.5rem;text-align:center;padding:.15rem .45rem;border-radius:99px;background:#57182a;color:#fb7185}
+.warn-badge.zero{background:#123d26;color:#4ade80}
+.char-actions{white-space:nowrap}
+.sheet-modal{position:fixed;inset:0;z-index:10000;background:rgba(0,0,0,.82);overflow:auto;padding:2rem 1rem}
+.sheet-box{max-width:850px;margin:auto;background:#160f24;border:1px solid #3b3157;border-radius:12px;padding:1.4rem}
+.sheet-row{display:grid;grid-template-columns:190px 1fr;gap:1rem;padding:.55rem 0;border-bottom:1px dashed #3b3157}
+.sheet-row b{color:#c8b6ff}
+.sheet-modal textarea{width:100%;min-height:280px;background:#0d0915;color:#fff;border:1px solid #3b3157;border-radius:7px;padding:.7rem;box-sizing:border-box}
+.muted{color:#999}
+@media(max-width:700px){.char-admin-grid{grid-template-columns:1fr}.char-admin-full{grid-column:auto}.sheet-row{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<div class="shell">
+<aside class="sidebar">
+<div class="brand">Die Chroniken <small>Admin</small></div>
+<nav>
+<a href="index.html">🏠 Dashboard</a>
+<a href="aufgaben.html">📋 Aufgaben</a>
+<a href="projekte.html">📁 Projekte</a>
+<a class="active" href="charaktere.html">🛡️ Charakterverwaltung</a>
+<a href="blacklist.html">🚫 Spieler-Blacklist</a>
+<a href="aktivitaeten.html">📜 Aktivitäten</a>
+<a href="../index.html">↩ Zur Webseite</a>
+</nav>
+</aside>
+<main class="main">
+<header class="top">
+<div><h1>Charakterverwaltung</h1><p>Charakterbögen, laufende IDs, Verwarnungen und Regelverstöße.</p></div>
+<div class="user" id="user">Lade Anmeldung …</div>
+</header>
+
+<section id="locked" class="panel locked" hidden>
+<h2>🔒 Nur für Admins</h2>
+<p>Dieser Bereich benötigt die Discord-Adminrolle.</p>
+<a class="btn" id="login">Mit Discord anmelden</a>
+</section>
+
+<div id="app" hidden>
+<section id="charAdmin" class="panel">
+<div class="panel-head">
+<div><h2>🛡️ Charakterverwaltung</h2><span class="muted">Neue Charaktere anlegen oder bestehende verwalten.</span></div>
+<strong id="charAdminCount">0 Charaktere</strong>
+</div>
+
+<div class="panel" style="margin-top:1rem;background:rgba(168,85,247,.04)">
+<h3 id="charAdminTitle">Neuer Charakterbogen</h3>
+<form id="charAdminForm">
+<input type="hidden" id="charAdminEditId">
+<div class="char-admin-grid">
+<div><label>Laufende ID</label><input id="charAdminId" readonly placeholder="wird automatisch vergeben"></div>
+<div><label>Charaktername *</label><input id="charAdminName" required placeholder="z. B. Elara Mondschatten"></div>
+<div><label>Spieler / OOC-Name</label><input id="charAdminPlayer"></div>
+<div><label>Steam-ID</label><input id="charAdminSteam"></div>
+<div><label>Volk / Rasse</label><input id="charAdminRace" placeholder="z. B. Mensch, Kitsune ..."></div>
+<div><label>Anzahl Verwarnungen</label><input id="charAdminWarnings" type="number" min="0" value="0"></div>
+<div><label>Status</label><select id="charAdminStatus"><option value="aktiv">Aktiv</option><option value="pausiert">Pausiert</option><option value="gesperrt">Gesperrt</option><option value="archiviert">Archiviert</option></select></div>
+<div class="char-admin-full"><label>Gegen welche Regel verstoßen?</label><textarea id="charAdminViolation" placeholder="z. B. Regel 4.2 – Metagaming ..."></textarea></div>
+<div class="char-admin-full"><label>Notizen (nur Admin sichtbar)</label><textarea id="charAdminNotes" placeholder="Interne Notizen, Kontext, Absprachen ..."></textarea></div>
+</div>
+<div class="char-admin-actions"><button class="btn" id="charAdminSave">Speichern</button><button type="button" class="btn" id="charAdminCancel" hidden>Abbrechen</button></div>
+</form>
+</div>
+
+<h3 style="margin-top:1.5rem">Registrierte Charakterbögen</h3>
+<div class="char-admin-table-wrap">
+<p id="charAdminEmpty" class="muted">Noch keine Charaktere angelegt.</p>
+<table class="char-admin-table" id="charAdminTable" hidden>
+<thead><tr><th>ID</th><th>Charakter</th><th>Spieler</th><th>Steam-ID</th><th>Verwarnungen</th><th>Regelverstoß</th><th>Status</th><th></th></tr></thead>
+<tbody id="charAdminBody"></tbody>
+</table>
+</div>
+</section>
+</div>
+</main>
+</div>
+
+<div id="charAdminSheetModal" class="sheet-modal" hidden>
+<div class="sheet-box">
+<div class="panel-head"><h2>Charakterbogen</h2><button class="btn small" id="charAdminClose">Schließen</button></div>
+<div id="charAdminSheetBody"></div>
+<textarea id="charAdminSheetText" hidden></textarea>
+<div class="char-admin-actions"><button class="btn" id="charAdminCopy">📋 Als Text kopieren</button><span id="charAdminCopyMsg" class="muted"></span></div>
+</div>
+</div>
+
+<script src="admin.js"></script>
+<script src="../chroniken-storage.js"></script>
+<script src="../chroniken-sync.js"></script>
+<script src="charakterverwaltung.js"></script>
+</body>
+</html>
