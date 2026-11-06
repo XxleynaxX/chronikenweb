@@ -357,55 +357,11 @@
         <h2>Wetter · <span id="weatherGateName">…</span></h2>
         <p><span id="weatherGateDesc"></span><br><small>Nächster Wechsel in <strong id="weatherGateCountdown">--:--:--</strong> · verwalten</small></p>
       </a>
-      <a href="admin/index.html" class="gate admin-gate" id="adminGate" style="display:none !important;">
-        <span class="gate-icon">🛡️</span>
-        <h2>Admin · Charaktere</h2>
-        <p>Verwarnungen, Regelverstöße &amp; laufende IDs</p>
-      </a>
+      <div id="adminGate" class="admin-dynamic-host" hidden></div>
 
     </div>
 
-    <section class="admin-section" id="adminSection" hidden style="display:none !important;">
-      <h2>🛡️ Administration</h2>
-      <p class="admin-section-subtitle">Nur für Mitglieder mit Admin-Rechten sichtbar.</p>
-      <div class="admin-tiles">
-        <a href="admin/index.html" class="admin-tile">
-          <span class="admin-tile-icon">📊</span>
-          <h3>Dashboard</h3>
-          <p>Übersicht über Aufgaben, Projekte, Aktivitäten und Systemstatus.</p>
-        </a>
-        <a href="admin/aufgaben.html" class="admin-tile">
-          <span class="admin-tile-icon">📋</span>
-          <h3>Aufgaben</h3>
-          <p>Admin-Aufgaben erstellen, bearbeiten, zuweisen und verfolgen.</p>
-        </a>
-        <a href="admin/projekte.html" class="admin-tile">
-          <span class="admin-tile-icon">📁</span>
-          <h3>Projekte</h3>
-          <p>Projekte verwalten und den aktuellen Stand im Blick behalten.</p>
-        </a>
-        <a href="admin/team.html" class="admin-tile">
-          <span class="admin-tile-icon">👥</span>
-          <h3>Team</h3>
-          <p>Das Discord-Team und die vorhandenen Rollen anzeigen.</p>
-        </a>
-        <a href="admin/blacklist.html" class="admin-tile">
-          <span class="admin-tile-icon">🚫</span>
-          <h3>Blacklist</h3>
-          <p>Steam-IDs verwalten und gesperrte Spieler kontrollieren.</p>
-        </a>
-        <a href="admin/aktivitaeten.html" class="admin-tile">
-          <span class="admin-tile-icon">📜</span>
-          <h3>Aktivitäten</h3>
-          <p>Änderungen und Aktionen der Administration nachvollziehen.</p>
-        </a>
-        <a href="admin/index.html" class="admin-tile">
-          <span class="admin-tile-icon">📝</span>
-          <h3>Changelog</h3>
-          <p>Nachsehen, was im Admin-System neu umgesetzt oder geändert wurde.</p>
-        </a>
-      </div>
-    </section>
+    <section class="admin-section" id="adminSection" hidden></section>
   </main>
 
   <footer>
@@ -522,37 +478,91 @@
     })();
 
 
-    // ===== ADMIN-KACHELN AUF DER STARTSEITE =====
+    // ===== ADMIN-BEREICH AUF DER STARTSEITE =====
+    // Admin-Inhalte werden absichtlich NICHT fest ins HTML geschrieben.
+    // Erst wenn /auth/me serverseitig bestätigt, dass der Benutzer Admin ist,
+    // werden die Admin-Kacheln und der Admin-Charaktere-Link erzeugt.
     (function() {
       const section = document.getElementById("adminSection");
+      const gate = document.getElementById("adminGate");
+      const navAdmin = document.getElementById("navAdmin");
       if (!section) return;
 
       const proxy = (window.CHRONIKEN_DISCORD_PROXY || "https://chronikenweb-1.onrender.com").replace(/\/$/, "");
 
+      function clearAdminUI() {
+        section.innerHTML = "";
+        section.hidden = true;
+        section.style.setProperty("display", "none", "important");
+
+        if (gate) {
+          gate.innerHTML = "";
+          gate.hidden = true;
+          gate.style.setProperty("display", "none", "important");
+        }
+
+        if (navAdmin) {
+          navAdmin.textContent = "";
+          navAdmin.removeAttribute("href");
+          navAdmin.hidden = true;
+          navAdmin.style.setProperty("display", "none", "important");
+        }
+      }
+
+      function buildAdminUI() {
+        section.innerHTML = `
+          <h2>🛡️ Administration</h2>
+          <p class="admin-section-subtitle">Nur für Mitglieder mit Admin-Rechten sichtbar.</p>
+          <div class="admin-tiles">
+            <a href="admin/index.html" class="admin-tile"><span class="admin-tile-icon">📊</span><h3>Dashboard</h3><p>Übersicht über Aufgaben, Projekte, Aktivitäten und Systemstatus.</p></a>
+            <a href="admin/aufgaben.html" class="admin-tile"><span class="admin-tile-icon">📋</span><h3>Aufgaben</h3><p>Admin-Aufgaben erstellen, bearbeiten, zuweisen und verfolgen.</p></a>
+            <a href="admin/projekte.html" class="admin-tile"><span class="admin-tile-icon">📁</span><h3>Projekte</h3><p>Projekte verwalten und den aktuellen Stand im Blick behalten.</p></a>
+            <a href="admin/team.html" class="admin-tile"><span class="admin-tile-icon">👥</span><h3>Team</h3><p>Das Discord-Team und die vorhandenen Rollen anzeigen.</p></a>
+            <a href="admin/blacklist.html" class="admin-tile"><span class="admin-tile-icon">🚫</span><h3>Blacklist</h3><p>Steam-IDs verwalten und gesperrte Spieler kontrollieren.</p></a>
+            <a href="admin/aktivitaeten.html" class="admin-tile"><span class="admin-tile-icon">📜</span><h3>Aktivitäten</h3><p>Änderungen und Aktionen der Administration nachvollziehen.</p></a>
+            <a href="admin/index.html" class="admin-tile"><span class="admin-tile-icon">📝</span><h3>Changelog</h3><p>Nachsehen, was im Admin-System neu umgesetzt oder geändert wurde.</p></a>
+          </div>`;
+        section.hidden = false;
+        section.style.setProperty("display", "block", "important");
+
+        if (gate) {
+          gate.innerHTML = `
+            <a href="admin/index.html" class="gate admin-gate">
+              <span class="gate-icon">🛡️</span>
+              <h2>Admin · Charaktere</h2>
+              <p>Verwarnungen, Regelverstöße &amp; laufende IDs</p>
+            </a>`;
+          gate.hidden = false;
+          gate.style.setProperty("display", "block", "important");
+        }
+
+        if (navAdmin) {
+          navAdmin.textContent = "Admin";
+          navAdmin.href = "admin/index.html";
+          navAdmin.hidden = false;
+          navAdmin.style.setProperty("display", "", "important");
+        }
+      }
+
       async function checkAdmin() {
+        clearAdminUI();
         try {
           const res = await fetch(proxy + "/auth/me", {
             cache: "no-store",
             credentials: "include"
           });
           const info = await res.json().catch(() => ({}));
-          const isAdmin = !!(res.ok && info.ok && info.admin);
-          section.hidden = !isAdmin;
-          section.style.setProperty("display", isAdmin ? "" : "none", "important");
-
-          const adminGate = document.getElementById("adminGate");
-          if (adminGate) adminGate.style.setProperty("display", isAdmin ? "" : "none", "important");
-
-          const navAdmin = document.getElementById("navAdmin");
-          if (navAdmin) navAdmin.style.setProperty("display", isAdmin ? "" : "none", "important");
+          if (res.ok && info.ok && info.admin === true) {
+            buildAdminUI();
+          }
         } catch (e) {
-          section.hidden = true;
-          section.style.setProperty("display", "none", "important");
+          clearAdminUI();
         }
       }
 
       checkAdmin();
       window.addEventListener("chroniken-auth-changed", checkAdmin);
+      window.addEventListener("pageshow", checkAdmin);
     })();
 
     // ===== WETTER (nur Admin) =====
