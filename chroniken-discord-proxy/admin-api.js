@@ -111,22 +111,52 @@ function commentEmbed(task, comment, actor) {
 }
 
 async function discordTeam() {
-  const token = process.env.DISCORD_BOT_TOKEN || '';
-  const guild = process.env.DISCORD_GUILD_ID || '1204906165004279889';
-  if (!token) return [];
+  const apiUrl =
+    process.env.BOT_API_URL ||
+    'http://78.154.103.23:14071/api/team';
+
+  const secret = process.env.BOT_API_SECRET || '';
+
   try {
-    const r = await fetch('https://discord.com/api/v10/guilds/' + guild + '/members?limit=1000', {
-      headers: { Authorization: 'Bot ' + token }
+    const headers = {
+      'User-Agent': 'ChronikenRenderAdmin/1.0',
+      'Accept': 'application/json'
+    };
+
+    if (secret) {
+      headers['x-bot-api-key'] = secret;
+    }
+
+    const r = await fetch(apiUrl, {
+      method: 'GET',
+      headers
     });
-    if (!r.ok) return [];
-    const members = await r.json();
-    return Array.isArray(members) ? members.map(m => ({
-      id: m.user?.id,
-      name: m.nick || m.user?.global_name || m.user?.username || 'Discord',
-      bot: !!m.user?.bot,
-      roles: Array.isArray(m.roles) ? m.roles : []
-    })) : [];
-  } catch { return []; }
+
+    if (!r.ok) {
+      console.warn('[ADMIN] Team-API HTTP', r.status);
+      return [];
+    }
+
+    const data = await r.json();
+
+    if (!data || data.ok !== true || !Array.isArray(data.members)) {
+      console.warn('[ADMIN] Team-API liefert keine gültige Mitgliederliste.');
+      return [];
+    }
+
+    return data.members.map(m => ({
+      id: m.id || '',
+      name: m.name || m.displayName || 'Discord',
+      displayName: m.displayName || m.name || 'Discord',
+      avatar: m.avatar || '',
+      status: m.status || 'offline',
+      roles: Array.isArray(m.roles) ? m.roles : [],
+      bot: false
+    }));
+  } catch (e) {
+    console.warn('[ADMIN] Team-API Fehler:', e.message);
+    return [];
+  }
 }
 
 async function handle(req, res, url, session, webhook) {
