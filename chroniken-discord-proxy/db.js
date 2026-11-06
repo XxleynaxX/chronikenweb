@@ -235,7 +235,166 @@ async function status() {
   return rows;
 }
 
+
+const ADMIN_TASK_SCHEMA = `
+CREATE TABLE IF NOT EXISTS admin_projects (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  name VARCHAR(255) NOT NULL,
+  description TEXT NULL,
+  status ENUM('active','paused','completed') NOT NULL DEFAULT 'active',
+  created_by VARCHAR(32) NOT NULL,
+  created_at TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
+  updated_at TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3) ON UPDATE CURRENT_TIMESTAMP(3)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci`;
+
+const ADMIN_TASKS_SCHEMA = `
+CREATE TABLE IF NOT EXISTS admin_tasks (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  title VARCHAR(255) NOT NULL,
+  description TEXT NULL,
+  project_id INT NULL,
+  assigned_discord_id VARCHAR(32) NULL,
+  status ENUM('open','working','waiting','blocked','done') NOT NULL DEFAULT 'open',
+  priority ENUM('low','normal','high','critical') NOT NULL DEFAULT 'normal',
+  due_date DATETIME NULL,
+  created_by VARCHAR(32) NOT NULL,
+  created_at TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
+  updated_at TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3) ON UPDATE CURRENT_TIMESTAMP(3),
+  INDEX idx_admin_tasks_status(status),
+  INDEX idx_admin_tasks_assigned(assigned_discord_id),
+  INDEX idx_admin_tasks_due(due_date),
+  CONSTRAINT fk_admin_task_project FOREIGN KEY (project_id) REFERENCES admin_projects(id) ON DELETE SET NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci`;
+
+const ADMIN_COMMENTS_SCHEMA = `
+CREATE TABLE IF NOT EXISTS admin_task_comments (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  task_id INT NOT NULL,
+  discord_id VARCHAR(32) NOT NULL,
+  comment TEXT NOT NULL,
+  created_at TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
+  INDEX idx_admin_comments_task(task_id),
+  CONSTRAINT fk_admin_comment_task FOREIGN KEY (task_id) REFERENCES admin_tasks(id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci`;
+
+const ADMIN_ACTIVITY_SCHEMA = `
+CREATE TABLE IF NOT EXISTS admin_activity (
+  id BIGINT AUTO_INCREMENT PRIMARY KEY,
+  discord_id VARCHAR(32) NOT NULL,
+  action VARCHAR(100) NOT NULL,
+  task_id INT NULL,
+  project_id INT NULL,
+  details TEXT NULL,
+  created_at TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
+  INDEX idx_admin_activity_created(created_at),
+  INDEX idx_admin_activity_task(task_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci`;
+
+let adminSchemaPromise = null;
+async function ensureAdminSchema() {
+  if (adminSchemaPromise) return adminSchemaPromise;
+  adminSchemaPromise = (async () => {
+    const p = getPool();
+    await ensureSchema();
+    await p.query(ADMIN_TASK_SCHEMA);
+    await p.query(ADMIN_TASKS_SCHEMA);
+    await p.query(ADMIN_COMMENTS_SCHEMA);
+    await p.query(ADMIN_ACTIVITY_SCHEMA);
+  })().catch(e => { adminSchemaPromise = null; throw e; });
+  return adminSchemaPromise;
+}
+
+async function adminSummary() {
+  await ensureAdminSchema();
+  const [rows] = await getPool().query(`
+    SELECT
+      COUNT(*) total,
+      SUM(status='open') open_count,
+      SUM(status='working') working_count,
+      SUM(status='waiting') waiting_count,
+      SUM(status='blocked') blocked_count,
+      SUM(status='done') done_count,
+      SUM(status <> 'done' AND due_date IS NOT NULL AND due_date < NOW()) overdue_count
+    FROM admin_tasks`);
+  return rows[0];
+}
+async function adminTasks(filters = {}) {
+  await ensureAdminSchema();
+  const where=[]; const params=[];
+  if (filters.status) { where.push('t.status=?'); params.push(filters.status); }
+  if (filters.assigned) { where.push('t.assigned_discord_id=?'); params.push(filters.assigned); }
+  const sql=`SELECT t.*, p.name project_name
+    FROM admin_tasks t LEFT JOIN admin_projects p ON p.id=t.project_id
+    ${where.length?'WHERE '+where.join(' AND '):''}
+    ORDER BY CASE t.status WHEN 'blocked' THEN 1 WHEN 'working' THEN 2 WHEN 'open' THEN 3 WHEN 'waiting' THEN 4 ELSE 5 END,
+             t.due_date IS NULL, t.due_date, t.updated_at DESC`;
+  const [rows]=await getPool().query(sql,params); return rows;
+}
+async function adminTask(id) {
+  await ensureAdminSchema();
+  const [rows]=await getPool().query('SELECT t.*, p.name project_name FROM admin_tasks t LEFT JOIN admin_projects p ON p.id=t.project_id WHERE t.id=?',[id]);
+  if(!rows.length)return null;
+  const [comments]=await getPool().query('SELECT * FROM admin_task_comments WHERE task_id=? ORDER BY created_at ASC',[id]);
+  return {...rows[0],comments};
+}
+async function adminCreateTask(task, actor) {
+  await ensureAdminSchema();
+  const [r]=await getPool().query(`INSERT INTO admin_tasks (title,description,project_id,assigned_discord_id,status,priority,due_date,created_by)
+    VALUES (?,?,?,?,?,?,NULLIF(?,''),?)`,[
+      task.title,task.description||'',task.project_id||null,task.assigned_discord_id||null,
+      task.status||'open',task.priority||'normal',task.due_date||'',actor
+    ]);
+  await adminActivity(actor,'task.created',r.insertId,null,task.title);
+  return adminTask(r.insertId);
+}
+async function adminUpdateTask(id, task, actor) {
+  await ensureAdminSchema();
+  await getPool().query(`UPDATE admin_tasks SET title=?,description=?,project_id=?,assigned_discord_id=?,status=?,priority=?,due_date=NULLIF(?,'' ) WHERE id=?`,[
+    task.title,task.description||'',task.project_id||null,task.assigned_discord_id||null,task.status||'open',task.priority||'normal',task.due_date||'',id
+  ]);
+  await adminActivity(actor,'task.updated',id,null,JSON.stringify({status:task.status,priority:task.priority}));
+  return adminTask(id);
+}
+async function adminDeleteTask(id, actor) {
+  await ensureAdminSchema();
+  await getPool().query('DELETE FROM admin_tasks WHERE id=?',[id]);
+  await adminActivity(actor,'task.deleted',id,null,'');
+}
+async function adminProjects() {
+  await ensureAdminSchema();
+  const [rows]=await getPool().query('SELECT * FROM admin_projects ORDER BY status, name'); return rows;
+}
+async function adminCreateProject(p, actor) {
+  await ensureAdminSchema();
+  const [r]=await getPool().query('INSERT INTO admin_projects (name,description,status,created_by) VALUES (?,?,?,?)',[p.name,p.description||'',p.status||'active',actor]);
+  await adminActivity(actor,'project.created',null,r.insertId,p.name); return r.insertId;
+}
+async function adminUpdateProject(id,p,actor) {
+  await ensureAdminSchema();
+  await getPool().query('UPDATE admin_projects SET name=?,description=?,status=? WHERE id=?',[p.name,p.description||'',p.status||'active',id]);
+  await adminActivity(actor,'project.updated',null,id,p.name);
+}
+async function adminDeleteProject(id,actor) {
+  await ensureAdminSchema();
+  await getPool().query('DELETE FROM admin_projects WHERE id=?',[id]);
+  await adminActivity(actor,'project.deleted',null,id,'');
+}
+async function adminAddComment(taskId, discordId, comment) {
+  await ensureAdminSchema();
+  await getPool().query('INSERT INTO admin_task_comments (task_id,discord_id,comment) VALUES (?,?,?)',[taskId,discordId,comment]);
+  await adminActivity(discordId,'task.comment',taskId,null,comment.slice(0,500));
+}
+async function adminActivity(discordId, action, taskId, projectId, details) {
+  await ensureAdminSchema();
+  await getPool().query('INSERT INTO admin_activity (discord_id,action,task_id,project_id,details) VALUES (?,?,?,?,?)',[discordId,action,taskId||null,projectId||null,details||'']);
+}
+async function adminActivities(limit=100) {
+  await ensureAdminSchema();
+  const [rows]=await getPool().query('SELECT * FROM admin_activity ORDER BY created_at DESC LIMIT ?',[Math.min(Math.max(Number(limit)||100,1),200)]);
+  return rows;
+}
+
 module.exports = {
   KEYS, normalizeKey, canWrite, validValue,
-  configured, ensureSchema, getAll, getOne, setMany, claimNotificationKey, status
+  configured, ensureSchema, getAll, getOne, setMany, claimNotificationKey, status, ensureAdminSchema, adminSummary, adminTasks, adminTask, adminCreateTask, adminUpdateTask, adminDeleteTask, adminProjects, adminCreateProject, adminUpdateProject, adminDeleteProject, adminAddComment, adminActivities
 };
