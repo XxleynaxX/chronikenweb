@@ -34,11 +34,11 @@
       let data=[];
       if(window.ChronikenStorage){
         const remote=await ChronikenStorage.load("regeln");
-        if(Array.isArray(remote)) data=remote;
+        if(remote && typeof remote === "object") data=remote;
       }
       if(!data.length&&window.ChronikenData){
         const cached=ChronikenData.load("regeln");
-        if(Array.isArray(cached)) data=cached;
+        if(cached && typeof cached === "object") data=cached;
       }
 
       const index={};
