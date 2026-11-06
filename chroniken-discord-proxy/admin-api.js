@@ -24,9 +24,10 @@ async function readJson(req, max = 100000) {
 function taskEmbed(action, task, actor) {
   const kinds = {
     created: { title: '📋 Neue Admin-Aufgabe', color: 0xa855f7 },
-    updated: { title: '✏️ Admin-Aufgabe geändert', color: 0x8b5cf6 },
+    updated: { title: '✏️ Admin-Aufgabe bearbeitet', color: 0x8b5cf6 },
     done: { title: '✅ Admin-Aufgabe abgeschlossen', color: 0x22c55e },
-    blocked: { title: '⛔ Admin-Aufgabe blockiert', color: 0xef4444 }
+    blocked: { title: '⛔ Admin-Aufgabe blockiert', color: 0xef4444 },
+    deleted: { title: '🗑️ Admin-Aufgabe gelöscht', color: 0xef4444 }
   };
   const k = kinds[action] || kinds.updated;
   return {
@@ -48,18 +49,65 @@ function taskEmbed(action, task, actor) {
   };
 }
 
-async function notify(webhook, action, task, actor) {
-  if (!webhook) return;
+async function notify(webhook, payload) {
+  if (!webhook || !payload) return;
   try {
     const r = await fetch(webhook, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(taskEmbed(action, task, actor))
+      body: JSON.stringify(payload)
     });
     if (!r.ok) console.warn('[ADMIN] Discord Webhook HTTP', r.status);
   } catch (e) {
     console.warn('[ADMIN] Discord Webhook Fehler:', e.message);
   }
+}
+
+function adminActionEmbed(title, color, fields, actor) {
+  return {
+    username: 'Chroniken Admin',
+    embeds: [{
+      title,
+      color,
+      fields,
+      footer: { text: 'Die Chroniken · Admin-System · von ' + clip(actor, 80) },
+      timestamp: new Date().toISOString()
+    }]
+  };
+}
+
+function projectEmbed(action, project, actor) {
+  const kinds = {
+    created: ['📁 Projekt erstellt', 0x22c55e],
+    updated: ['✏️ Projekt bearbeitet', 0xa855f7],
+    deleted: ['🗑️ Projekt gelöscht', 0xef4444]
+  };
+  const k = kinds[action] || kinds.updated;
+  return adminActionEmbed(k[0], k[1], [
+    { name: 'Projekt', value: clip(project.name, 256) || '—', inline: false },
+    { name: 'Status', value: clip(project.status, 80) || '—', inline: true },
+    { name: 'Beschreibung', value: clip(project.description, 1000) || '—', inline: false }
+  ], actor);
+}
+
+function blacklistEmbed(action, entry, actor) {
+  const kinds = {
+    added: ['🚫 Spieler auf Blackliste gesetzt', 0xef4444],
+    removed: ['✅ Spieler von Blackliste entfernt', 0x22c55e]
+  };
+  const k = kinds[action] || kinds.added;
+  return adminActionEmbed(k[0], k[1], [
+    { name: 'Spieler', value: clip(entry.player_name, 256) || 'Unbekannt', inline: true },
+    { name: 'Steam-ID', value: clip(entry.steam_id, 80) || '—', inline: true },
+    { name: 'Grund', value: clip(entry.reason, 1000) || 'Kein Grund angegeben', inline: false }
+  ], actor);
+}
+
+function commentEmbed(task, comment, actor) {
+  return adminActionEmbed('💬 Kommentar zu Admin-Aufgabe', 0x3b82f6, [
+    { name: 'Aufgabe', value: clip(task.title, 256) || '—', inline: false },
+    { name: 'Kommentar', value: clip(comment, 1500) || '—', inline: false }
+  ], actor);
 }
 
 async function discordTeam() {
@@ -116,7 +164,7 @@ async function handle(req, res, url, session, webhook) {
         priority: ['low','normal','high','critical'].includes(b.priority) ? b.priority : 'normal',
         due_date: clip(b.due_date, 30)
       }, actor);
-      await notify(webhook, task.status === 'done' ? 'done' : task.status === 'blocked' ? 'blocked' : 'created', task, actor);
+      await notify(webhook, taskEmbed(task.status === 'done' ? 'done' : task.status === 'blocked' ? 'blocked' : 'created', task, actor));
       return json(res, 201, { ok: true, task });
     }
 
@@ -138,7 +186,7 @@ async function handle(req, res, url, session, webhook) {
       let action = 'updated';
       if (task.status === 'done' && before.status !== 'done') action = 'done';
       if (task.status === 'blocked' && before.status !== 'blocked') action = 'blocked';
-      if (task.status !== before.status || action !== 'updated') await notify(webhook, action, task, actor);
+      await notify(webhook, taskEmbed(action, task, actor));
       return json(res, 200, { ok: true, task });
     }
 
@@ -147,6 +195,7 @@ async function handle(req, res, url, session, webhook) {
       const task = await db.adminTask(id);
       if (!task) return json(res, 404, { ok: false, error: 'Aufgabe nicht gefunden.' });
       await db.adminDeleteTask(id, actor);
+      await notify(webhook, taskEmbed('deleted', task, actor));
       return json(res, 200, { ok: true });
     }
 
@@ -157,7 +206,9 @@ async function handle(req, res, url, session, webhook) {
       if (!comment) return json(res, 400, { ok: false, error: 'Kommentar fehlt.' });
       if (!await db.adminTask(id)) return json(res, 404, { ok: false, error: 'Aufgabe nicht gefunden.' });
       await db.adminAddComment(id, clip(session.discordId || session.id || actor, 32), comment);
-      return json(res, 201, { ok: true, task: await db.adminTask(id) });
+      const task = await db.adminTask(id);
+      await notify(webhook, commentEmbed(task, comment, actor));
+      return json(res, 201, { ok: true, task });
     }
 
     if (req.method === 'GET' && url.pathname === '/admin/projects') {
@@ -167,20 +218,28 @@ async function handle(req, res, url, session, webhook) {
     if (req.method === 'POST' && url.pathname === '/admin/projects') {
       const b = await readJson(req);
       if (!clip(b.name, 255)) return json(res, 400, { ok: false, error: 'Projektname fehlt.' });
-      const id = await db.adminCreateProject({ name: clip(b.name,255), description: clip(b.description,5000), status: ['active','paused','completed'].includes(b.status) ? b.status : 'active' }, actor);
+      const project = { name: clip(b.name,255), description: clip(b.description,5000), status: ['active','paused','completed'].includes(b.status) ? b.status : 'active' };
+      const id = await db.adminCreateProject(project, actor);
+      await notify(webhook, projectEmbed('created', { ...project, id }, actor));
       return json(res, 201, { ok: true, id });
     }
 
     if (req.method === 'PUT' && url.pathname.startsWith('/admin/projects/')) {
       const id = Number(url.pathname.split('/').pop());
       const b = await readJson(req);
-      await db.adminUpdateProject(id, { name: clip(b.name,255), description: clip(b.description,5000), status: ['active','paused','completed'].includes(b.status) ? b.status : 'active' }, actor);
+      const project = { name: clip(b.name,255), description: clip(b.description,5000), status: ['active','paused','completed'].includes(b.status) ? b.status : 'active', id };
+      await db.adminUpdateProject(id, project, actor);
+      await notify(webhook, projectEmbed('updated', project, actor));
       return json(res, 200, { ok: true });
     }
 
     if (req.method === 'DELETE' && url.pathname.startsWith('/admin/projects/')) {
       const id = Number(url.pathname.split('/').pop());
+      const projects = await db.adminProjects();
+      const project = projects.find(p => Number(p.id) === id);
+      if (!project) return json(res, 404, { ok: false, error: 'Projekt nicht gefunden.' });
       await db.adminDeleteProject(id, actor);
+      await notify(webhook, projectEmbed('deleted', project, actor));
       return json(res, 200, { ok: true });
     }
 
@@ -195,14 +254,19 @@ async function handle(req, res, url, session, webhook) {
         player_name: clip(b.player_name, 255),
         reason: clip(b.reason, 5000)
       }, actor);
+      await notify(webhook, blacklistEmbed('added', entry, actor));
       return json(res, 201, { ok: true, entry });
     }
 
     if (req.method === 'DELETE' && url.pathname.startsWith('/admin/blacklist/')) {
       const id = Number(url.pathname.split('/').pop());
       if (!Number.isInteger(id) || id < 1) return json(res, 400, { ok: false, error: 'Ungültige Blacklist-ID.' });
+      const entries = await db.adminBlacklist();
+      const entry = entries.find(e => Number(e.id) === id);
+      if (!entry) return json(res, 404, { ok: false, error: 'Blacklist-Eintrag nicht gefunden.' });
       const removed = await db.adminRemoveBlacklist(id, actor);
-      return removed ? json(res, 200, { ok: true }) : json(res, 404, { ok: false, error: 'Blacklist-Eintrag nicht gefunden.' });
+      if (removed) await notify(webhook, blacklistEmbed('removed', entry, actor));
+      return json(res, 200, { ok: true });
     }
 
     if (req.method === 'GET' && url.pathname === '/admin/changelog') {
