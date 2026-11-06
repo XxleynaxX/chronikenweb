@@ -87,8 +87,7 @@
         {name:"Spieler",value:char.player||"—",inline:true},{name:"Steam-ID",value:char.steamId||"—",inline:true},
         {name:"Volk",value:char.race||"—",inline:true},{name:"Status",value:char.status||"aktiv",inline:true},
         {name:"Verwarnungen",value:String(char.warnings??0),inline:true},
-        ...(char.violation?[{name:"Regelverstoß",value:String(char.violation).slice(0,1000),inline:false}]:[]),
-        ...(Array.isArray(char.violationDetails)&&char.violationDetails.length?[{name:"Betroffene Regeln",value:char.violationDetails.join("\n").slice(0,1800),inline:false}]:[])
+        ...(Array.isArray(char.violationDetails)&&char.violationDetails.length?[{name:"Regelverstoß",value:char.violationDetails.map(x=>String(x).replace(/^[A-Z0-9-]+\s*·\s*/,"")).join("\n").slice(0,1800),inline:false}]:char.violation?[{name:"Regelverstoß",value:String(char.violation).slice(0,1000),inline:false}]:[])
       ],footer:{text:"Chroniken · Charakterverwaltung"},timestamp:new Date().toISOString()
     }]})})}catch(e){console.warn("Charakter-Proxy:",e)}
   }
