@@ -37,7 +37,7 @@
       const data=await api('/admin/projects');
       list=Array.isArray(data.projects)?data.projects:[];
       listEl.innerHTML=list.length
-        ? list.map(p=>'<div class="row" style="padding:15px 0;border-bottom:1px solid #29203b;display:flex;justify-content:space-between;gap:15px"><div><strong>'+esc(p.name)+'</strong><div class="muted">'+esc(p.description||'')+' · '+esc(p.status)+'</div></div><div><button type="button" class="btn small" data-e="'+p.id+'">Bearbeiten</button> <button type="button" class="btn small" data-d="'+p.id+'">Löschen</button></div></div>').join('')
+        ? list.map(p=>'<div class="row" style="padding:15px 0;border-bottom:1px solid #29203b;display:flex;justify-content:space-between;gap:15px"><div><strong>'+esc(p.name)+'</strong><div class="muted">'+esc(p.description||'')+' · '+esc(p.status)+'</div><div class="muted" style="margin-top:7px">→ '+Number(p.task_count||0)+' Aufgaben &nbsp; · &nbsp; ✓ '+Number(p.done_count||0)+' erledigt &nbsp; · &nbsp; 🔧 '+Number(p.working_count||0)+' in Arbeit &nbsp; · &nbsp; ○ '+Number(p.open_count||0)+' offen</div></div><div><button type="button" class="btn small" data-e="'+p.id+'">Bearbeiten</button> <button type="button" class="btn small" data-d="'+p.id+'">Löschen</button></div></div>').join('')
         : '<div class="muted">Noch keine Projekte.</div>';
 
       list.forEach(p=>{
