@@ -275,7 +275,6 @@
       <a href="charakterbogen.html">Charakterbogen</a>
       <a href="heilerakte.html">Heilerakte</a>
       <a href="wetter.html" id="navWetter" data-admin-only style="display:none;">Wetter</a>
-      <a href="admin/index.html" id="navAdmin" data-admin-only style="display:none;">Admin</a>
     </nav>
   </header>
 
@@ -352,16 +351,7 @@
         <h2>Heilerakte</h2>
         <p>Medizinische RP-Akten · für Heiler &amp; Admins</p>
       </a>
-      <a href="wetter.html" class="gate admin-gate" id="weatherGate" style="display:none;">
-        <span class="gate-icon" id="weatherGateIcon">🌦️</span>
-        <h2>Wetter · <span id="weatherGateName">…</span></h2>
-        <p><span id="weatherGateDesc"></span><br><small>Nächster Wechsel in <strong id="weatherGateCountdown">--:--:--</strong> · verwalten</small></p>
-      </a>
-      <div id="adminGate" class="admin-dynamic-host" hidden></div>
-
     </div>
-
-    <section class="admin-section" id="adminSection" hidden></section>
   </main>
 
   <footer>
@@ -483,33 +473,62 @@
     // Erst wenn /auth/me serverseitig bestätigt, dass der Benutzer Admin ist,
     // werden die Admin-Kacheln und der Admin-Charaktere-Link erzeugt.
     (function() {
-      const section = document.getElementById("adminSection");
-      const gate = document.getElementById("adminGate");
-      const navAdmin = document.getElementById("navAdmin");
-      if (!section) return;
+      let section = null;
+      let gate = null;
+      let weatherGate = null;
+      let navAdmin = null;
 
+      const portalGates = document.querySelector(".portal-gates");
+      const main = document.querySelector(".portal-main");
       const proxy = (window.CHRONIKEN_DISCORD_PROXY || "https://chronikenweb-1.onrender.com").replace(/\/$/, "");
 
       function clearAdminUI() {
-        section.innerHTML = "";
-        section.hidden = true;
-        section.style.setProperty("display", "none", "important");
-
-        if (gate) {
-          gate.innerHTML = "";
-          gate.hidden = true;
-          gate.style.setProperty("display", "none", "important");
-        }
-
-        if (navAdmin) {
-          navAdmin.textContent = "";
-          navAdmin.removeAttribute("href");
-          navAdmin.hidden = true;
-          navAdmin.style.setProperty("display", "none", "important");
-        }
+        if (section) section.remove();
+        if (gate) gate.remove();
+        if (weatherGate) weatherGate.remove();
+        if (navAdmin) navAdmin.remove();
+        section = null;
+        gate = null;
+        weatherGate = null;
+        navAdmin = null;
       }
 
       function buildAdminUI() {
+        if (!portalGates || !main) return;
+
+        gate = document.createElement("div");
+        gate.className = "admin-dynamic-host";
+        gate.innerHTML = `
+          <a href="admin/index.html" class="gate admin-gate">
+            <span class="gate-icon">🛡️</span>
+            <h2>Admin · Charaktere</h2>
+            <p>Verwarnungen, Regelverstöße &amp; laufende IDs</p>
+          </a>`;
+        portalGates.appendChild(gate);
+
+        weatherGate = document.createElement("a");
+        weatherGate.href = "wetter.html";
+        weatherGate.className = "gate admin-gate";
+        weatherGate.id = "weatherGate";
+        weatherGate.innerHTML = `
+          <span class="gate-icon" id="weatherGateIcon">🌦️</span>
+          <h2>Wetter · <span id="weatherGateName">…</span></h2>
+          <p><span id="weatherGateDesc"></span><br><small>Nächster Wechsel in <strong id="weatherGateCountdown">--:--:--</strong> · verwalten</small></p>`;
+        portalGates.appendChild(weatherGate);
+
+        section = document.createElement("section");
+        section.className = "admin-section";
+        section.id = "adminSection";
+        main.appendChild(section);
+
+        navAdmin = document.createElement("a");
+        navAdmin.href = "admin/index.html";
+        navAdmin.id = "navAdmin";
+        navAdmin.dataset.adminOnly = "true";
+        navAdmin.textContent = "Admin";
+        const nav = document.querySelector("header nav");
+        if (nav) nav.appendChild(navAdmin);
+
         section.innerHTML = `
           <h2>🛡️ Administration</h2>
           <p class="admin-section-subtitle">Nur für Mitglieder mit Admin-Rechten sichtbar.</p>
@@ -525,23 +544,7 @@
         section.hidden = false;
         section.style.setProperty("display", "block", "important");
 
-        if (gate) {
-          gate.innerHTML = `
-            <a href="admin/index.html" class="gate admin-gate">
-              <span class="gate-icon">🛡️</span>
-              <h2>Admin · Charaktere</h2>
-              <p>Verwarnungen, Regelverstöße &amp; laufende IDs</p>
-            </a>`;
-          gate.hidden = false;
-          gate.style.setProperty("display", "block", "important");
-        }
 
-        if (navAdmin) {
-          navAdmin.textContent = "Admin";
-          navAdmin.href = "admin/index.html";
-          navAdmin.hidden = false;
-          navAdmin.style.setProperty("display", "", "important");
-        }
       }
 
       async function checkAdmin() {
@@ -569,7 +572,7 @@
     (function() {
       function drawWeather() {
         const gate = document.getElementById("weatherGate");
-        if (!gate || gate.style.display === "none" || !window.ChronikenWeather) return;
+        if (!gate || !window.ChronikenWeather) return;
         const w = ChronikenWeather.get();
         document.getElementById("weatherGateIcon").textContent = w.icon || "🌦️";
         document.getElementById("weatherGateName").textContent = w.name || "Unbekannt";
