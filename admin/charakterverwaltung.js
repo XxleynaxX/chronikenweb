@@ -66,6 +66,14 @@
     return ids.map(id=>ruleIndex[id]||{id,text:"Unbekannte Regel-ID"});
   }
 
+  function violationTexts(char){
+    if(Array.isArray(char?.violationDetails)&&char.violationDetails.length){
+      return char.violationDetails.map(x=>String(x).replace(/^[A-Z0-9-]+\s*·\s*/,"")).filter(Boolean);
+    }
+    const ids=Array.isArray(char?.violationIds)&&char.violationIds.length?char.violationIds:parseViolationIds(char?.violation||"");
+    return ids.map(id=>ruleIndex[id]?.text||"").filter(Boolean);
+  }
+
   function updateViolationPreview(){
     const field=get("charAdminViolation"), preview=get("charAdminViolationResolved");
     if(!field||!preview)return;
@@ -87,7 +95,7 @@
         {name:"Spieler",value:char.player||"—",inline:true},{name:"Steam-ID",value:char.steamId||"—",inline:true},
         {name:"Volk",value:char.race||"—",inline:true},{name:"Status",value:char.status||"aktiv",inline:true},
         {name:"Verwarnungen",value:String(char.warnings??0),inline:true},
-        ...(Array.isArray(char.violationDetails)&&char.violationDetails.length?[{name:"Regelverstoß",value:char.violationDetails.map(x=>String(x).replace(/^[A-Z0-9-]+\s*·\s*/,"")).join("\n").slice(0,1800),inline:false}]:char.violation?[{name:"Regelverstoß",value:String(char.violation).slice(0,1000),inline:false}]:[])
+        ...(violationTexts(char).length?[{name:"Regelverstoß",value:violationTexts(char).join("\n").slice(0,1800),inline:false}]:[])
       ],footer:{text:"Chroniken · Charakterverwaltung"},timestamp:new Date().toISOString()
     }]})})}catch(e){console.warn("Charakter-Proxy:",e)}
   }
@@ -127,7 +135,7 @@
     empty.hidden=true;table.hidden=false;
     body.innerHTML=list.slice().sort((a,b)=>(a.id||"").localeCompare(b.id||"")).map(c=>{
       const w=Number(c.warnings)||0;
-      const violationText=Array.isArray(c.violationDetails)&&c.violationDetails.length?c.violationDetails.map(x=>String(x).replace(/^[A-Z0-9-]+\s*·\s*/,"")).join("<br>"):c.violation||"—";
+      const violationText=violationTexts(c).length?violationTexts(c).map(x=>esc(x)).join("<br>"):"—";
       return '<tr><td><strong class="char-id">'+esc(c.id)+'</strong></td><td><strong>'+esc(c.name)+'</strong><div class="muted">'+esc(c.race||"")+'</div></td><td>'+esc(c.player||"—")+'</td><td>'+esc(c.steamId||"—")+'</td><td><span class="warn-badge '+(w===0?"zero":"")+'">'+w+'</span></td><td>'+violationText+'</td><td>'+esc(c.status||"aktiv")+'</td><td class="char-actions"><button class="btn small" data-sheet="'+esc(c.id)+'">Bogen</button><button class="btn small" data-edit="'+esc(c.id)+'">Bearbeiten</button><button class="btn small danger" data-delete="'+esc(c.id)+'">Löschen</button></td></tr>'
     }).join("");
     body.querySelectorAll("[data-sheet]").forEach(b=>b.onclick=()=>openSheet(b.dataset.sheet));
