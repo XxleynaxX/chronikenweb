@@ -566,7 +566,7 @@ const server = http.createServer(async (req, res) => {
 
   // ===== Internes Admin-System (MySQL + Discord) =====
   if (url.pathname.startsWith('/admin/')) {
-    const handled = await adminApi.handle(req, res, url, sessionFromRequest(req), process.env.ADMIN_TASK_WEBHOOK || '');
+    const handled = await adminApi.handle(req, res, url, sessionFromRequest(req), process.env.ADMIN_WEBHOOK || process.env.ADMIN_TASK_WEBHOOK || '');
     if (handled !== false) return;
   }
 
