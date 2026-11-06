@@ -757,6 +757,20 @@ const server = http.createServer(async (req, res) => {
     }
   }
 
+  if (req.method === 'POST' && url.pathname === '/character/check') {
+    let body = '';
+    for await (const chunk of req) { body += chunk; if (body.length > 5000) return sendJson(res, 413, { ok: false, error: 'Daten zu groß.' }); }
+    try {
+      const data = JSON.parse(body || '{}');
+      const steamId = String(data.steamId || '').trim();
+      if (!steamId) return sendJson(res, 200, { ok: true, blocked: false });
+      const hit = await db.isSteamBlacklisted(steamId);
+      return sendJson(res, 200, { ok: true, blocked: !!hit, entry: hit ? { player_name: hit.player_name || '', reason: hit.reason || '' } : null });
+    } catch (e) {
+      return sendJson(res, 500, { ok: false, error: 'Blacklist-Prüfung fehlgeschlagen.' });
+    }
+  }
+
   if (req.method === 'POST' && url.pathname === '/charakter') {
     if (!CHAR_WEBHOOK) {
       res.writeHead(500, { 'Content-Type': 'application/json' });
