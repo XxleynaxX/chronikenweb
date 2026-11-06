@@ -39,7 +39,13 @@ const KEYS = {
   characters:        { label: 'Charakter-Register',     description: 'Öffentliches Charakter-Register',                        type: 'array',  write: 'public' },
   character_sheets:  { label: 'Charakterbögen',         description: 'Ausgefüllte Charakterbögen',                             type: 'array',  write: 'public' },
   healer_records:    { label: 'Heilerakten',            description: 'Medizinische RP-Aufzeichnungen',                         type: 'array',  write: 'healer' },
-  map:               { label: 'Karte',                  description: 'Kartenmarker und Orte',                                  type: 'array',  write: 'lib' }
+  map:               { label: 'Karte',                  description: 'Kartenmarker und Orte',                                  type: 'array',  write: 'lib' },
+  admin_projects:       { label: 'Admin · Projekte',        description: 'Projekte der Administration',                       type: 'array', write: 'admin' },
+  admin_tasks:          { label: 'Admin · Aufgaben',        description: 'Aufgaben der Administration',                       type: 'array', write: 'admin' },
+  admin_task_comments:  { label: 'Admin · Kommentare',      description: 'Kommentare zu Admin-Aufgaben',                     type: 'array', write: 'admin' },
+  admin_activity:       { label: 'Admin · Aktivitäten',     description: 'Aktivitäten und Aktionen der Administration',       type: 'array', write: 'admin' },
+  admin_blacklist:      { label: 'Admin · Blacklist',       description: 'Gesperrte Steam-IDs und Spieler',                    type: 'array', write: 'admin' },
+  admin_changelog:      { label: 'Admin · Changelog',       description: 'Änderungen am Admin-System',                         type: 'array', write: 'admin' }
 };
 
 // Alte camelCase-Namen (aus früheren Versionen) → aktuelle Schlüssel
@@ -320,6 +326,28 @@ CREATE TABLE IF NOT EXISTS admin_activity (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci`;
 
 let adminSchemaPromise = null;
+async function syncAdminKeys() {
+  // Relationale Admin-Tabellen bleiben erhalten; diese Keys spiegeln deren aktuellen Inhalt.
+  await ensureSchema();
+  const p = getPool();
+  const queries = {
+    admin_projects: 'SELECT * FROM admin_projects ORDER BY id DESC',
+    admin_tasks: 'SELECT t.*, p.name AS project_name FROM admin_tasks t LEFT JOIN admin_projects p ON p.id=t.project_id ORDER BY t.id DESC',
+    admin_task_comments: 'SELECT * FROM admin_task_comments ORDER BY id DESC',
+    admin_activity: 'SELECT * FROM admin_activity ORDER BY id DESC',
+    admin_blacklist: 'SELECT * FROM admin_blacklist ORDER BY id DESC',
+    admin_changelog: 'SELECT * FROM admin_changelog ORDER BY id DESC'
+  };
+  for (const [key, sql] of Object.entries(queries)) {
+    const [rows] = await p.query(sql);
+    const meta = KEYS[key];
+    await p.query(
+      'INSERT INTO chroniken_data (`key`,`value`,label,description) VALUES (?,CAST(? AS JSON),?,?) ' +
+      'ON DUPLICATE KEY UPDATE `value`=VALUES(`value`), label=VALUES(label), description=VALUES(description)',
+      [key, JSON.stringify(rows), meta.label, meta.description]
+    );
+  }
+}
 async function ensureAdminSchema() {
   if (adminSchemaPromise) return adminSchemaPromise;
   adminSchemaPromise = (async () => {
@@ -332,6 +360,7 @@ async function ensureAdminSchema() {
     await p.query(ADMIN_CHANGELOG_SCHEMA);
     await p.query(ADMIN_ACTIVITY_SCHEMA);
     await seedAdminChangelog();
+    await syncAdminKeys();
   })().catch(e => { adminSchemaPromise = null; throw e; });
   return adminSchemaPromise;
 }
@@ -369,6 +398,7 @@ async function adminAddBlacklist(data, actor) {
   try {
     const [r]=await getPool().query('INSERT INTO admin_blacklist (steam_id,player_name,reason,created_by) VALUES (?,?,?,?)',[steamId,String(data.player_name||'').trim().slice(0,255),String(data.reason||'').trim().slice(0,5000),actor]);
     await adminActivity(actor,'blacklist.added',null,null,steamId);
+    await syncAdminKeys();
     return adminBlacklistEntry(r.insertId);
   } catch(e) {
     if(e && e.code==='ER_DUP_ENTRY') throw Object.assign(new Error('Diese Steam-ID steht bereits auf der Blackliste.'),{status:409});
@@ -381,6 +411,7 @@ async function adminRemoveBlacklist(id, actor) {
   if(!entry) return false;
   await getPool().query('DELETE FROM admin_blacklist WHERE id=?',[id]);
   await adminActivity(actor,'blacklist.removed',null,null,entry.steam_id);
+  await syncAdminKeys();
   return true;
 }
 async function isSteamBlacklisted(steamId) {
@@ -450,6 +481,7 @@ async function adminCreateTask(task, actor) {
       task.status||'open',task.priority||'normal',task.due_date||'',actor
     ]);
   await adminActivity(actor,'task.created',r.insertId,null,task.title);
+  await syncAdminKeys();
   return adminTask(r.insertId);
 }
 async function adminUpdateTask(id, task, actor) {
@@ -458,12 +490,14 @@ async function adminUpdateTask(id, task, actor) {
     task.title,task.description||'',task.project_id||null,task.assigned_discord_id||null,task.status||'open',task.priority||'normal',task.due_date||'',id
   ]);
   await adminActivity(actor,'task.updated',id,null,JSON.stringify({status:task.status,priority:task.priority}));
+  await syncAdminKeys();
   return adminTask(id);
 }
 async function adminDeleteTask(id, actor) {
   await ensureAdminSchema();
   await getPool().query('DELETE FROM admin_tasks WHERE id=?',[id]);
   await adminActivity(actor,'task.deleted',id,null,'');
+  await syncAdminKeys();
 }
 async function adminProjects() {
   await ensureAdminSchema();
@@ -472,22 +506,23 @@ async function adminProjects() {
 async function adminCreateProject(p, actor) {
   await ensureAdminSchema();
   const [r]=await getPool().query('INSERT INTO admin_projects (name,description,status,created_by) VALUES (?,?,?,?)',[p.name,p.description||'',p.status||'active',actor]);
-  await adminActivity(actor,'project.created',null,r.insertId,p.name); return r.insertId;
+  await adminActivity(actor,'project.created',null,r.insertId,p.name); await syncAdminKeys(); return r.insertId;
 }
 async function adminUpdateProject(id,p,actor) {
   await ensureAdminSchema();
   await getPool().query('UPDATE admin_projects SET name=?,description=?,status=? WHERE id=?',[p.name,p.description||'',p.status||'active',id]);
-  await adminActivity(actor,'project.updated',null,id,p.name);
+  await adminActivity(actor,'project.updated',null,id,p.name); await syncAdminKeys();
 }
 async function adminDeleteProject(id,actor) {
   await ensureAdminSchema();
   await getPool().query('DELETE FROM admin_projects WHERE id=?',[id]);
-  await adminActivity(actor,'project.deleted',null,id,'');
+  await adminActivity(actor,'project.deleted',null,id,''); await syncAdminKeys();
 }
 async function adminAddComment(taskId, discordId, comment) {
   await ensureAdminSchema();
   await getPool().query('INSERT INTO admin_task_comments (task_id,discord_id,comment) VALUES (?,?,?)',[taskId,discordId,comment]);
   await adminActivity(discordId,'task.comment',taskId,null,comment.slice(0,500));
+  await syncAdminKeys();
 }
 async function adminActivity(discordId, action, taskId, projectId, details) {
   await getPool().query('INSERT INTO admin_activity (discord_id,action,task_id,project_id,details) VALUES (?,?,?,?,?)',[discordId,action,taskId||null,projectId||null,details||'']);
@@ -500,5 +535,5 @@ async function adminActivities(limit=100) {
 
 module.exports = {
   KEYS, normalizeKey, canWrite, validValue,
-  configured, ensureSchema, getAll, getOne, setMany, claimNotificationKey, status, ensureAdminSchema, adminSummary, adminTasks, adminTask, adminCreateTask, adminUpdateTask, adminDeleteTask, adminProjects, adminCreateProject, adminUpdateProject, adminDeleteProject, adminAddComment, adminActivities, adminBlacklist, adminBlacklistEntry, adminAddBlacklist, adminRemoveBlacklist, isSteamBlacklisted, adminChangelog
+  configured, ensureSchema, getAll, getOne, setMany, claimNotificationKey, status, ensureAdminSchema, syncAdminKeys, adminSummary, adminTasks, adminTask, adminCreateTask, adminUpdateTask, adminDeleteTask, adminProjects, adminCreateProject, adminUpdateProject, adminDeleteProject, adminAddComment, adminActivities, adminBlacklist, adminBlacklistEntry, adminAddBlacklist, adminRemoveBlacklist, isSteamBlacklisted, adminChangelog
 };
