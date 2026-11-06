@@ -27,40 +27,86 @@
   }
 
   async function loadRuleIndex(){
+    /*
+      Die Regel-ID-Auflösung kommt bewusst direkt von regeln.html.
+      Damit verwendet die Charakterverwaltung exakt dasselbe ID-System
+      wie die öffentliche Regelseite und nicht eine zweite, abweichende
+      Kopie der Regelnummerierung.
+    */
     try{
-      // Regeln direkt aus dem zentralen Speicher laden.
-      // ChronikenData.load("regeln") kann hier auf einen leeren Default zurückfallen,
-      // weil "regeln" nicht in DEFAULTS von chroniken-data.js enthalten ist.
-      let data=[];
-      if(window.ChronikenStorage){
-        const remote=await ChronikenStorage.load("regeln");
-        if(remote && typeof remote === "object") data=remote;
-      }
-      if(!data.length&&window.ChronikenData){
-        const cached=ChronikenData.load("regeln");
-        if(cached && typeof cached === "object") data=cached;
+      const iframe=document.createElement("iframe");
+      iframe.hidden=true;
+      iframe.setAttribute("aria-hidden","true");
+      iframe.src="../regeln.html?ruleIndex="+Date.now();
+
+      const index=await new Promise(resolve=>{
+        let finished=false;
+        const finish=value=>{
+          if(finished)return;
+          finished=true;
+          try{iframe.remove()}catch{}
+          resolve(value||{});
+        };
+
+        const read=()=>{
+          try{
+            const doc=iframe.contentDocument;
+            if(!doc)return finish({});
+            const ids=doc.querySelectorAll(".inline-rule-id");
+            if(!ids.length)return null;
+
+            const result={};
+            ids.forEach(span=>{
+              const id=(span.textContent||"").trim().toUpperCase();
+              if(!/^R-\\d+-[A-Z]+$/.test(id))return;
+
+              const li=span.closest("li");
+              if(!li)return;
+
+              const clone=li.cloneNode(true);
+              clone.querySelectorAll(".inline-rule-id").forEach(x=>x.remove());
+
+              const text=(clone.textContent||"")
+                .replace(/\\s+/g," ")
+                .trim();
+
+              if(text)result[id]={
+                id,
+                category:"",
+                title:"Regel",
+                text
+              };
+            });
+
+            finish(result);
+          }catch(e){
+            console.warn("Regelindex aus regeln.html konnte nicht gelesen werden:",e);
+            finish({});
+          }
+        };
+
+        iframe.addEventListener("load",()=>{
+          let tries=0;
+          const wait=()=>{
+            tries++;
+            const doc=iframe.contentDocument;
+            const ids=doc?.querySelectorAll(".inline-rule-id");
+            if(ids?.length)return read();
+            if(tries>=40)return finish({});
+            setTimeout(wait,150);
+          };
+          wait();
+        });
+
+        document.body.appendChild(iframe);
+      });
+
+      if(Object.keys(index).length){
+        return index;
       }
 
-      const index={};
-      Object.keys(data||{}).forEach(category=>{
-        if(!Array.isArray(data[category]))return;
-        let n=1;
-        data[category].forEach(item=>{
-          const holder=document.createElement("div");
-          holder.innerHTML=String(item.full||item.short||"");
-          holder.querySelectorAll("li").forEach(li=>{
-            const id=categoryRuleId(category,n++);
-            if(!id)return;
-            index[id]={
-              id,
-              category,
-              title:item.name||"Regel",
-              text:(li.textContent||"").replace(/\s+/g," ").trim()
-            };
-          });
-        });
-      });
-      return index;
+      console.warn("Regel-ID-System lieferte keine Regel-IDs.");
+      return {};
     }catch(e){
       console.warn("Regelindex konnte nicht geladen werden:",e);
       return {};
@@ -79,6 +125,9 @@
   }
 
   function violationTexts(char){
+    if(Array.isArray(char?.violationTexts)&&char.violationTexts.length){
+      return char.violationTexts.map(x=>String(x).trim()).filter(Boolean);
+    }
     if(Array.isArray(char?.violationDetails)&&char.violationDetails.length){
       const details=char.violationDetails.map(x=>String(x).replace(/^[A-Z0-9-]+\s*·\s*/,"").trim()).filter(Boolean);
       if(details.length)return details;
@@ -90,22 +139,14 @@
   }
 
   async function violationTextsForNotification(char){
+    // Beim Speichern werden die Regeltexte bereits im Datensatz abgelegt.
+    // Falls ein älterer Datensatz diese Texte noch nicht besitzt, wird die
+    // aktuelle Regelseite einmal direkt nach dem ID-System durchsucht.
     let texts=violationTexts(char);
     if(texts.length)return texts;
 
-    // Regelindex bei Bedarf direkt vor der Discord-Nachricht neu laden.
-    // So funktionieren auch ältere gespeicherte Charaktere, die noch
-    // keine violationDetails besitzen.
     ruleIndex=await loadRuleIndex();
     texts=violationTexts(char);
-
-    // Falls der Datensatz bereits den vollständigen Regeltext gespeichert hat,
-    // diesen genauso verwenden wie in "Registrierte Charakterbögen".
-    if(!texts.length&&Array.isArray(char?.violationDetails)){
-      texts=char.violationDetails
-        .map(x=>String(x).replace(/^[A-Z0-9-]+\s*·\s*/,"").trim())
-        .filter(Boolean);
-    }
     return texts;
   }
 
@@ -245,8 +286,10 @@
       const violationInput=get("charAdminViolation").value.trim();
       const violationIds=parseViolationIds(violationInput);
       const resolvedViolations=resolveViolations(violationInput);
-      const violationDetails=resolvedViolations.filter(r=>r.text!=="Unbekannte Regel-ID").map(r=>r.id+" · "+r.text);
-      const payload={name,player:get("charAdminPlayer").value.trim(),steamId:get("charAdminSteam").value.trim(),race:get("charAdminRace").value,status:get("charAdminStatus").value,warnings:Math.max(0,parseInt(get("charAdminWarnings").value,10)||0),violation:violationIds.join(", "),violationIds,violationDetails,notes:get("charAdminNotes").value.trim(),updatedAt:new Date().toISOString()};
+      const resolvedKnown=resolvedViolations.filter(r=>r.text && r.text!=="Unbekannte Regel-ID");
+      const violationDetails=resolvedKnown.map(r=>r.id+" · "+r.text);
+      const violationTextsStored=resolvedKnown.map(r=>r.text);
+      const payload={name,player:get("charAdminPlayer").value.trim(),steamId:get("charAdminSteam").value.trim(),race:get("charAdminRace").value,status:get("charAdminStatus").value,warnings:Math.max(0,parseInt(get("charAdminWarnings").value,10)||0),violation:violationIds.join(", "),violationIds,violationDetails,violationTexts:violationTextsStored,notes:get("charAdminNotes").value.trim(),updatedAt:new Date().toISOString()};
       let saved,type="created";
       if(editId){const i=list.findIndex(c=>c.id===editId);if(i<0)return;list[i]={...list[i],...payload};saved=list[i];type=payload.violation!==old?.violation||payload.warnings>(Number(old?.warnings)||0)?"violation":"updated"}
       else{saved={id:nextId(),createdAt:new Date().toISOString(),...payload};list.push(saved)}
