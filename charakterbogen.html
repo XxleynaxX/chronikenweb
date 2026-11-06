@@ -1846,7 +1846,27 @@ function renderPortrait() {
     renderPortrait();
 })();
 
-function createPNG(name) {
+async function createPNG(name) {
+    const steamId = (document.getElementById("steamId")?.value || "").trim();
+    if (steamId) {
+        try {
+            const proxy = getChronikenDiscordProxyUrl();
+            if (proxy) {
+                const check = await fetch(proxy + "/character/check", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ steamId })
+                });
+                const result = await check.json().catch(() => ({}));
+                if (result.blocked) {
+                    alert("Dieser Spieler darf keinen neuen Charakter erstellen. Die angegebene Steam-ID steht auf der Blackliste.");
+                    return;
+                }
+            }
+        } catch (e) {
+            console.warn("Blacklist-Prüfung nicht erreichbar:", e);
+        }
+    }
     renderPortrait();
     const card = document.getElementById("characterCard");
     html2canvas(card, { scale: 2, backgroundColor: null }).then(async canvas => {
