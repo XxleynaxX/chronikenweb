@@ -385,7 +385,6 @@ async function adminAddComment(taskId, discordId, comment) {
   await adminActivity(discordId,'task.comment',taskId,null,comment.slice(0,500));
 }
 async function adminActivity(discordId, action, taskId, projectId, details) {
-  await ensureAdminSchema();
   await getPool().query('INSERT INTO admin_activity (discord_id,action,task_id,project_id,details) VALUES (?,?,?,?,?)',[discordId,action,taskId||null,projectId||null,details||'']);
 }
 async function adminActivities(limit=100) {
