@@ -1,0 +1,15 @@
+<!doctype html>
+<html lang="de"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Die Chroniken · Spieler-Blacklist</title><link rel="stylesheet" href="admin.css"></head>
+<body><div class="shell"><aside class="sidebar"><div class="brand">Die Chroniken <small>Admin</small></div>
+<nav><a href="index.html">🏠 Dashboard</a><a href="aufgaben.html">📋 Aufgaben</a><a href="projekte.html">📁 Projekte</a><a class="active" href="blacklist.html">🚫 Spieler-Blacklist</a><a href="team.html">👥 Team</a><a href="aktivitaeten.html">📜 Aktivitäten</a><a href="../index.html">↩ Zur Webseite</a></nav>
+</aside><main class="main"><header class="top"><div><h1>Spieler-Blacklist</h1><p>Gesperrte Steam-IDs können keinen neuen Charakterbogen anlegen.</p></div><div class="user" id="user">Lade Anmeldung …</div></header>
+<section id="locked" class="panel locked" hidden><h2>🔒 Nur für Admins</h2><p>Dieser Bereich benötigt die Discord-Adminrolle.</p><a class="btn" id="login">Mit Discord anmelden</a></section>
+<div id="app" hidden>
+<section class="panel"><h2>Spieler sperren</h2><div class="formgrid">
+<div><label>Steam-ID</label><input id="steam_id" type="text" placeholder="76561198xxxxxxxx"></div>
+<div><label>Spielername</label><input id="player_name" type="text" placeholder="Optional"></div>
+<div class="full"><label>Grund</label><textarea id="reason" placeholder="Warum wird die Steam-ID gesperrt?"></textarea></div>
+</div><button class="btn" id="add">Spieler auf Blackliste setzen</button><div id="msg" class="muted" style="margin-top:10px"></div></section>
+<section class="panel"><div class="panel-head"><h2>Gesperrte Spieler</h2><span class="muted" id="count"></span></div><div id="list"></div></section>
+</div></main></div><script src="admin.js"></script><script src="blacklist.js"></script></body></html>
