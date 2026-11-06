@@ -357,7 +357,7 @@
         <h2>Wetter · <span id="weatherGateName">…</span></h2>
         <p><span id="weatherGateDesc"></span><br><small>Nächster Wechsel in <strong id="weatherGateCountdown">--:--:--</strong> · verwalten</small></p>
       </a>
-      <a href="admin/index.html" class="gate admin-gate" id="adminGate" style="display:none;">
+      <a href="admin/index.html" class="gate admin-gate" id="adminGate" style="display:none !important;">
         <span class="gate-icon">🛡️</span>
         <h2>Admin · Charaktere</h2>
         <p>Verwarnungen, Regelverstöße &amp; laufende IDs</p>
@@ -365,7 +365,7 @@
 
     </div>
 
-    <section class="admin-section" id="adminSection" hidden>
+    <section class="admin-section" id="adminSection" hidden style="display:none !important;">
       <h2>🛡️ Administration</h2>
       <p class="admin-section-subtitle">Nur für Mitglieder mit Admin-Rechten sichtbar.</p>
       <div class="admin-tiles">
@@ -538,14 +538,16 @@
           const info = await res.json().catch(() => ({}));
           const isAdmin = !!(res.ok && info.ok && info.admin);
           section.hidden = !isAdmin;
+          section.style.setProperty("display", isAdmin ? "" : "none", "important");
 
           const adminGate = document.getElementById("adminGate");
-          if (adminGate) adminGate.style.display = isAdmin ? "" : "none";
+          if (adminGate) adminGate.style.setProperty("display", isAdmin ? "" : "none", "important");
 
           const navAdmin = document.getElementById("navAdmin");
-          if (navAdmin) navAdmin.style.display = isAdmin ? "" : "none";
+          if (navAdmin) navAdmin.style.setProperty("display", isAdmin ? "" : "none", "important");
         } catch (e) {
           section.hidden = true;
+          section.style.setProperty("display", "none", "important");
         }
       }
 
