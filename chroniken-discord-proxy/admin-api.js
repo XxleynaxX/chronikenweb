@@ -184,6 +184,31 @@ async function handle(req, res, url, session, webhook) {
       return json(res, 200, { ok: true });
     }
 
+    if (req.method === 'GET' && url.pathname === '/admin/blacklist') {
+      return json(res, 200, { ok: true, blacklist: await db.adminBlacklist() });
+    }
+
+    if (req.method === 'POST' && url.pathname === '/admin/blacklist') {
+      const b = await readJson(req);
+      const entry = await db.adminAddBlacklist({
+        steam_id: clip(b.steam_id, 32),
+        player_name: clip(b.player_name, 255),
+        reason: clip(b.reason, 5000)
+      }, actor);
+      return json(res, 201, { ok: true, entry });
+    }
+
+    if (req.method === 'DELETE' && url.pathname.startsWith('/admin/blacklist/')) {
+      const id = Number(url.pathname.split('/').pop());
+      if (!Number.isInteger(id) || id < 1) return json(res, 400, { ok: false, error: 'Ungültige Blacklist-ID.' });
+      const removed = await db.adminRemoveBlacklist(id, actor);
+      return removed ? json(res, 200, { ok: true }) : json(res, 404, { ok: false, error: 'Blacklist-Eintrag nicht gefunden.' });
+    }
+
+    if (req.method === 'GET' && url.pathname === '/admin/changelog') {
+      return json(res, 200, { ok: true, changelog: await db.adminChangelog(url.searchParams.get('limit')) });
+    }
+
     if (req.method === 'GET' && url.pathname === '/admin/activity') {
       return json(res, 200, { ok: true, activities: await db.adminActivities(url.searchParams.get('limit')) });
     }
