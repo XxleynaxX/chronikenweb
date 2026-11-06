@@ -306,7 +306,7 @@
     } else {
       const role = admin ? "Admin" : [healer && "Heiler", lib && "Bibliothek"].filter(Boolean).join(" · ") || "Mitglied";
       let links = "";
-      if (admin) links += '<a href="admin.html">🛡️ Verwaltung</a><a href="wetter.html">🌦️ Wetter</a>';
+      if (admin) links += '<a href="admin/index.html">🛡️ Verwaltung</a><a href="wetter.html">🌦️ Wetter</a>';
       if (admin || healer) links += '<a href="heilerakte.html">🩺 Heilerakte</a>';
       if (admin || lib) links += '<a href="bibliothek.html">📚 Bibliothek</a>';
       box.innerHTML = '<button type="button" class="nav-user" aria-haspopup="true" aria-expanded="false">' + LOGO +
