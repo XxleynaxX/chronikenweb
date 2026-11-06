@@ -11,6 +11,7 @@ const MOD_WEBHOOK = process.env.MOD_WEBHOOK || process.env.DISCORD_MOD_WEBHOOK |
 const MOD_WATCHER_SECRET = process.env.MOD_WATCHER_SECRET || '';
 
 const db = require('./db');
+const adminApi = require('./admin-api');
 const MAX_BODY = 10 * 1024 * 1024; // 10 MB pro Speichervorgang (MySQL max_allowed_packet beachten)
 
 function bearer(req) {
@@ -562,6 +563,12 @@ const server = http.createServer(async (req, res) => {
 
   const url = new URL(req.url, 'http://localhost');
 
+
+  // ===== Internes Admin-System (MySQL + Discord) =====
+  if (url.pathname.startsWith('/admin/')) {
+    const handled = await adminApi.handle(req, res, url, sessionFromRequest(req), process.env.ADMIN_TASK_WEBHOOK || '');
+    if (handled !== false) return;
+  }
 
   // ===== Chroniken-Daten (MySQL) =====
   // GET  /data         → alle Schlüssel { ok, data: { key: value } }   (öffentlich)
