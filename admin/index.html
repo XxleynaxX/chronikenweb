@@ -19,6 +19,7 @@
 <a class="active" href="index.html">🏠 Dashboard</a>
 <a href="aufgaben.html">📋 Aufgaben</a>
 <a href="projekte.html">📁 Projekte</a>
+<a href="charaktere.html">🛡️ Charakterverwaltung</a>
 <a href="blacklist.html">🚫 Spieler-Blacklist</a>
 <a href="aktivitaeten.html">📜 Aktivitäten</a>
 <a href="../index.html">↩ Zur Webseite</a>
@@ -34,35 +35,14 @@
 <section class="grid2"><div class="panel"><div class="panel-head"><h2>Aktuelle Aufgaben</h2><a class="btn small" href="aufgaben.html">Alle anzeigen</a></div><div id="tasks" class="task-list"></div></div><div class="panel"><div class="panel-head"><h2>Letzte Aktivitäten</h2><a class="btn small" href="aktivitaeten.html">Verlauf</a></div><div id="activity" class="activity-list"></div></div></section>
 <section class="panel"><div class="panel-head"><h2>📜 Changelog</h2><span class="muted">Was im Admin-System umgesetzt wurde</span></div><div id="changelog" class="activity-list"></div></section>
 
-<section id="charAdmin" class="panel">
-<div class="panel-head"><div><h2>🛡️ Charakterverwaltung</h2><span class="muted">Charakterbögen, laufende IDs, Verwarnungen und Regelverstöße</span></div><strong id="charAdminCount">0 Charaktere</strong></div>
-<div class="panel" style="margin-top:1rem;background:rgba(168,85,247,.04)">
-<h3 id="charAdminTitle">Neuer Charakterbogen</h3>
-<form id="charAdminForm"><input type="hidden" id="charAdminEditId">
-<div class="char-admin-grid">
-<div><label>Laufende ID</label><input id="charAdminId" readonly placeholder="wird automatisch vergeben"></div>
-<div><label>Charaktername *</label><input id="charAdminName" required placeholder="z. B. Elara Mondschatten"></div>
-<div><label>Spieler / OOC-Name</label><input id="charAdminPlayer"></div>
-<div><label>Steam-ID</label><input id="charAdminSteam"></div>
-<div><label>Volk / Rasse</label><input id="charAdminRace" placeholder="z. B. Mensch, Kitsune ..."></div>
-<div><label>Anzahl Verwarnungen</label><input id="charAdminWarnings" type="number" min="0" value="0"></div>
-<div><label>Status</label><select id="charAdminStatus"><option value="aktiv">Aktiv</option><option value="pausiert">Pausiert</option><option value="gesperrt">Gesperrt</option><option value="archiviert">Archiviert</option></select></div>
-<div class="char-admin-full"><label>Gegen welche Regel verstoßen?</label><textarea id="charAdminViolation" placeholder="z. B. Regel 4.2 – Metagaming ..."></textarea></div>
-<div class="char-admin-full"><label>Notizen (nur Admin sichtbar)</label><textarea id="charAdminNotes" placeholder="Interne Notizen, Kontext, Absprachen ..."></textarea></div>
-</div><div class="char-admin-actions"><button class="btn" id="charAdminSave">Speichern</button><button type="button" class="btn" id="charAdminCancel" hidden>Abbrechen</button></div>
-</form></div>
-
-<h3 style="margin-top:1.5rem">Registrierte Charakterbögen</h3>
-<div class="char-admin-table-wrap"><p id="charAdminEmpty" class="muted">Noch keine Charaktere angelegt.</p>
-<table class="char-admin-table" id="charAdminTable" hidden><thead><tr><th>ID</th><th>Charakter</th><th>Spieler</th><th>Steam-ID</th><th>Verwarnungen</th><th>Regelverstoß</th><th>Status</th><th></th></tr></thead><tbody id="charAdminBody"></tbody></table></div>
+<section class="panel">
+  <div class="panel-head">
+    <div><h2>🛡️ Charakterverwaltung</h2><span class="muted">Charakterbögen, laufende IDs, Verwarnungen und Regelverstöße</span></div>
+    <a class="btn small" href="charaktere.html">Charakterverwaltung öffnen</a>
+  </div>
 </section>
 </div>
 </main></div>
-
-<div id="charAdminSheetModal" class="sheet-modal" hidden><div class="sheet-box"><div class="panel-head"><h2>Charakterbogen</h2><button class="btn small" id="charAdminClose">Schließen</button></div><div id="charAdminSheetBody"></div><textarea id="charAdminSheetText" hidden></textarea><div class="char-admin-actions"><button class="btn" id="charAdminCopy">📋 Als Text kopieren</button><span id="charAdminCopyMsg" class="muted"></span></div></div></div>
 <script src="admin.js"></script>
 <script src="dashboard.js"></script>
-<script src="../chroniken-storage.js"></script>
-<script src="../chroniken-sync.js"></script>
-<script src="charakterverwaltung.js"></script>
 </body></html>
