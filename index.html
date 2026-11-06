@@ -555,6 +555,20 @@
 
       async function checkAdmin() {
         clearAdminUI();
+        // Nach dem Abmelden bleibt der Browser abgemeldet (wie der Login-Knopf),
+        // selbst wenn der Server-Cookie noch gültig sein sollte: nichts anzeigen
+        // und den Cookie serverseitig noch einmal löschen lassen.
+        let loggedOut = false;
+        try { loggedOut = !!localStorage.getItem("chroniken_logout"); } catch (e) {}
+        if (loggedOut) {
+          try {
+            sessionStorage.removeItem("portal_admin_auth");
+            sessionStorage.removeItem("portal_bibliothek_auth");
+            sessionStorage.removeItem("portal_heiler_auth");
+          } catch (e) {}
+          fetch(proxy + "/auth/logout", { method: "POST", cache: "no-store", credentials: "include", redirect: "manual" }).catch(function () {});
+          return;
+        }
         try {
           const res = await fetch(proxy + "/auth/me", {
             cache: "no-store",
