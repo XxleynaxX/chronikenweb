@@ -496,6 +496,12 @@
       function buildAdminUI() {
         if (!portalGates || !main) return;
 
+        // Doppelte Kacheln verhindern: mehrere checkAdmin()-Aufrufe können
+        // gleichzeitig laufen, daher vor dem Aufbau alles Vorhandene entfernen.
+        clearAdminUI();
+        document.querySelectorAll("#adminSection, .admin-dynamic-host, #weatherGate, #navAdmin")
+          .forEach(function (el) { el.remove(); });
+
         gate = document.createElement("div");
         gate.className = "admin-dynamic-host";
         gate.innerHTML = `
@@ -557,6 +563,30 @@
           const info = await res.json().catch(() => ({}));
           if (res.ok && info.ok && info.admin === true) {
             buildAdminUI();
+            // Menüleiste (Login-Knopf) mit der Server-Prüfung abgleichen:
+            // gültige Admin-Session, aber leerer sessionStorage → einmal neu laden.
+            let flagged = false, retried = false, loggedOut = false;
+            try {
+              flagged = sessionStorage.getItem("portal_admin_auth") === "1";
+              retried = sessionStorage.getItem("chroniken_admin_sync") === "1";
+              loggedOut = !!localStorage.getItem("chroniken_logout");
+            } catch (e) {}
+            if (!flagged && !retried && !loggedOut) {
+              try {
+                sessionStorage.setItem("portal_admin_auth", "1");
+                sessionStorage.setItem("portal_bibliothek_auth", "1");
+                sessionStorage.setItem("portal_heiler_auth", "1");
+                if (info.name) sessionStorage.setItem("chroniken_discord_name", info.name);
+                sessionStorage.setItem("chroniken_admin_sync", "1");
+                location.reload();
+              } catch (e) {}
+            }
+          } else {
+            // Kein Admin (oder nicht angemeldet): Admin-Flags entfernen, nichts anzeigen
+            try {
+              sessionStorage.removeItem("portal_admin_auth");
+              sessionStorage.removeItem("chroniken_admin_sync");
+            } catch (e) {}
           }
         } catch (e) {
           clearAdminUI();
