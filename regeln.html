@@ -28,6 +28,7 @@
     }
     .rule-card:hover { border-color: var(--accent-soft); background: var(--bg-hover); box-shadow: 0 0 20px rgba(168,85,247,.22); }
     .rule-card h3 { margin: 0 0 .3rem; color: var(--accent-soft); font-size: 1.25rem; }
+    .rule-card .rule-id { display:inline-block; margin-bottom:.45rem; padding:.18rem .45rem; border:1px solid var(--border); border-radius:6px; background:rgba(124,58,237,.08); color:var(--accent); font-family:monospace; font-size:.78rem; font-weight:700; }
     .rule-card .domain { font-size: .85rem; color: var(--accent); margin-bottom: .6rem; font-weight: 600; }
     .rule-card .short-text { font-size: .95rem; color: var(--text-muted); line-height: 1.55; }
     .rule-card .click-hint { font-size: .75rem; color: var(--purple); margin-top: .7rem; }
@@ -715,6 +716,80 @@ Dein Regeltext kommt hier hinein.
       return result;
     }
 
+    function letterFromNumber(number) {
+      let n = Number(number) || 1;
+      let result = "";
+      while (n > 0) {
+        n--;
+        result = String.fromCharCode(65 + (n % 26)) + result;
+        n = Math.floor(n / 26);
+      }
+      return result;
+    }
+
+    function ensureRuleIds(data) {
+      const result = data && typeof data === "object" ? data : {};
+      const usedSections = new Set();
+      const usedLetters = {};
+
+      Object.keys(result).forEach(category => {
+        if (!Array.isArray(result[category])) return;
+        usedLetters[category] = new Set();
+
+        result[category].forEach(rule => {
+          const id = String(rule?.id || "").trim();
+          const match = id.match(/^R-(\\d+)-([A-Z]+)$/i);
+          if (!match) return;
+
+          const section = Number(match[1]);
+          const letter = match[2].toUpperCase();
+
+          if (section > 0) usedSections.add(section);
+          usedLetters[category].add(letter);
+        });
+      });
+
+      let nextSection = usedSections.size
+        ? Math.max(...Array.from(usedSections)) + 1
+        : 1;
+
+      const categorySections = {};
+
+      Object.keys(result).forEach(category => {
+        if (!Array.isArray(result[category])) return;
+
+        const existing = result[category]
+          .map(rule => String(rule?.id || "").trim().match(/^R-(\\d+)-([A-Z]+)$/i))
+          .filter(Boolean);
+
+        if (existing.length) {
+          categorySections[category] = Number(existing[0][1]);
+        } else {
+          categorySections[category] = nextSection++;
+        }
+
+        let nextLetter = 1;
+
+        result[category].forEach(rule => {
+          if (!rule || typeof rule !== "object") return;
+
+          const current = String(rule.id || "").trim();
+          if (/^R-\\d+-[A-Z]+$/i.test(current)) return;
+
+          while (usedLetters[category].has(letterFromNumber(nextLetter))) {
+            nextLetter++;
+          }
+
+          const letter = letterFromNumber(nextLetter);
+          rule.id = `R-${categorySections[category]}-${letter}`;
+          usedLetters[category].add(letter);
+          nextLetter++;
+        });
+      });
+
+      return result;
+    }
+
     function categoryKey(name) {
       const value = String(name || "").trim();
       if (!value) return "";
@@ -1065,6 +1140,7 @@ Dein Regeltext kommt hier hinein.
       card.className = "rule-card" + (expandedKey === key ? " expanded" : "");
 
       card.innerHTML = `
+        <div class="rule-id">${esc(item.id || "")}</div>
         <h3>${esc(item.name || "Unbenannte Regel")}</h3>
         <div class="domain">${esc(item.domain || "")}</div>
         ${item.short ? `<p class="short-text">${esc(item.short)}</p>` : ""}
@@ -1099,6 +1175,7 @@ Dein Regeltext kommt hier hinein.
       let data = getData();
       data = cleanAndSplitRules(data);
       data = reorganizeRules(data);
+      data = ensureRuleIds(data);
 
       el("adminPanel").style.display = admin() ? "block" : "none";
 
@@ -1135,7 +1212,7 @@ Dein Regeltext kommt hier hinein.
     }
 
     function startEdit(category, index) {
-      const data = reorganizeRules(getData());
+      const data = ensureRuleIds(reorganizeRules(getData()));
       const rule = data[category]?.[index];
       if (!rule) return;
 
@@ -1162,6 +1239,7 @@ Dein Regeltext kommt hier hinein.
       data[category].splice(index, 1);
 
       try {
+        ensureRuleIds(data);
         await ChronikenData.save(KEY, data);
         if (editCategory === category && editIndex === index) resetForm();
         expandedKey = null;
@@ -1195,7 +1273,7 @@ Dein Regeltext kommt hier hinein.
         return;
       }
 
-      const data = reorganizeRules(cleanAndSplitRules(getData()));
+      const data = ensureRuleIds(reorganizeRules(cleanAndSplitRules(getData())));
       const entry = { name, domain, full };
 
       if (editCategory !== null && editIndex !== null && data[editCategory]?.[editIndex]) {
@@ -1249,6 +1327,8 @@ Dein Regeltext kommt hier hinein.
 
       if (admin()) {
         data = cleanAndSplitRules(data);
+        data = reorganizeRules(data);
+        data = ensureRuleIds(data);
         if (JSON.stringify(data) !== before || getLocalData()) {
           try {
             await ChronikenData.save(KEY, data);
