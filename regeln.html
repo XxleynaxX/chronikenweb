@@ -29,6 +29,7 @@
     .rule-card:hover { border-color: var(--accent-soft); background: var(--bg-hover); box-shadow: 0 0 20px rgba(168,85,247,.22); }
     .rule-card h3 { margin: 0 0 .3rem; color: var(--accent-soft); font-size: 1.25rem; }
     .rule-card .rule-id { display:inline-block; margin-bottom:.45rem; padding:.18rem .45rem; border:1px solid var(--border); border-radius:6px; background:rgba(124,58,237,.08); color:var(--accent); font-family:monospace; font-size:.78rem; font-weight:700; }
+    .inline-rule-id { display:inline-block; margin-right:.35rem; padding:.08rem .3rem; border:1px solid var(--border); border-radius:4px; background:rgba(124,58,237,.08); color:var(--accent); font-family:monospace; font-size:.72rem; font-weight:700; vertical-align:baseline; }
     .rule-card .domain { font-size: .85rem; color: var(--accent); margin-bottom: .6rem; font-weight: 600; }
     .rule-card .short-text { font-size: .95rem; color: var(--text-muted); line-height: 1.55; }
     .rule-card .click-hint { font-size: .75rem; color: var(--purple); margin-top: .7rem; }
@@ -716,6 +717,19 @@ Dein Regeltext kommt hier hinein.
       return result;
     }
 
+    const RULE_SECTION_NUMBERS = {
+      bau: 1,
+      rp: 2,
+      erp: 3,
+      gefangenschaft: 4,
+      stadt: 5,
+      charakter: 6,
+      magie: 7,
+      abwesenheit: 8,
+      chat: 9,
+      begriffe: 10
+    };
+
     function letterFromNumber(number) {
       let n = Number(number) || 1;
       let result = "";
@@ -727,67 +741,25 @@ Dein Regeltext kommt hier hinein.
       return result;
     }
 
+    function ruleId(category, number) {
+      const section = RULE_SECTION_NUMBERS[category] || 99;
+      return `R-${section}-${letterFromNumber(number)}`;
+    }
+
+    function addRuleIdsToHtml(html, category, counter) {
+      let next = counter;
+      const source = String(html || "");
+
+      const result = source.replace(/<li(\\s[^>]*)?>/gi, match => {
+        const id = ruleId(category, next++);
+        return `<li${match.slice(3, -1)}><span class="inline-rule-id">${esc(id)}</span> `;
+      });
+
+      return { html: result, next };
+    }
+
     function ensureRuleIds(data) {
-      const result = data && typeof data === "object" ? data : {};
-      const usedSections = new Set();
-      const usedLetters = {};
-
-      Object.keys(result).forEach(category => {
-        if (!Array.isArray(result[category])) return;
-        usedLetters[category] = new Set();
-
-        result[category].forEach(rule => {
-          const id = String(rule?.id || "").trim();
-          const match = id.match(/^R-(\\d+)-([A-Z]+)$/i);
-          if (!match) return;
-
-          const section = Number(match[1]);
-          const letter = match[2].toUpperCase();
-
-          if (section > 0) usedSections.add(section);
-          usedLetters[category].add(letter);
-        });
-      });
-
-      let nextSection = usedSections.size
-        ? Math.max(...Array.from(usedSections)) + 1
-        : 1;
-
-      const categorySections = {};
-
-      Object.keys(result).forEach(category => {
-        if (!Array.isArray(result[category])) return;
-
-        const existing = result[category]
-          .map(rule => String(rule?.id || "").trim().match(/^R-(\\d+)-([A-Z]+)$/i))
-          .filter(Boolean);
-
-        if (existing.length) {
-          categorySections[category] = Number(existing[0][1]);
-        } else {
-          categorySections[category] = nextSection++;
-        }
-
-        let nextLetter = 1;
-
-        result[category].forEach(rule => {
-          if (!rule || typeof rule !== "object") return;
-
-          const current = String(rule.id || "").trim();
-          if (/^R-\\d+-[A-Z]+$/i.test(current)) return;
-
-          while (usedLetters[category].has(letterFromNumber(nextLetter))) {
-            nextLetter++;
-          }
-
-          const letter = letterFromNumber(nextLetter);
-          rule.id = `R-${categorySections[category]}-${letter}`;
-          usedLetters[category].add(letter);
-          nextLetter++;
-        });
-      });
-
-      return result;
+      return data && typeof data === "object" ? data : {};
     }
 
     function categoryKey(name) {
@@ -1140,7 +1112,6 @@ Dein Regeltext kommt hier hinein.
       card.className = "rule-card" + (expandedKey === key ? " expanded" : "");
 
       card.innerHTML = `
-        <div class="rule-id">${esc(item.id || "")}</div>
         <h3>${esc(item.name || "Unbenannte Regel")}</h3>
         <div class="domain">${esc(item.domain || "")}</div>
         ${item.short ? `<p class="short-text">${esc(item.short)}</p>` : ""}
@@ -1193,7 +1164,13 @@ Dein Regeltext kommt hier hinein.
         `;
 
         const grid = section.querySelector(".rule-grid");
-        data[category].forEach((item, i) => grid.appendChild(makeCard(item, category, i)));
+        let ruleCounter = 1;
+        data[category].forEach((item, i) => {
+          const prepared = addRuleIdsToHtml(item.full || item.short || "", category, ruleCounter);
+          ruleCounter = prepared.next;
+          const itemCopy = { ...item, full: prepared.html };
+          grid.appendChild(makeCard(itemCopy, category, i));
+        });
         sections.appendChild(section);
       });
     }
