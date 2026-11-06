@@ -68,10 +68,33 @@
 
   function violationTexts(char){
     if(Array.isArray(char?.violationDetails)&&char.violationDetails.length){
-      return char.violationDetails.map(x=>String(x).replace(/^[A-Z0-9-]+\s*·\s*/,"")).filter(Boolean);
+      const details=char.violationDetails.map(x=>String(x).replace(/^[A-Z0-9-]+\s*·\s*/,"").trim()).filter(Boolean);
+      if(details.length)return details;
     }
-    const ids=Array.isArray(char?.violationIds)&&char.violationIds.length?char.violationIds:parseViolationIds(char?.violation||"");
+    const ids=Array.isArray(char?.violationIds)&&char.violationIds.length
+      ?char.violationIds
+      :parseViolationIds(char?.violation||"");
     return ids.map(id=>ruleIndex[id]?.text||"").filter(Boolean);
+  }
+
+  async function violationTextsForNotification(char){
+    let texts=violationTexts(char);
+    if(texts.length)return texts;
+
+    // Regelindex bei Bedarf direkt vor der Discord-Nachricht neu laden.
+    // So funktionieren auch ältere gespeicherte Charaktere, die noch
+    // keine violationDetails besitzen.
+    ruleIndex=await loadRuleIndex();
+    texts=violationTexts(char);
+
+    // Falls der Datensatz bereits den vollständigen Regeltext gespeichert hat,
+    // diesen genauso verwenden wie in "Registrierte Charakterbögen".
+    if(!texts.length&&Array.isArray(char?.violationDetails)){
+      texts=char.violationDetails
+        .map(x=>String(x).replace(/^[A-Z0-9-]+\s*·\s*/,"").trim())
+        .filter(Boolean);
+    }
+    return texts;
   }
 
   function updateViolationPreview(){
@@ -87,17 +110,43 @@
 
 
   async function notify(type,char){
-    try{await fetch(CHARACTER_PROXY_URL,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({username:"Chroniken Admin",embeds:[{
-      title:type==="created"?"🆕 Charakter angelegt":type==="violation"?"⚠️ Regelverstoß / Verwarnung":type==="deleted"?"🗑️ Charakter gelöscht":"✏️ Charakter bearbeitet",
-      color:type==="violation"?0xe11d48:type==="deleted"?0x6b7280:type==="created"?0x22c55e:0xa855f7,
-      fields:[
-        {name:"ID",value:char.id||"—",inline:true},{name:"Charakter",value:char.name||"—",inline:true},
-        {name:"Spieler",value:char.player||"—",inline:true},{name:"Steam-ID",value:char.steamId||"—",inline:true},
-        {name:"Volk",value:char.race||"—",inline:true},{name:"Status",value:char.status||"aktiv",inline:true},
-        {name:"Verwarnungen",value:String(char.warnings??0),inline:true},
-        ...(violationTexts(char).length?[{name:"Regelverstoß",value:violationTexts(char).join("\n").slice(0,1800),inline:false}]:[])
-      ],footer:{text:"Chroniken · Charakterverwaltung"},timestamp:new Date().toISOString()
-    }]})})}catch(e){console.warn("Charakter-Proxy:",e)}
+    try{
+      const violations=await violationTextsForNotification(char);
+      const fields=[
+        {name:"ID",value:char.id||"—",inline:true},
+        {name:"Charakter",value:char.name||"—",inline:true},
+        {name:"Spieler",value:char.player||"—",inline:true},
+        {name:"Steam-ID",value:char.steamId||"—",inline:true},
+        {name:"Volk",value:char.race||"—",inline:true},
+        {name:"Status",value:char.status||"aktiv",inline:true},
+        {name:"Verwarnungen",value:String(char.warnings??0),inline:true}
+      ];
+
+      // In Discord genauso anzeigen wie unter "Registrierte Charakterbögen":
+      // nur der eigentliche Regeltext, niemals die Regel-ID.
+      if(violations.length){
+        fields.push({
+          name:"Regelverstoß",
+          value:violations.join("\n").slice(0,1800),
+          inline:false
+        });
+      }
+
+      await fetch(CHARACTER_PROXY_URL,{
+        method:"POST",
+        headers:{"Content-Type":"application/json"},
+        body:JSON.stringify({
+          username:"Chroniken Admin",
+          embeds:[{
+            title:type==="created"?"🆕 Charakter angelegt":type==="violation"?"⚠️ Regelverstoß / Verwarnung":type==="deleted"?"🗑️ Charakter gelöscht":"✏️ Charakter bearbeitet",
+            color:type==="violation"?0xe11d48:type==="deleted"?0x6b7280:type==="created"?0x22c55:0xa855f7,
+            fields,
+            footer:{text:"Chroniken · Charakterverwaltung"},
+            timestamp:new Date().toISOString()
+          }]
+        })
+      });
+    }catch(e){console.warn("Charakter-Proxy:",e)}
   }
 
   async function remoteChars(){
