@@ -501,7 +501,23 @@ async function adminDeleteTask(id, actor) {
 }
 async function adminProjects() {
   await ensureAdminSchema();
-  const [rows]=await getPool().query('SELECT * FROM admin_projects ORDER BY status, name'); return rows;
+  const [rows]=await getPool().query(`
+    SELECT p.*,
+      COUNT(t.id) AS task_count,
+      COALESCE(SUM(t.status='done'),0) AS done_count,
+      COALESCE(SUM(t.status='working'),0) AS working_count,
+      COALESCE(SUM(t.status='open'),0) AS open_count
+    FROM admin_projects p
+    LEFT JOIN admin_tasks t ON t.project_id=p.id
+    GROUP BY p.id
+    ORDER BY p.status, p.name
+  `);
+  return rows.map(r => ({...r,
+    task_count:Number(r.task_count)||0,
+    done_count:Number(r.done_count)||0,
+    working_count:Number(r.working_count)||0,
+    open_count:Number(r.open_count)||0
+  }));
 }
 async function adminCreateProject(p, actor) {
   await ensureAdminSchema();
