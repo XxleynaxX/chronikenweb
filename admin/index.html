@@ -1,0 +1,43 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Die Chroniken · Admin Dashboard</title>
+<link rel="stylesheet" href="admin.css">
+</head>
+<body>
+<div class="shell">
+<aside class="sidebar">
+  <div class="brand">Die Chroniken <small>Admin</small></div>
+  <nav>
+    <a class="active" href="index.html">🏠 Dashboard</a>
+    <a href="aufgaben.html">📋 Aufgaben</a>
+    <a href="projekte.html">📁 Projekte</a>
+    <a href="team.html">👥 Team</a>
+    <a href="aktivitaeten.html">📜 Aktivitäten</a>
+    <a href="../index.html">↩ Zur Webseite</a>
+  </nav>
+</aside>
+<main class="main">
+<header class="top"><div><h1>Admin Dashboard</h1><p>Auf einen Blick: offen, in Arbeit und fertig.</p></div><div class="user" id="user">Lade Anmeldung …</div></header>
+<section id="locked" class="panel locked" hidden><h2>🔒 Nur für Admins</h2><p>Dieser Bereich benötigt die Discord-Adminrolle.</p><a class="btn" id="login">Mit Discord anmelden</a></section>
+<div id="app" hidden>
+<section class="stats">
+  <article><span>📋</span><strong id="total">0</strong><small>Aufgaben gesamt</small></article>
+  <article><span>⚪</span><strong id="open">0</strong><small>Offen</small></article>
+  <article><span>🟡</span><strong id="working">0</strong><small>In Arbeit</small></article>
+  <article><span>🔵</span><strong id="waiting">0</strong><small>Wartet</small></article>
+  <article><span>🔴</span><strong id="blocked">0</strong><small>Blockiert</small></article>
+  <article><span>🟢</span><strong id="done">0</strong><small>Fertig</small></article>
+</section>
+<section class="grid2">
+  <div class="panel"><div class="panel-head"><h2>Aktuelle Aufgaben</h2><a class="btn small" href="aufgaben.html">Alle anzeigen</a></div><div id="tasks" class="task-list"></div></div>
+  <div class="panel"><div class="panel-head"><h2>Letzte Aktivitäten</h2><a class="btn small" href="aktivitaeten.html">Verlauf</a></div><div id="activity" class="activity-list"></div></div>
+</section>
+<section class="panel"><div class="panel-head"><h2>Discord-Team</h2><a class="btn small" href="team.html">Team verwalten</a></div><div id="team" class="team-list"></div></section>
+</div>
+</main>
+</div>
+<script src="admin.js"></script>
+<script src="dashboard.js"></script>
+</body></html>
