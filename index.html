@@ -476,7 +476,6 @@
       let section = null;
       let gate = null;
       let weatherGate = null;
-      let navAdmin = null;
 
       const portalGates = document.querySelector(".portal-gates");
       const main = document.querySelector(".portal-main");
@@ -486,11 +485,9 @@
         if (section) section.remove();
         if (gate) gate.remove();
         if (weatherGate) weatherGate.remove();
-        if (navAdmin) navAdmin.remove();
         section = null;
         gate = null;
         weatherGate = null;
-        navAdmin = null;
       }
 
       function buildAdminUI() {
@@ -519,14 +516,6 @@
         section.className = "admin-section";
         section.id = "adminSection";
         main.appendChild(section);
-
-        navAdmin = document.createElement("a");
-        navAdmin.href = "admin/index.html";
-        navAdmin.id = "navAdmin";
-        navAdmin.dataset.adminOnly = "true";
-        navAdmin.textContent = "Admin";
-        const nav = document.querySelector("header nav");
-        if (nav) nav.appendChild(navAdmin);
 
         section.innerHTML = `
           <h2>🛡️ Administration</h2>
