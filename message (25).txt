@@ -6,6 +6,7 @@ const {
   Partials,
   ActivityType
 } = require('discord.js');
+const http = require('http');
 
 loadEnv(path.join(__dirname, 'config.env'));
 
@@ -13,6 +14,8 @@ const TOKEN = process.env.DISCORD_BOT_TOKEN;
 const GUILD_ID = process.env.DISCORD_GUILD_ID || '';
 const CHANNEL_ID = process.env.DISCORD_CHANNEL_ID || '';
 const JSONBIN_KEY = process.env.JSONBIN_ACCESS_KEY || '';
+const BOT_API_PORT = Number(process.env.BOT_API_PORT || 14071);
+const BOT_API_SECRET = process.env.BOT_API_SECRET || '';
 
 const SITE = 'https://xxleynaxx.github.io/chronikenweb/';
 const DATA_JS = SITE + 'chroniken-data.js';
@@ -997,8 +1000,7 @@ const ALIASES = {
   events: [
     'event',
     'events',
-    'veranstaltung'
-  ],
+    'veranstaltung'  ],
 
   karte: [
     'karte',
@@ -1997,7 +1999,6 @@ Oder schreib **Hilfe**.`;
     if (d.structured) {
       const formatted =
         formatEntity(d.structured);
-
       if (formatted) {
         lines.push(formatted);
         continue;
@@ -2307,7 +2308,9 @@ const client = new Client({
   intents: [
     GatewayIntentBits.Guilds,
     GatewayIntentBits.GuildMessages,
-    GatewayIntentBits.MessageContent
+    GatewayIntentBits.MessageContent,
+    GatewayIntentBits.GuildMembers,
+    GatewayIntentBits.GuildPresences
   ],
 
   partials: [
@@ -2475,6 +2478,146 @@ client.on(
         e
       );
     }
+  }
+);
+
+// ============================================================
+// CHRONIKEN TEAM API
+// ============================================================
+
+function teamMemberData(member) {
+  return {
+    id: member.id,
+    name:
+      member.user?.username ||
+      member.displayName ||
+      'Unbekannt',
+    displayName:
+      member.displayName ||
+      member.user?.globalName ||
+      member.user?.username ||
+      'Unbekannt',
+    avatar: member.displayAvatarURL({
+      extension: 'png',
+      size: 128
+    }),
+    status:
+      member.presence?.status ||
+      'offline',
+    roles: member.roles.cache
+      .filter(role => role.id !== member.guild.id)
+      .sort((a, b) => b.position - a.position)
+      .map(role => role.name)
+  };
+}
+
+async function getTeamMembers() {
+  if (!GUILD_ID) {
+    throw new Error('DISCORD_GUILD_ID fehlt.');
+  }
+
+  const guild = client.guilds.cache.get(GUILD_ID);
+
+  if (!guild) {
+    throw new Error(
+      `Discord-Server ${GUILD_ID} wurde nicht gefunden.`
+    );
+  }
+
+  await guild.members.fetch();
+
+  return [...guild.members.cache.values()]
+    .filter(member => !member.user.bot)
+    .map(teamMemberData)
+    .sort((a, b) =>
+      a.displayName.localeCompare(
+        b.displayName,
+        'de',
+        { sensitivity: 'base' }
+      )
+    );
+}
+
+function sendTeamJson(res, status, data) {
+  const body = JSON.stringify(data);
+
+  res.writeHead(status, {
+    'Content-Type': 'application/json; charset=utf-8',
+    'Content-Length': Buffer.byteLength(body),
+    'Cache-Control': 'no-store'
+  });
+
+  res.end(body);
+}
+
+const teamApiServer = http.createServer(async (req, res) => {
+  try {
+    if (req.method !== 'GET') {
+      return sendTeamJson(res, 405, {
+        ok: false,
+        error: 'METHOD_NOT_ALLOWED'
+      });
+    }
+
+    const url = new URL(
+      req.url,
+      `http://${req.headers.host || '127.0.0.1'}`
+    );
+
+    if (url.pathname !== '/api/team') {
+      return sendTeamJson(res, 404, {
+        ok: false,
+        error: 'NOT_FOUND'
+      });
+    }
+
+    if (BOT_API_SECRET) {
+      const receivedSecret =
+        req.headers['x-bot-api-key'] || '';
+
+      if (receivedSecret !== BOT_API_SECRET) {
+        return sendTeamJson(res, 401, {
+          ok: false,
+          error: 'UNAUTHORIZED'
+        });
+      }
+    }
+
+    if (!client.isReady()) {
+      return sendTeamJson(res, 503, {
+        ok: false,
+        error: 'DISCORD_NOT_READY'
+      });
+    }
+
+    const members = await getTeamMembers();
+
+    return sendTeamJson(res, 200, {
+      ok: true,
+      count: members.length,
+      members
+    });
+  } catch (error) {
+    console.error(
+      'Team-API Fehler:',
+      error?.stack || error?.message || error
+    );
+
+    return sendTeamJson(res, 500, {
+      ok: false,
+      error: 'TEAM_API_ERROR',
+      message: error?.message || 'Unbekannter Fehler'
+    });
+  }
+});
+
+teamApiServer.listen(
+  BOT_API_PORT,
+  '0.0.0.0',
+  () => {
+    console.log(
+      `Chroniken Team-API läuft auf Port ${BOT_API_PORT}`
+    );
   }
 );
 
