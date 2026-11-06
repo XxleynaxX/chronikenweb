@@ -159,7 +159,7 @@ async function handle(req, res, url, session, webhook) {
         title: clip(b.title, 255),
         description: clip(b.description, 10000),
         project_id: Number(b.project_id) || null,
-        assigned_discord_id: clip(b.assigned_discord_id, 32) || clip(session.discordId || session.id, 32) || null,
+        assigned_discord_id: clip(b.assigned_discord_id, 32) || clip(session.sub || session.discordId || session.id, 32) || null,
         status: ['open','working','waiting','blocked','done'].includes(b.status) ? b.status : 'open',
         priority: ['low','normal','high','critical'].includes(b.priority) ? b.priority : 'normal',
         due_date: clip(b.due_date, 30)
@@ -205,7 +205,7 @@ async function handle(req, res, url, session, webhook) {
       const comment = clip(b.comment, 5000);
       if (!comment) return json(res, 400, { ok: false, error: 'Kommentar fehlt.' });
       if (!await db.adminTask(id)) return json(res, 404, { ok: false, error: 'Aufgabe nicht gefunden.' });
-      await db.adminAddComment(id, clip(session.discordId || session.id || actor, 32), comment);
+      await db.adminAddComment(id, clip(session.sub || session.discordId || session.id || actor, 32), comment);
       const task = await db.adminTask(id);
       await notify(webhook, commentEmbed(task, comment, actor));
       return json(res, 201, { ok: true, task });
@@ -278,7 +278,7 @@ async function handle(req, res, url, session, webhook) {
     }
 
     if (req.method === 'GET' && url.pathname === '/admin/team') {
-      return json(res, 200, { ok: true, members: await discordTeam(), current: { name: session.name || '', id: session.discordId || session.id || '' } });
+      return json(res, 200, { ok: true, members: await discordTeam(), current: { name: session.name || '', id: session.sub || session.discordId || session.id || '' } });
     }
 
     return false;
