@@ -36,6 +36,33 @@
     try{
       const data=await api('/admin/projects');
       list=Array.isArray(data.projects)?data.projects:[];
+
+      // Fallback: falls der Backend-Deploy die Statistik noch nicht liefert,
+      // berechnen wir sie direkt aus den gespeicherten Aufgaben.
+      let tasks=[];
+      try{
+        const taskData=await api('/admin/tasks');
+        tasks=Array.isArray(taskData.tasks)?taskData.tasks:[];
+      }catch{}
+      const stats={};
+      tasks.forEach(t=>{
+        const id=String(t.project_id||'');
+        if(!id)return;
+        if(!stats[id])stats[id]={task_count:0,done_count:0,working_count:0,open_count:0};
+        stats[id].task_count++;
+        if(t.status==='done')stats[id].done_count++;
+        else if(t.status==='working')stats[id].working_count++;
+        else if(t.status==='open')stats[id].open_count++;
+      });
+      list=list.map(p=>{
+        const s=stats[String(p.id)]||{};
+        return {...p,
+          task_count:Number(p.task_count)||Number(s.task_count)||0,
+          done_count:Number(p.done_count)||Number(s.done_count)||0,
+          working_count:Number(p.working_count)||Number(s.working_count)||0,
+          open_count:Number(p.open_count)||Number(s.open_count)||0
+        };
+      });
       listEl.innerHTML=list.length
         ? list.map(p=>'<div class="row" style="padding:15px 0;border-bottom:1px solid #29203b;display:flex;justify-content:space-between;gap:15px"><div><strong>'+esc(p.name)+'</strong><div class="muted">'+esc(p.description||'')+' · '+esc(p.status)+'</div><div class="muted" style="margin-top:7px">→ '+Number(p.task_count||0)+' Aufgaben &nbsp; · &nbsp; ✓ '+Number(p.done_count||0)+' erledigt &nbsp; · &nbsp; 🔧 '+Number(p.working_count||0)+' in Arbeit &nbsp; · &nbsp; ○ '+Number(p.open_count||0)+' offen</div></div><div><button type="button" class="btn small" data-e="'+p.id+'">Bearbeiten</button> <button type="button" class="btn small" data-d="'+p.id+'">Löschen</button></div></div>').join('')
         : '<div class="muted">Noch keine Projekte.</div>';
