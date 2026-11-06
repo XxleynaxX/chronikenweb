@@ -127,7 +127,7 @@
     empty.hidden=true;table.hidden=false;
     body.innerHTML=list.slice().sort((a,b)=>(a.id||"").localeCompare(b.id||"")).map(c=>{
       const w=Number(c.warnings)||0;
-      const violationText=Array.isArray(c.violationDetails)&&c.violationDetails.length?c.violationDetails.map(x=>String(x).replace(/^[A-Z0-9-]+\\s*·\\s*/,"")).join("<br>"):c.violation||"—";
+      const violationText=Array.isArray(c.violationDetails)&&c.violationDetails.length?c.violationDetails.map(x=>String(x).replace(/^[A-Z0-9-]+\s*·\s*/,"")).join("<br>"):c.violation||"—";
       return '<tr><td><strong class="char-id">'+esc(c.id)+'</strong></td><td><strong>'+esc(c.name)+'</strong><div class="muted">'+esc(c.race||"")+'</div></td><td>'+esc(c.player||"—")+'</td><td>'+esc(c.steamId||"—")+'</td><td><span class="warn-badge '+(w===0?"zero":"")+'">'+w+'</span></td><td>'+violationText+'</td><td>'+esc(c.status||"aktiv")+'</td><td class="char-actions"><button class="btn small" data-sheet="'+esc(c.id)+'">Bogen</button><button class="btn small" data-edit="'+esc(c.id)+'">Bearbeiten</button><button class="btn small danger" data-delete="'+esc(c.id)+'">Löschen</button></td></tr>'
     }).join("");
     body.querySelectorAll("[data-sheet]").forEach(b=>b.onclick=()=>openSheet(b.dataset.sheet));
