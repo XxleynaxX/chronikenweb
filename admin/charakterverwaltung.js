@@ -43,7 +43,7 @@
               id,
               category,
               title:item.name||"Regel",
-              text:(li.textContent||"").replace(/\\s+/g," ").trim()
+              text:(li.textContent||"").replace(/\s+/g," ").trim()
             };
           });
         });
@@ -58,7 +58,7 @@
   let ruleIndex={};
 
   function parseViolationIds(value){
-    return [...new Set(String(value||"").toUpperCase().split(/[,,;\\s]+/).map(x=>x.trim()).filter(Boolean))];
+    return [...new Set(String(value||"").toUpperCase().split(/[,,;\s]+/).map(x=>x.trim()).filter(Boolean))];
   }
 
   function resolveViolations(value){
@@ -88,7 +88,7 @@
         {name:"Volk",value:char.race||"—",inline:true},{name:"Status",value:char.status||"aktiv",inline:true},
         {name:"Verwarnungen",value:String(char.warnings??0),inline:true},
         ...(char.violation?[{name:"Regelverstoß",value:String(char.violation).slice(0,1000),inline:false}]:[]),
-        ...(Array.isArray(char.violationDetails)&&char.violationDetails.length?[{name:"Betroffene Regeln",value:char.violationDetails.join("\\n").slice(0,1800),inline:false}]:[])
+        ...(Array.isArray(char.violationDetails)&&char.violationDetails.length?[{name:"Betroffene Regeln",value:char.violationDetails.join("\n").slice(0,1800),inline:false}]:[])
       ],footer:{text:"Chroniken · Charakterverwaltung"},timestamp:new Date().toISOString()
     }]})})}catch(e){console.warn("Charakter-Proxy:",e)}
   }
