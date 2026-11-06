@@ -12,6 +12,71 @@
   const nextId=()=>{let n=parseInt(localStorage.getItem(NEXT_ID_KEY)||"1",10);if(!Number.isFinite(n)||n<1)n=1;localStorage.setItem(NEXT_ID_KEY,String(n+1));return"CH-"+String(n).padStart(4,"0")};
   const esc=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"}[c]));
   const get=id=>document.getElementById(id);
+  const RULE_SECTION_NUMBERS={bau:1,rp:2,erp:3,gefangenschaft:4,stadt:5,charakter:6,magie:7,abwesenheit:8,chat:9,begriffe:10};
+
+  function letterFromNumber(n){
+    let result="";
+    n=Number(n)||1;
+    while(n>0){n--;result=String.fromCharCode(65+(n%26))+result;n=Math.floor(n/26)}
+    return result;
+  }
+
+  function categoryRuleId(category,n){
+    const section=RULE_SECTION_NUMBERS[category];
+    return section ? "R-"+section+"-"+letterFromNumber(n) : "";
+  }
+
+  async function loadRuleIndex(){
+    try{
+      const data=await ChronikenData.load("regeln");
+      const index={};
+      Object.keys(data||{}).forEach(category=>{
+        if(!Array.isArray(data[category]))return;
+        let n=1;
+        data[category].forEach(item=>{
+          const holder=document.createElement("div");
+          holder.innerHTML=String(item.full||item.short||"");
+          holder.querySelectorAll("li").forEach(li=>{
+            const id=categoryRuleId(category,n++);
+            if(!id)return;
+            index[id]={
+              id,
+              category,
+              title:item.name||"Regel",
+              text:(li.textContent||"").replace(/\\s+/g," ").trim()
+            };
+          });
+        });
+      });
+      return index;
+    }catch(e){
+      console.warn("Regelindex konnte nicht geladen werden:",e);
+      return {};
+    }
+  }
+
+  let ruleIndex={};
+
+  function parseViolationIds(value){
+    return [...new Set(String(value||"").toUpperCase().split(/[,,;\\s]+/).map(x=>x.trim()).filter(Boolean))];
+  }
+
+  function resolveViolations(value){
+    const ids=parseViolationIds(value);
+    return ids.map(id=>ruleIndex[id]||{id,text:"Unbekannte Regel-ID"});
+  }
+
+  function updateViolationPreview(){
+    const field=get("charAdminViolation"), preview=get("charAdminViolationResolved");
+    if(!field||!preview)return;
+    const ids=parseViolationIds(field.value);
+    if(!ids.length){preview.textContent="";return}
+    const resolved=resolveViolations(field.value);
+    preview.innerHTML=resolved.map(r=>r.text==="Unbekannte Regel-ID"
+      ? '<div style="color:#fb7185"><strong>'+esc(r.id)+'</strong> · Unbekannte Regel-ID</div>'
+      : '<div><strong class="char-id">'+esc(r.id)+'</strong> · '+esc(r.text)+'</div>').join("");
+  }
+
 
   async function notify(type,char){
     try{await fetch(CHARACTER_PROXY_URL,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({username:"Chroniken Admin",embeds:[{
@@ -22,7 +87,8 @@
         {name:"Spieler",value:char.player||"—",inline:true},{name:"Steam-ID",value:char.steamId||"—",inline:true},
         {name:"Volk",value:char.race||"—",inline:true},{name:"Status",value:char.status||"aktiv",inline:true},
         {name:"Verwarnungen",value:String(char.warnings??0),inline:true},
-        ...(char.violation?[{name:"Regelverstoß",value:String(char.violation).slice(0,1000),inline:false}]:[])
+        ...(char.violation?[{name:"Regelverstoß",value:String(char.violation).slice(0,1000),inline:false}]:[]),
+        ...(Array.isArray(char.violationDetails)&&char.violationDetails.length?[{name:"Betroffene Regeln",value:char.violationDetails.join("\\n").slice(0,1800),inline:false}]:[])
       ],footer:{text:"Chroniken · Charakterverwaltung"},timestamp:new Date().toISOString()
     }]})})}catch(e){console.warn("Charakter-Proxy:",e)}
   }
@@ -80,7 +146,7 @@
     const c=(await remoteChars()).find(x=>x.id===id);if(!c)return;
     get("charAdminEditId").value=c.id;get("charAdminId").value=c.id;get("charAdminName").value=c.name||"";
     get("charAdminPlayer").value=c.player||"";get("charAdminSteam").value=c.steamId||"";get("charAdminRace").value=c.race||"";
-    get("charAdminWarnings").value=c.warnings??0;get("charAdminStatus").value=c.status||"aktiv";get("charAdminViolation").value=c.violation||"";get("charAdminNotes").value=c.notes||"";
+    get("charAdminWarnings").value=c.warnings??0;get("charAdminStatus").value=c.status||"aktiv";get("charAdminViolation").value=c.violationIds?.join(", ")||c.violation||"";updateViolationPreview();get("charAdminNotes").value=c.notes||"";
     get("charAdminTitle").textContent="Charakter bearbeiten · "+c.id;get("charAdminSave").textContent="Aktualisieren";get("charAdminCancel").hidden=false;
     get("charAdminName").focus();
   }
@@ -107,7 +173,11 @@
     get("charAdminForm").onsubmit=async e=>{
       e.preventDefault();const name=get("charAdminName").value.trim();if(!name)return;
       const list=await remoteChars(),editId=get("charAdminEditId").value,old=editId?list.find(c=>c.id===editId):null;
-      const payload={name,player:get("charAdminPlayer").value.trim(),steamId:get("charAdminSteam").value.trim(),race:get("charAdminRace").value,status:get("charAdminStatus").value,warnings:Math.max(0,parseInt(get("charAdminWarnings").value,10)||0),violation:get("charAdminViolation").value.trim(),notes:get("charAdminNotes").value.trim(),updatedAt:new Date().toISOString()};
+      const violationInput=get("charAdminViolation").value.trim();
+      const violationIds=parseViolationIds(violationInput);
+      const resolvedViolations=resolveViolations(violationInput);
+      const violationDetails=resolvedViolations.filter(r=>r.text!=="Unbekannte Regel-ID").map(r=>r.id+" · "+r.text);
+      const payload={name,player:get("charAdminPlayer").value.trim(),steamId:get("charAdminSteam").value.trim(),race:get("charAdminRace").value,status:get("charAdminStatus").value,warnings:Math.max(0,parseInt(get("charAdminWarnings").value,10)||0),violation:violationIds.join(", "),violationIds,violationDetails,notes:get("charAdminNotes").value.trim(),updatedAt:new Date().toISOString()};
       let saved,type="created";
       if(editId){const i=list.findIndex(c=>c.id===editId);if(i<0)return;list[i]={...list[i],...payload};saved=list[i];type=payload.violation!==old?.violation||payload.warnings>(Number(old?.warnings)||0)?"violation":"updated"}
       else{saved={id:nextId(),createdAt:new Date().toISOString(),...payload};list.push(saved)}
@@ -115,6 +185,9 @@
       try{await ChronikenSync.saveCharacter(saved)}catch(e){console.warn(e)}
       await notify(type,saved);resetForm();refresh();
     };
+    get("charAdminViolation").addEventListener("input",updateViolationPreview);
+    ruleIndex=await loadRuleIndex();
+    updateViolationPreview();
     get("charAdminCancel").onclick=resetForm;
     get("charAdminClose").onclick=()=>get("charAdminSheetModal").hidden=true;
     get("charAdminCopy").onclick=async()=>{try{await navigator.clipboard.writeText(get("charAdminSheetText").value);get("charAdminCopyMsg").textContent="✓ Kopiert"}catch{get("charAdminCopyMsg").textContent="Kopieren nicht möglich"}};
