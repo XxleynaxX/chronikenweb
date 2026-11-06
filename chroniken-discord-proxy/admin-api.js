@@ -159,7 +159,7 @@ async function handle(req, res, url, session, webhook) {
         title: clip(b.title, 255),
         description: clip(b.description, 10000),
         project_id: Number(b.project_id) || null,
-        assigned_discord_id: clip(b.assigned_discord_id, 32) || null,
+        assigned_discord_id: clip(b.assigned_discord_id, 32) || clip(session.discordId || session.id, 32) || null,
         status: ['open','working','waiting','blocked','done'].includes(b.status) ? b.status : 'open',
         priority: ['low','normal','high','critical'].includes(b.priority) ? b.priority : 'normal',
         due_date: clip(b.due_date, 30)
