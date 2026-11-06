@@ -200,6 +200,12 @@ async function getOne(key) {
 /** Mehrere Schlüssel in einer Transaktion schreiben: [{ key, value }] */
 async function setMany(entries) {
   await ensureSchema();
+  for (const { key, value } of entries) {
+    if (key === 'characters' || key === 'character_sheets') {
+      const hit = await checkCharacterBlacklist(value);
+      if (hit) throw Object.assign(new Error('Dieser Spieler ist für neue Charaktere gesperrt. Steam-ID: ' + hit.steam_id), { status: 403, code: 'STEAM_BLACKLISTED' });
+    }
+  }
   const conn = await getPool().getConnection();
   try {
     await conn.beginTransaction();
