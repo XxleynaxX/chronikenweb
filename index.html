@@ -140,6 +140,69 @@
       .critter .bubble { max-width: 160px; font-size: 0.78rem; }
     }
 
+
+    /* ===== ADMIN-BEREICH ===== */
+    .admin-section {
+      max-width: 1100px;
+      margin: 2.5rem auto 0;
+      padding: 0 1.5rem 2rem;
+    }
+    .admin-section[hidden] { display: none; }
+    .admin-section h2 {
+      color: var(--purple-bright);
+      font-size: 1.4rem;
+      margin-bottom: 1rem;
+    }
+    .admin-section-subtitle {
+      color: var(--text-muted);
+      margin: -0.5rem 0 1rem;
+      font-size: 0.92rem;
+    }
+    .admin-tiles {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 1rem;
+    }
+    .admin-tile {
+      display: block;
+      text-decoration: none;
+      color: var(--text);
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 1.2rem;
+      transition: transform .2s, border-color .2s, background .2s;
+      backdrop-filter: blur(10px);
+    }
+    .admin-tile:hover {
+      transform: translateY(-3px);
+      border-color: var(--purple);
+      background: var(--bg-hover);
+    }
+    .admin-tile-icon {
+      display: block;
+      font-size: 2rem;
+      margin-bottom: .55rem;
+    }
+    .admin-tile h3 {
+      margin: 0 0 .3rem;
+      color: var(--purple-bright);
+      font-size: 1.05rem;
+    }
+    .admin-tile p {
+      margin: 0;
+      color: var(--text-muted);
+      font-size: .86rem;
+      line-height: 1.4;
+    }
+    @media (max-width: 800px) {
+      .admin-tiles { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    }
+    @media (max-width: 520px) {
+      .admin-tiles { grid-template-columns: 1fr; }
+      .admin-section { padding-left: 1rem; padding-right: 1rem; }
+    }
+
     .footer-admin-login {
       display: inline-flex;
       align-items: center;
@@ -212,7 +275,7 @@
       <a href="charakterbogen.html">Charakterbogen</a>
       <a href="heilerakte.html">Heilerakte</a>
       <a href="wetter.html" id="navWetter" data-admin-only style="display:none;">Wetter</a>
-      <a href="admin.html" id="navAdmin" data-admin-only style="display:none;">Admin</a>
+      <a href="admin/index.html" id="navAdmin" data-admin-only style="display:none;">Admin</a>
     </nav>
   </header>
 
@@ -294,12 +357,50 @@
         <h2>Wetter · <span id="weatherGateName">…</span></h2>
         <p><span id="weatherGateDesc"></span><br><small>Nächster Wechsel in <strong id="weatherGateCountdown">--:--:--</strong> · verwalten</small></p>
       </a>
-      <a href="admin.html" class="gate admin-gate" id="adminGate" style="display:none;">
+      <a href="admin/index.html" class="gate admin-gate" id="adminGate" style="display:none;">
         <span class="gate-icon">🛡️</span>
         <h2>Admin · Charaktere</h2>
         <p>Verwarnungen, Regelverstöße &amp; laufende IDs</p>
       </a>
+
     </div>
+
+    <section class="admin-section" id="adminSection" hidden>
+      <h2>🛡️ Administration</h2>
+      <p class="admin-section-subtitle">Nur für Mitglieder mit Admin-Rechten sichtbar.</p>
+      <div class="admin-tiles">
+        <a href="admin/index.html" class="admin-tile">
+          <span class="admin-tile-icon">📊</span>
+          <h3>Dashboard</h3>
+          <p>Übersicht über Aufgaben, Projekte, Aktivitäten und Systemstatus.</p>
+        </a>
+        <a href="admin/aufgaben.html" class="admin-tile">
+          <span class="admin-tile-icon">📋</span>
+          <h3>Aufgaben</h3>
+          <p>Admin-Aufgaben erstellen, bearbeiten, zuweisen und verfolgen.</p>
+        </a>
+        <a href="admin/projekte.html" class="admin-tile">
+          <span class="admin-tile-icon">📁</span>
+          <h3>Projekte</h3>
+          <p>Projekte verwalten und den aktuellen Stand im Blick behalten.</p>
+        </a>
+        <a href="admin/team.html" class="admin-tile">
+          <span class="admin-tile-icon">👥</span>
+          <h3>Team</h3>
+          <p>Das Discord-Team und die vorhandenen Rollen anzeigen.</p>
+        </a>
+        <a href="admin/blacklist.html" class="admin-tile">
+          <span class="admin-tile-icon">🚫</span>
+          <h3>Blacklist</h3>
+          <p>Steam-IDs verwalten und gesperrte Spieler kontrollieren.</p>
+        </a>
+        <a href="admin/aktivitaeten.html" class="admin-tile">
+          <span class="admin-tile-icon">📜</span>
+          <h3>Aktivitäten</h3>
+          <p>Änderungen und Aktionen der Administration nachvollziehen.</p>
+        </a>
+      </div>
+    </section>
   </main>
 
   <footer>
@@ -329,36 +430,6 @@
   <script src="weather-config.js"></script>
   <script src="wetter.js"></script>
 <script>
-    // ===== ADMIN-LOGIN ÜBER PASSWORT =====
-    (function() {
-      const input = document.getElementById("footerAdminPassword");
-      const button = document.getElementById("footerAdminLogin");
-      if (!input || !button) return;
-
-      async function login() {
-        if (!window.ChronikenAuth || !ChronikenAuth.passwordLogin) return;
-        const password = input.value;
-        button.disabled = true;
-        button.textContent = "Anmelden …";
-        try {
-          await ChronikenAuth.passwordLogin(password);
-        } catch (e) {
-          input.value = "";
-          input.placeholder = e && e.message ? e.message : "Falsches Passwort";
-          button.disabled = false;
-          button.textContent = "Anmelden";
-          setTimeout(() => {
-            input.placeholder = "••••••••";
-          }, 2200);
-        }
-      }
-
-      button.addEventListener("click", login);
-      input.addEventListener("keydown", event => {
-        if (event.key === "Enter") login();
-      });
-    })();
-
     // ===== LOGIN (nur Discord, Knopf in der Menüleiste) =====
     (function() {
       const ADMIN_KEY = "portal_admin_auth";
@@ -443,6 +514,38 @@
       }
       document.getElementById("btnLogoutPanel")?.addEventListener("click", doLogout);
       refreshLoginUI();
+    })();
+
+
+    // ===== ADMIN-KACHELN AUF DER STARTSEITE =====
+    (function() {
+      const section = document.getElementById("adminSection");
+      if (!section) return;
+
+      const proxy = (window.CHRONIKEN_DISCORD_PROXY || "https://chronikenweb-1.onrender.com").replace(/\/$/, "");
+
+      async function checkAdmin() {
+        try {
+          const res = await fetch(proxy + "/auth/me", {
+            cache: "no-store",
+            credentials: "include"
+          });
+          const info = await res.json().catch(() => ({}));
+          const isAdmin = !!(res.ok && info.ok && info.admin);
+          section.hidden = !isAdmin;
+
+          const adminGate = document.getElementById("adminGate");
+          if (adminGate) adminGate.style.display = isAdmin ? "" : "none";
+
+          const navAdmin = document.getElementById("navAdmin");
+          if (navAdmin) navAdmin.style.display = isAdmin ? "" : "none";
+        } catch (e) {
+          section.hidden = true;
+        }
+      }
+
+      checkAdmin();
+      window.addEventListener("chroniken-auth-changed", checkAdmin);
     })();
 
     // ===== WETTER (nur Admin) =====
