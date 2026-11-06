@@ -58,7 +58,7 @@
             const result={};
             ids.forEach(span=>{
               const id=(span.textContent||"").trim().toUpperCase();
-              if(!/^R-\\d+-[A-Z]+$/.test(id))return;
+              if(!/^R-\d+-[A-Z]+$/.test(id))return;
 
               const li=span.closest("li");
               if(!li)return;
@@ -67,7 +67,7 @@
               clone.querySelectorAll(".inline-rule-id").forEach(x=>x.remove());
 
               const text=(clone.textContent||"")
-                .replace(/\\s+/g," ")
+                .replace(/\s+/g," ")
                 .trim();
 
               if(text)result[id]={
