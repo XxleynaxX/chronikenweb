@@ -1,6 +1,14 @@
 const ADMIN_API=(window.CHRONIKEN_ADMIN_API||'https://chronikenweb-1.onrender.com').replace(/\/$/,'');
 async function api(path,options={}){const r=await fetch(ADMIN_API+path,{...options,credentials:'include',cache:'no-store',headers:{'Content-Type':'application/json',...(options.headers||{})}});let d={};try{d=await r.json()}catch{}if(!r.ok)throw new Error(d.error||'API-Fehler '+r.status);return d}
-async function me(){return api('/auth/me')}
+async function me(){
+  const controller=typeof AbortController!=='undefined'?new AbortController():null;
+  const timer=controller?setTimeout(()=>controller.abort(),15000):null;
+  try{
+    return await api('/auth/me',controller?{signal:controller.signal}:{});
+  }finally{
+    if(timer)clearTimeout(timer);
+  }
+}
 function login(){location.href=ADMIN_API+'/auth/login?return='+encodeURIComponent(location.href.split('#')[0])}
 async function guard(){
   const app=document.querySelector('#app'), locked=document.querySelector('#locked'), loginBtn=document.querySelector('#login');
