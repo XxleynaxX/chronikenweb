@@ -1885,7 +1885,14 @@ async function createPNG(name) {
                     localStorage.setItem("chroniken_charakter", JSON.stringify(data));
                 }
             }
-        } catch (e) { console.warn("Zentrale Speicherung fehlgeschlagen:", e); }
+        } catch (e) { console.warn("Zentrale Speicherung des Verwaltungs-Eintrags fehlgeschlagen:", e); }
+
+        try {
+            await saveCharacterSheetToCentral(data);
+        } catch (e) {
+            console.warn("Zentrale Speicherung des vollständigen Charakterbogens fehlgeschlagen:", e);
+        }
+
         registerBirthdayForEvents(data);
         createCharacterEvent(data);
         // Alles über den Proxy – kein Webhook im Admin nötig
@@ -2135,13 +2142,74 @@ function applyCharacterData(data) {
     document.getElementById("consentCheck").checked = consentAccepted;
 }
 
-function saveToLocalStorage() {
+async function saveCharacterSheetToCentral(data) {
+    if (!data || !data.name) {
+        throw new Error("Der Charaktername fehlt.");
+    }
+
+    // Die Verwaltungs-ID ist der feste Schlüssel des Charakterbogens.
+    // Falls noch keine ID existiert, wird der Eintrag zuerst registriert.
+    let registryEntry = registerCharacterInManagement(data);
+    if (window.ChronikenSync && typeof ChronikenSync.upsertRegistryEntry === "function") {
+        try {
+            const central = await ChronikenSync.upsertRegistryEntry(registryEntry);
+            if (central && central.id) {
+                data.registryId = central.id;
+                registryEntry = { ...registryEntry, ...central, id: central.id };
+                localStorage.setItem("chroniken_charakter", JSON.stringify(data));
+            }
+        } catch (e) {
+            console.warn("Zentrale Charakterverwaltung konnte nicht aktualisiert werden:", e);
+        }
+    }
+
+    if (!window.ChronikenSync || typeof ChronikenSync.loadShared !== "function" ||
+        typeof ChronikenSync.saveShared !== "function") {
+        throw new Error("Zentrale Speicherung ist nicht geladen.");
+    }
+
+    const sheets = await ChronikenSync.loadShared("characterSheets");
+    const id = data.registryId || registryEntry.id;
+    if (!id) throw new Error("Keine Charakter-ID vorhanden.");
+
+    const entry = {
+        id,
+        name: data.name || "",
+        data: { ...data },
+        // Legacy-Kompatibilität: ältere Admin-Versionen verwendeten characterData.
+        characterData: { ...data },
+        updatedAt: new Date().toISOString()
+    };
+
+    const index = sheets.findIndex(x => String(x?.id || "") === String(id));
+    if (index >= 0) sheets[index] = { ...sheets[index], ...entry };
+    else sheets.push(entry);
+
+    await ChronikenSync.saveShared("characterSheets", sheets);
+    return entry;
+}
+
+async function saveToLocalStorage() {
     const data = collectCharacterData();
     localStorage.setItem("chroniken_charakter", JSON.stringify(data));
     try { registerBirthdayForEvents(data); } catch (e) {}
+
     const status = document.getElementById("saveStatus");
+    try {
+        await saveCharacterSheetToCentral(data);
+        status.textContent = "✓ Charakterbogen zentral gespeichert";
+        status.style.color = "#8ee7a5";
+    } catch (e) {
+        console.warn("Charakterbogen konnte nicht zentral gespeichert werden:", e);
+        status.textContent = "⚠ Nur lokal gespeichert";
+        status.style.color = "#fbbf24";
+    }
     status.style.display = "inline-block";
-    setTimeout(() => { status.style.display = "none"; }, 3000);
+    setTimeout(() => {
+        status.style.display = "none";
+        status.textContent = "✓ Gespeichert";
+        status.style.color = "#8ee7a5";
+    }, 5000);
 }
 
 function exportJSON() {
