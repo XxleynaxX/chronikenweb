@@ -165,7 +165,7 @@
   async function syncDiscordRoles(char){
     try{
       const sheet=await getSheet(char.id);
-      const discordName=String(sheet?.data?.discordName||char.discordName||"").trim();
+      const discordName=String(char.discordName||sheet?.data?.discordName||"").trim();
       if(!discordName){
         return {ok:false,skipped:true,error:"Kein Discord-Name im Charakterbogen gefunden."};
       }
@@ -271,14 +271,14 @@
 
   function resetForm(){
     get("charAdminForm").reset();get("charAdminEditId").value="";get("charAdminId").value="";
-    get("charAdminWarnings").value="0";get("charAdminStatus").value="aktiv";get("charAdminHeiler").checked=false;get("charAdminBibliothek").checked=false;
+    get("charAdminWarnings").value="0";get("charAdminStatus").value="aktiv";get("charAdminDiscord").value="";get("charAdminHeiler").checked=false;get("charAdminBibliothek").checked=false;
     get("charAdminTitle").textContent="Neuer Charakterbogen";get("charAdminSave").textContent="Speichern";get("charAdminCancel").hidden=true;
   }
   async function editChar(id){
     const c=(await remoteChars()).find(x=>x.id===id);if(!c)return;
     get("charAdminEditId").value=c.id;get("charAdminId").value=c.id;get("charAdminName").value=c.name||"";
     get("charAdminPlayer").value=c.player||"";get("charAdminSteam").value=c.steamId||"";get("charAdminRace").value=c.race||"";
-    get("charAdminWarnings").value=c.warnings??0;get("charAdminStatus").value=c.status||"aktiv";get("charAdminHeiler").checked=!!c.heiler;get("charAdminBibliothek").checked=!!c.bibliothek;get("charAdminViolation").value=c.violationIds?.join(", ")||c.violation||"";updateViolationPreview();get("charAdminNotes").value=c.notes||"";
+    get("charAdminWarnings").value=c.warnings??0;get("charAdminStatus").value=c.status||"aktiv";get("charAdminDiscord").value=c.discordName||"";get("charAdminHeiler").checked=!!c.heiler;get("charAdminBibliothek").checked=!!c.bibliothek;get("charAdminViolation").value=c.violationIds?.join(", ")||c.violation||"";updateViolationPreview();get("charAdminNotes").value=c.notes||"";
     get("charAdminTitle").textContent="Charakter bearbeiten · "+c.id;get("charAdminSave").textContent="Aktualisieren";get("charAdminCancel").hidden=false;
     get("charAdminName").focus();
   }
@@ -311,7 +311,7 @@
       const resolvedKnown=resolvedViolations.filter(r=>r.text && r.text!=="Unbekannte Regel-ID");
       const violationDetails=resolvedKnown.map(r=>r.id+" · "+r.text);
       const violationTextsStored=resolvedKnown.map(r=>r.text);
-      const payload={name,player:get("charAdminPlayer").value.trim(),steamId:get("charAdminSteam").value.trim(),race:get("charAdminRace").value,status:get("charAdminStatus").value,warnings:Math.max(0,parseInt(get("charAdminWarnings").value,10)||0),violation:violationIds.join(", "),violationIds,violationDetails,violationTexts:violationTextsStored,notes:get("charAdminNotes").value.trim(),heiler:get("charAdminHeiler").checked,bibliothek:get("charAdminBibliothek").checked,updatedAt:new Date().toISOString()};
+      const payload={name,player:get("charAdminPlayer").value.trim(),discordName:get("charAdminDiscord").value.trim(),steamId:get("charAdminSteam").value.trim(),race:get("charAdminRace").value,status:get("charAdminStatus").value,warnings:Math.max(0,parseInt(get("charAdminWarnings").value,10)||0),violation:violationIds.join(", "),violationIds,violationDetails,violationTexts:violationTextsStored,notes:get("charAdminNotes").value.trim(),heiler:get("charAdminHeiler").checked,bibliothek:get("charAdminBibliothek").checked,updatedAt:new Date().toISOString()};
       let saved,type="created";
       if(editId){const i=list.findIndex(c=>c.id===editId);if(i<0)return;list[i]={...list[i],...payload};saved=list[i];type=payload.violation!==old?.violation||payload.warnings>(Number(old?.warnings)||0)?"violation":"updated"}
       else{saved={id:nextId(),createdAt:new Date().toISOString(),...payload};list.push(saved)}
