@@ -317,7 +317,8 @@
       else{saved={id:nextId(),createdAt:new Date().toISOString(),...payload};list.push(saved)}
       await writeChars(list);
       try{await ChronikenSync.saveCharacter(saved)}catch(e){console.warn(e)}
-      const roleSync=await syncDiscordRoles(saved);\n      if(roleSync.ok){console.info("[Discord-Rollen] synchronisiert:",roleSync.discordName||"");}\n      else if(!roleSync.skipped){console.warn("[Discord-Rollen] nicht synchronisiert:",roleSync.error);}\n      await notify(type,saved);resetForm();refresh();
+      const roleSync=await syncDiscordRoles(saved);
+      if(roleSync.ok){console.info("[Discord-Rollen] synchronisiert:",roleSync.discordName||"");}\n      else if(!roleSync.skipped){console.warn("[Discord-Rollen] nicht synchronisiert:",roleSync.error);}\n      await notify(type,saved);resetForm();refresh();
     };
     get("charAdminViolation").addEventListener("input",updateViolationPreview);
     ruleIndex=await loadRuleIndex();
