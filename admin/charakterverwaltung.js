@@ -170,8 +170,13 @@
       const index=sheets.findIndex(x=>x.id===char.id);
       if(index<0)return;
       const sheet=sheets[index];
-      const data={...(sheet.data||{}),discordName};
-      sheets[index]={...sheet,data,updatedAt:new Date().toISOString()};
+      const data={...(sheet.data||sheet.characterData||{}),discordName};
+      sheets[index]={
+        ...sheet,
+        data,
+        characterData:data,
+        updatedAt:new Date().toISOString()
+      };
       await ChronikenSync.saveShared("characterSheets",sheets);
     }catch(e){
       console.warn("Discord-Name im Charakterbogen speichern:",e);
@@ -245,10 +250,25 @@
   }
   async function writeChars(list){
     saveLocal(list);
-    try{await ChronikenStorage.save("characters",list)}catch(e){console.warn("Charaktere zentral speichern:",e)}
+    try{
+      await ChronikenStorage.save("characters",list);
+      return true;
+    }catch(e){
+      console.error("Charaktere zentral speichern fehlgeschlagen:",e);
+      return false;
+    }
   }
   async function getSheet(id){
-    try{const sheets=await ChronikenSync.loadShared("characterSheets");return sheets.find(x=>x.id===id)||null}catch{return null}
+    try{
+      const sheets=await ChronikenSync.loadShared("characterSheets");
+      const sheet=sheets.find(x=>String(x?.id||"")===String(id))||null;
+      if(!sheet)return null;
+      // Ältere Charakterbögen wurden mit characterData statt data gespeichert.
+      if(!sheet.data && sheet.characterData){
+        return {...sheet,data:sheet.characterData};
+      }
+      return sheet;
+    }catch{return null}
   }
 
   const SHEET_FIELDS=[
