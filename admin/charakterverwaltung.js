@@ -162,6 +162,22 @@
   }
 
 
+  async function syncDiscordNameToSheet(char){
+    const discordName=String(char?.discordName||"").trim();
+    if(!char?.id||!discordName)return;
+    try{
+      const sheets=await ChronikenSync.loadShared("characterSheets");
+      const index=sheets.findIndex(x=>x.id===char.id);
+      if(index<0)return;
+      const sheet=sheets[index];
+      const data={...(sheet.data||{}),discordName};
+      sheets[index]={...sheet,data,updatedAt:new Date().toISOString()};
+      await ChronikenSync.saveShared("characterSheets",sheets);
+    }catch(e){
+      console.warn("Discord-Name im Charakterbogen speichern:",e);
+    }
+  }
+
   async function syncDiscordRoles(char){
     try{
       const sheet=await getSheet(char.id);
@@ -317,6 +333,7 @@
       else{saved={id:nextId(),createdAt:new Date().toISOString(),...payload};list.push(saved)}
       await writeChars(list);
       try{await ChronikenSync.saveCharacter(saved)}catch(e){console.warn(e)}
+      await syncDiscordNameToSheet(saved);
       const roleSync=await syncDiscordRoles(saved);
       if(roleSync.ok){console.info("[Discord-Rollen] synchronisiert:",roleSync.discordName||"");}
       else if(!roleSync.skipped){console.warn("[Discord-Rollen] nicht synchronisiert:",roleSync.error);}
