@@ -8,7 +8,9 @@ const PORT = process.env.PORT || 3000;
 const CHAR_WEBHOOK = process.env.CHAR_WEBHOOK || '';
 const HEILER_WEBHOOK = process.env.HEILER_WEBHOOK || '';
 const MOD_WEBHOOK = process.env.MOD_WEBHOOK || process.env.DISCORD_MOD_WEBHOOK || '';
-const MOD_WATCHER_SECRET = process.env.MOD_WATCHER_SECRET || '';\nconst BOT_API_URL = (process.env.BOT_API_URL || 'http://78.154.103.23:14071').replace(/\\/$/, '');\nconst BOT_API_SECRET = process.env.BOT_API_SECRET || '';
+const MOD_WATCHER_SECRET = process.env.MOD_WATCHER_SECRET || '';
+const BOT_API_URL = (process.env.BOT_API_URL || 'http://78.154.103.23:14071').replace(/\/$/, '');
+const BOT_API_SECRET = process.env.BOT_API_SECRET || '';
 
 const db = require('./db');
 const adminApi = require('./admin-api');
