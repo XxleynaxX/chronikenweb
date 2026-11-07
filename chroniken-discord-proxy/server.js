@@ -8,7 +8,7 @@ const PORT = process.env.PORT || 3000;
 const CHAR_WEBHOOK = process.env.CHAR_WEBHOOK || '';
 const HEILER_WEBHOOK = process.env.HEILER_WEBHOOK || '';
 const MOD_WEBHOOK = process.env.MOD_WEBHOOK || process.env.DISCORD_MOD_WEBHOOK || '';
-const MOD_WATCHER_SECRET = process.env.MOD_WATCHER_SECRET || '';
+const MOD_WATCHER_SECRET = process.env.MOD_WATCHER_SECRET || '';\nconst BOT_API_URL = (process.env.BOT_API_URL || 'http://78.154.103.23:14071').replace(/\\/$/, '');\nconst BOT_API_SECRET = process.env.BOT_API_SECRET || '';
 
 const db = require('./db');
 const adminApi = require('./admin-api');
@@ -568,6 +568,52 @@ const server = http.createServer(async (req, res) => {
   if (url.pathname.startsWith('/admin/')) {
     const handled = await adminApi.handle(req, res, url, sessionFromRequest(req), process.env.ADMIN_WEBHOOK || process.env.ADMIN_TASK_WEBHOOK || '');
     if (handled !== false) return;
+  }
+
+
+  // ===== Discord-Rollen aus der Charakterverwaltung =====
+  // Die Website spricht nur mit diesem Server. Das Bot-Secret bleibt auf Render
+  // und wird niemals an den Browser ausgeliefert.
+  if (req.method === 'POST' && url.pathname === '/roles/sync') {
+    try {
+      const session = sessionFromRequest(req);
+      if (!session || !session.admin) {
+        return sendJson(res, 403, { ok: false, error: 'Nur Admins dürfen Discord-Rollen synchronisieren.' });
+      }
+      if (!BOT_API_SECRET) {
+        return sendJson(res, 500, { ok: false, error: 'BOT_API_SECRET fehlt auf dem Server.' });
+      }
+      const body = JSON.parse((await readBody(req)) || '{}');
+      const username = String(body.username || '').trim();
+      if (!username) return sendJson(res, 400, { ok: false, error: 'Discord-Name fehlt.' });
+
+      const upstream = await fetch(BOT_API_URL + '/api/roles/sync', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-bot-api-key': BOT_API_SECRET
+        },
+        body: JSON.stringify({
+          username,
+          heiler: body.heiler === true,
+          bibliothek: body.bibliothek === true
+        })
+      });
+      const text = await upstream.text();
+      let data = {};
+      try { data = JSON.parse(text || '{}'); } catch {}
+      if (!upstream.ok) {
+        return sendJson(res, upstream.status >= 400 && upstream.status < 600 ? upstream.status : 502, {
+          ok: false,
+          error: data.error || 'Discord-Rollen konnten nicht synchronisiert werden.',
+          code: data.code || undefined
+        });
+      }
+      return sendJson(res, 200, data && typeof data === 'object' ? data : { ok: true });
+    } catch (e) {
+      console.error('[roles/sync]', e.message);
+      return sendJson(res, 502, { ok: false, error: 'Bot-API nicht erreichbar: ' + e.message });
+    }
   }
 
   // ===== Chroniken-Daten (MySQL) =====
