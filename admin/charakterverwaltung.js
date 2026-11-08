@@ -302,16 +302,62 @@
     const v=d[key];return Array.isArray(v)?v.join(", "):(v==null?"":String(v));
   }
 
+  const ROLE_INFO={heiler:{label:"Heiler",icon:"🩺",want:"wantsHeiler"},bibliothek:{label:"Buchschreiber (Bibliothek)",icon:"📚",want:"wantsBibliothek"}};
+
+  // Offene Rollenanfragen aus dem Charakterbogen ("Ich möchte Heiler / Buchschreiber sein")
+  function renderRoleRequests(list,table){
+    let box=get("charAdminRoleRequests");
+    if(!box){
+      box=document.createElement("div");box.id="charAdminRoleRequests";
+      box.style.cssText="margin:0 0 16px;padding:12px 14px;border:1px solid #a855f7;border-radius:10px;background:rgba(168,85,247,.08)";
+      table.parentNode.insertBefore(box,table);
+    }
+    const reqs=[];
+    list.forEach(c=>Object.keys(ROLE_INFO).forEach(r=>{if(c[ROLE_INFO[r].want]&&!c[r])reqs.push({c,r})}));
+    if(!reqs.length){box.hidden=true;box.innerHTML="";return}
+    box.hidden=false;
+    box.innerHTML='<strong>🔔 Offene Rollenanfragen ('+reqs.length+')</strong>'+reqs.map(({c,r})=>{
+      const i=ROLE_INFO[r];
+      return '<div style="display:flex;flex-wrap:wrap;gap:8px;align-items:center;justify-content:space-between;margin-top:10px">'
+        +'<span><strong>'+esc(c.name||"?")+'</strong> <span class="muted">('+esc(c.id)+(c.discordName||c.player?' · '+esc(c.discordName||c.player):'')+')</span> möchte <strong>'+i.icon+' '+i.label+'</strong> sein. Soll die Discord-Rolle vergeben werden?</span>'
+        +'<span><button class="btn small" data-role-yes="'+esc(c.id)+'|'+r+'">✓ Rolle vergeben</button> <button class="btn small danger" data-role-no="'+esc(c.id)+'|'+r+'">✗ Ablehnen</button></span></div>';
+    }).join("");
+    box.querySelectorAll("[data-role-yes]").forEach(b=>b.onclick=()=>decideRole(...b.dataset.roleYes.split("|"),true));
+    box.querySelectorAll("[data-role-no]").forEach(b=>b.onclick=()=>decideRole(...b.dataset.roleNo.split("|"),false));
+  }
+
+  async function decideRole(id,role,approve){
+    const info=ROLE_INFO[role];if(!info)return;
+    const list=await remoteCharsOrAlert();if(!list)return;
+    const c=list.find(x=>x.id===id);if(!c)return;
+    const q=approve
+      ?'Soll "'+(c.name||id)+'" die Rolle "'+info.label+'" in Discord bekommen?\n(Dadurch wird auch der entsprechende Discord-Bereich freigeschaltet.)'
+      :'Anfrage von "'+(c.name||id)+'" für "'+info.label+'" wirklich ablehnen?';
+    if(!confirm(q))return;
+    if(approve)c[role]=true;
+    else c[info.want]=false;
+    c.updatedAt=new Date().toISOString();
+    if(!await writeChars(list)){alert("Speichern in der Datenbank fehlgeschlagen – Entscheidung wurde nicht gespeichert.");return}
+    if(approve){
+      const r=await syncDiscordRoles(c);
+      if(r.ok)alert("Rolle \""+info.label+"\" wurde in Discord vergeben"+(r.discordName?" (an "+r.discordName+")":"")+".");
+      else alert("Anfrage ist genehmigt, aber die Discord-Rolle konnte nicht gesetzt werden:\n"+(r.error||"unbekannter Fehler")+"\nTipp: Charakter bearbeiten und Discord-Namen prüfen, dann erneut speichern.");
+    }
+    await notify("updated",c);
+    refresh();
+  }
+
   function renderTable(list){
     const body=get("charAdminBody"),empty=get("charAdminEmpty"),table=get("charAdminTable"),count=get("charAdminCount");
     if(!body)return;
+    renderRoleRequests(list,table);
     count.textContent=list.length+" Charakter"+(list.length===1?"":"e");
     if(!list.length){table.hidden=true;empty.hidden=false;body.innerHTML="";return}
     empty.hidden=true;table.hidden=false;
     body.innerHTML=list.slice().sort((a,b)=>(a.id||"").localeCompare(b.id||"")).map(c=>{
       const w=Number(c.warnings)||0;
       const violationText=violationTexts(c).length?violationTexts(c).map(x=>esc(x)).join("<br>"):"—";
-      return '<tr><td><strong class="char-id">'+esc(c.id)+'</strong></td><td><strong>'+esc(c.name)+'</strong><div class="muted">'+esc(c.race||"")+'</div></td><td>'+esc(c.player||"—")+'</td><td>'+esc(c.steamId||"—")+'</td><td><span class="warn-badge '+(w===0?"zero":"")+'">'+w+'</span></td><td>'+violationText+'</td><td>'+esc(c.status||"aktiv")+'</td><td class="char-actions"><button class="btn small" data-sheet="'+esc(c.id)+'">Bogen</button><button class="btn small" data-edit="'+esc(c.id)+'">Bearbeiten</button><button class="btn small danger" data-delete="'+esc(c.id)+'">Löschen</button></td></tr>'
+      return '<tr><td><strong class="char-id">'+esc(c.id)+'</strong></td><td><strong>'+esc(c.name)+'</strong><div class="muted">'+esc(c.race||"")+'</div>'+((c.wantsHeiler&&!c.heiler)||(c.wantsBibliothek&&!c.bibliothek)?'<div class="muted">Rollenwunsch: '+[(c.wantsHeiler&&!c.heiler)?"🩺 Heiler":"",(c.wantsBibliothek&&!c.bibliothek)?"📚 Buchschreiber":""].filter(Boolean).join(" · ")+'</div>':'')+'</td><td>'+esc(c.player||"—")+'</td><td>'+esc(c.steamId||"—")+'</td><td><span class="warn-badge '+(w===0?"zero":"")+'">'+w+'</span></td><td>'+violationText+'</td><td>'+esc(c.status||"aktiv")+'</td><td class="char-actions"><button class="btn small" data-sheet="'+esc(c.id)+'">Bogen</button><button class="btn small" data-edit="'+esc(c.id)+'">Bearbeiten</button><button class="btn small danger" data-delete="'+esc(c.id)+'">Löschen</button></td></tr>'
     }).join("");
     body.querySelectorAll("[data-sheet]").forEach(b=>b.onclick=()=>openSheet(b.dataset.sheet));
     body.querySelectorAll("[data-edit]").forEach(b=>b.onclick=()=>editChar(b.dataset.edit));
