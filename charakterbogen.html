@@ -400,6 +400,12 @@ textarea { min-height: 120px; resize: vertical; }
                     <input id="steamId" type="text" placeholder="z. B. 76561198xxxxxxxx">
                 </div>
                 <div class="field">
+                    <label>Besondere Rollen (optional)</label>
+                    <label style="display:flex;gap:8px;align-items:center;font-weight:normal;"><input type="checkbox" id="wantsHeiler"> 🩺 Ich möchte Heiler sein</label>
+                    <label style="display:flex;gap:8px;align-items:center;font-weight:normal;margin-top:4px;"><input type="checkbox" id="wantsBibliothek"> 📚 Ich möchte Buchschreiber sein</label>
+                    <small style="display:block;margin-top:6px;opacity:.8;">Wenn du eines davon ankreuzt, bekommst du nach Freigabe durch das Team die passende Discord-Rolle. Durch die Rolle wird dir automatisch der entsprechende Bereich in Discord freigeschaltet (Heiler-Bereich bzw. Bibliothek/Schreibbereich).</small>
+                </div>
+                <div class="field">
                     <label>Alter</label>
                     <input id="age" type="number" placeholder="Alter">
                 </div>
@@ -1697,6 +1703,8 @@ function registerCharacterInManagement(data) {
         player: data.discordName || data.verifiedUsername || data.consentVerifiedUsername || previous.player || "",
         discordName: data.discordName || previous.discordName || "",
         steamId: data.steamId || "",
+        wantsHeiler: !!data.wantsHeiler,
+        wantsBibliothek: !!data.wantsBibliothek,
         race: data.race || "",
         god: data.god || "",
         mainJob: data.mainJob || "",
@@ -1771,6 +1779,8 @@ function buildDiscordPayload(data) {
     { name: "Gott", value: data.god || "-", inline: true }
   ];
   if (data.steamId) fields.push({ name: "Steam-ID", value: String(data.steamId), inline: true });
+  const wishes = [data.wantsHeiler ? "🩺 Heiler" : "", data.wantsBibliothek ? "📚 Buchschreiber" : ""].filter(Boolean);
+  if (wishes.length) fields.push({ name: "Rollenwunsch (Discord)", value: wishes.join(" · "), inline: true });
   return {
     content: "📜 **Neuer Charakterbogen** von **" + player + "**",
     embeds: [{
@@ -2018,6 +2028,8 @@ function collectCharacterData() {
         name: document.getElementById("name").value,
         discordName: document.getElementById("discordName") ? document.getElementById("discordName").value : "",
         steamId: document.getElementById("steamId") ? document.getElementById("steamId").value : "",
+        wantsHeiler: !!(document.getElementById("wantsHeiler") && document.getElementById("wantsHeiler").checked),
+        wantsBibliothek: !!(document.getElementById("wantsBibliothek") && document.getElementById("wantsBibliothek").checked),
         age: document.getElementById("age").value,
         gender: document.getElementById("gender").value,
         size: document.getElementById("size").value,
@@ -2069,6 +2081,8 @@ function applyCharacterData(data) {
     if (document.getElementById("steamId")) {
         document.getElementById("steamId").value = data.steamId || "";
     }
+    if (document.getElementById("wantsHeiler")) document.getElementById("wantsHeiler").checked = !!data.wantsHeiler;
+    if (document.getElementById("wantsBibliothek")) document.getElementById("wantsBibliothek").checked = !!data.wantsBibliothek;
     document.getElementById("age").value = data.age || "";
     document.getElementById("gender").value = data.gender || "";
     document.getElementById("size").value = data.size || "";
