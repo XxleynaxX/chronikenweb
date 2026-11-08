@@ -208,7 +208,18 @@ async function setMany(entries) {
   await ensureSchema();
   for (const { key, value } of entries) {
     if (key === 'characters' || key === 'character_sheets') {
-      const hit = await checkCharacterBlacklist(value);
+      // Nur NEUE Steam-IDs prüfen. Bereits gespeicherte Einträge dürfen das
+      // Speichern anderer Charaktere nicht blockieren (sonst geht nach dem
+      // Sperren eines Spielers gar nichts mehr zu speichern).
+      let known = new Set();
+      try { known = steamIdSet(await getOne(key)); } catch (e) { console.warn('[DB] Bestand für Blacklist-Prüfung nicht lesbar:', e.message); }
+      let hit = null;
+      try {
+        hit = await checkCharacterBlacklist(value, known);
+      } catch (e) {
+        // Fällt die Blacklist-Prüfung technisch aus, darf das Speichern nicht scheitern.
+        console.error('[DB] Blacklist-Prüfung fehlgeschlagen (Speichern läuft weiter):', e.message);
+      }
       if (hit) throw Object.assign(new Error('Dieser Spieler ist für neue Charaktere gesperrt. Steam-ID: ' + hit.steam_id), { status: 403, code: 'STEAM_BLACKLISTED' });
     }
   }
@@ -421,9 +432,18 @@ async function isSteamBlacklisted(steamId) {
   const [rows]=await getPool().query('SELECT id,steam_id,player_name,reason FROM admin_blacklist WHERE steam_id=? LIMIT 1',[id]);
   return rows[0] || null;
 }
-async function checkCharacterBlacklist(value) {
+function steamIdOf(entry){
+  if(!entry || typeof entry!=='object') return '';
+  return String(entry.steamId ?? entry.steamID ?? entry.steam_id ?? '').trim();
+}
+function steamIdSet(list){
+  const set=new Set();
+  if(Array.isArray(list)) for(const e of list){ const id=steamIdOf(e); if(id) set.add(id); }
+  return set;
+}
+async function checkCharacterBlacklist(value, known) {
   if(!Array.isArray(value)) return null;
-  const seen=new Set();
+  const seen=new Set(known || []);
   for(const entry of value){
     if(!entry || typeof entry!=='object') continue;
     const id=String(entry.steamId ?? entry.steamID ?? entry.steam_id ?? '').trim();
