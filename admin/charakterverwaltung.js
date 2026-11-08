@@ -197,10 +197,12 @@
       if(!discordName){
         return {ok:false,skipped:true,error:"Kein Discord-Name im Charakterbogen gefunden."};
       }
+      const headers={"Content-Type":"application/json"};
+      try{const t=sessionStorage.getItem("chroniken_discord_token");if(t)headers.Authorization="Bearer "+t}catch{}
       const res=await fetch(CHARACTER_PROXY_URL.replace(/\/charakter$/,"")+"/roles/sync",{
         method:"POST",
         credentials:"include",
-        headers:{"Content-Type":"application/json"},
+        headers,
         body:JSON.stringify({username:discordName,heiler:!!char.heiler,bibliothek:!!char.bibliothek})
       });
       const data=await res.json().catch(()=>({}));
@@ -423,8 +425,17 @@
       if(!await writeChars(list)){alert("Speichern in der Datenbank fehlgeschlagen – bitte erneut anmelden / später versuchen. Der Eintrag wurde NICHT zentral gespeichert.");return}
       await syncDiscordNameToSheet(saved);
       const roleSync=await syncDiscordRoles(saved);
-      if(roleSync.ok){console.info("[Discord-Rollen] synchronisiert:",roleSync.discordName||"");}
-      else if(!roleSync.skipped){console.warn("[Discord-Rollen] nicht synchronisiert:",roleSync.error);}
+      let roleMsg="";
+      if(roleSync.ok){
+        const a=Array.isArray(roleSync.added)?roleSync.added:[],r=Array.isArray(roleSync.removed)?roleSync.removed:[];
+        roleMsg=(a.length||r.length)
+          ?"Discord-Rollen für "+(roleSync.member||roleSync.discordName||"")+": "+(a.length?"vergeben: "+a.join(", "):"")+(a.length&&r.length?" · ":"")+(r.length?"entfernt: "+r.join(", "):"")
+          :"Discord-Rollen waren bereits korrekt gesetzt.";
+      }else{
+        roleMsg="⚠️ Gespeichert, aber die Discord-Rolle wurde NICHT gesetzt:\n"+(roleSync.error||"unbekannter Fehler");
+        console.warn("[Discord-Rollen] nicht synchronisiert:",roleSync.error);
+      }
+      if(roleMsg)alert(roleMsg);
       await notify(type,saved);resetForm();refresh();
     };
     get("charAdminViolation").addEventListener("input",updateViolationPreview);

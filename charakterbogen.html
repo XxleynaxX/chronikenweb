@@ -745,6 +745,13 @@ textarea { min-height: 120px; resize: vertical; }
         <div id="success" class="success" style="display:none;">
             <h2>Charakter erfolgreich erstellt!</h2>
             <p>Dein Charakter wurde als PNG-Bild erstellt.</p>
+            <div id="successCharId" style="display:none;margin:14px auto;padding:12px 16px;border:1px solid #8ee7a5;border-radius:10px;max-width:460px;">
+                <div style="font-size:.9em;opacity:.85;">Deine Charakter-ID (bitte merken – sie steht auch auf dem Bild):</div>
+                <div id="successCharIdValue" style="font-size:1.8em;font-weight:bold;letter-spacing:1px;margin:4px 0;">CH-0000</div>
+                <button type="button" class="back-button" onclick="copyCharId()">📋 ID kopieren</button>
+                <button type="button" class="back-button" onclick="startNewCharacter()">🆕 Weiteren Charakter erstellen</button>
+            </div>
+            <p id="successNotice" style="margin:10px 0;"></p>
             <button type="button" class="back-button" onclick="downloadAgain()">
                 🖼️ Bild erneut speichern
             </button>
@@ -913,6 +920,7 @@ textarea { min-height: 120px; resize: vertical; }
             <div class="img-box full-width">
                 <div class="img-box-title">Persönliche Daten</div>
                 <div class="img-fields-2col">
+                    <div class="img-field-row"><span class="img-field-label">Charakter-ID:</span> <span id="imgCharId">-</span></div>
                     <div class="img-field-row"><span class="img-field-label">Discord:</span> <span id="imgDiscordName">-</span></div>
                     <div class="img-field-row"><span class="img-field-label">Steam-ID:</span> <span id="imgSteamId">-</span></div>
                     <div class="img-field-row"><span class="img-field-label">Geburtstag:</span> <span id="imgBirthday">-</span></div>
@@ -1665,7 +1673,7 @@ function generateCharacterFinal() {
     createPNG(name);
 }
 
-function registerCharacterInManagement(data) {
+function registerCharacterInManagement(data, centralList) {
     // Jeder fertiggestellte Charakter wird automatisch in die Charakterverwaltung übernommen.
     // Bei erneutem Fertigstellen desselben Bogens wird der bestehende Eintrag aktualisiert.
     const KEY = "portal_char_registry";
@@ -1687,9 +1695,24 @@ function registerCharacterInManagement(data) {
         if (existingIndex >= 0) registryId = list[existingIndex].id;
     }
 
+    // Bekannte Eintraege aus der zentralen Datenbank (z. B. derselbe Charakter in einem anderen Browser)
+    const central = Array.isArray(centralList) ? centralList : [];
+    if (!registryId && data.name) {
+        const steamC = String(data.steamId || "").trim();
+        const hit = steamC ? central.find(c =>
+            String(c && c.steamId || "").trim() === steamC &&
+            String(c && c.name || "").trim().toLowerCase() === String(data.name || "").trim().toLowerCase()) : null;
+        if (hit && hit.id) registryId = hit.id;
+    }
+
     if (!registryId) {
         let n = parseInt(localStorage.getItem(NEXT) || "1", 10);
         if (!Number.isFinite(n) || n < 1) n = 1;
+        // Nie eine ID vergeben, die lokal oder zentral schon existiert
+        list.concat(central).forEach(c => {
+            const m = /^CH-(\d+)$/.exec(String(c && c.id || ""));
+            if (m) n = Math.max(n, parseInt(m[1], 10) + 1);
+        });
         registryId = "CH-" + String(n).padStart(4, "0");
         localStorage.setItem(NEXT, String(n + 1));
     }
@@ -1771,6 +1794,7 @@ function buildDiscordPayload(data) {
   const sub = (data.subraces && data.subraces.length) ? " (" + data.subraces.join(", ") + ")" : "";
   const jobs = [data.mainJob, data.subJob].filter(Boolean).join(" / ") || "-";
   const fields = [
+    { name: "Charakter-ID", value: String(data.registryId || "–"), inline: true },
     { name: "Spieler (Discord)", value: player, inline: true },
     { name: "Volk", value: race + sub, inline: true },
     { name: "Geschlecht / Alter", value: (data.gender || "-") + " · " + (data.age || "-"), inline: true },
@@ -1782,7 +1806,7 @@ function buildDiscordPayload(data) {
   const wishes = [data.wantsHeiler ? "🩺 Heiler" : "", data.wantsBibliothek ? "📚 Buchschreiber" : ""].filter(Boolean);
   if (wishes.length) fields.push({ name: "Rollenwunsch (Discord)", value: wishes.join(" · "), inline: true });
   return {
-    content: "📜 **Neuer Charakterbogen** von **" + player + "**",
+    content: "✅ **Charakterbogen fertig** · " + (data.registryId ? "**" + data.registryId + "** · " : "") + "von **" + player + "**",
     embeds: [{
       title: name,
       color: 0xa855f7,
@@ -1876,6 +1900,11 @@ async function createPNG(name) {
             console.warn("Blacklist-Prüfung nicht erreichbar:", e);
         }
     }
+    // ---- Charakter-ID VOR dem Rendern vergeben, damit sie im PNG steht ----
+    const reg = await registerCharacterCentrally();
+    const imgCharId = document.getElementById("imgCharId");
+    if (imgCharId) imgCharId.textContent = reg.id || "-";
+
     renderPortrait();
     const card = document.getElementById("characterCard");
     html2canvas(card, { scale: 2, backgroundColor: null }).then(async canvas => {
@@ -1885,32 +1914,98 @@ async function createPNG(name) {
         link.download = "Chroniken-" + safeName + ".png";
         link.href = canvas.toDataURL("image/png");
         const data = collectCharacterData();
-        const regEntry = registerCharacterInManagement(data);
-        // Zentral speichern, damit der Eintrag in der Admin-Verwaltung aller Admins erscheint
-        try {
-            if (window.ChronikenSync && regEntry) {
-                const central = await ChronikenSync.upsertRegistryEntry(regEntry);
-                if (central && central.id && central.id !== data.registryId) {
-                    data.registryId = central.id;
-                    localStorage.setItem("chroniken_charakter", JSON.stringify(data));
-                }
-            }
-        } catch (e) { console.warn("Zentrale Speicherung des Verwaltungs-Eintrags fehlgeschlagen:", e); }
-
+        // Die ID wurde bereits vor dem Rendern vergeben (steht im PNG) und ist in data.registryId.
+        let sheetOk = false;
         try {
             await saveCharacterSheetToCentral(data);
+            sheetOk = true;
         } catch (e) {
             console.warn("Zentrale Speicherung des vollständigen Charakterbogens fehlgeschlagen:", e);
         }
 
         registerBirthdayForEvents(data);
         createCharacterEvent(data);
-        // Alles über den Proxy – kein Webhook im Admin nötig
-        await sendCharacterToDiscordProxy(data);
+        // Team in Discord benachrichtigen („Charakterbogen fertig“ inkl. ID) – über den Proxy
+        const notified = await sendCharacterToDiscordProxy(data);
         link.click();
+
+        // ---- Erfolgsmeldung: ID genau einmal gross anzeigen + ehrlicher Status ----
+        const finalId = data.registryId || reg.id || "";
+        const idBox = document.getElementById("successCharId");
+        if (finalId && idBox) {
+            document.getElementById("successCharIdValue").textContent = finalId;
+            idBox.style.display = "block";
+        }
+        const notice = document.getElementById("successNotice");
+        if (notice) {
+            if (reg.centralOk && sheetOk && notified) {
+                notice.textContent = "✅ Das Team wurde benachrichtigt – dein Charakter ist registriert. Bitte nenne bei Rückfragen deine Charakter-ID.";
+            } else if (reg.centralOk && sheetOk) {
+                notice.textContent = "⚠️ Dein Charakter ist registriert, aber die Discord-Benachrichtigung konnte nicht gesendet werden. Bitte melde dich mit deiner Charakter-ID beim Team.";
+            } else {
+                notice.textContent = "⚠️ Dein Charakter konnte nicht vollständig zentral gespeichert werden (" + (reg.error || "Server nicht erreichbar") + "). Bitte melde dich mit deiner Charakter-ID und dem PNG beim Team oder versuche es später erneut.";
+            }
+        }
         document.getElementById("success").style.display = "block";
         document.getElementById("success").scrollIntoView({ behavior: "smooth" });
     });
+}
+
+/** Vergibt die Charakter-ID (zentral abgestimmt) und legt den Registry-Eintrag zentral an. */
+async function registerCharacterCentrally() {
+    const out = { id: "", centralOk: false, error: "" };
+    const data = collectCharacterData();
+    let centralList = null;
+    try {
+        if (window.ChronikenStorage) {
+            ChronikenStorage.invalidate("characters");
+            const v = await ChronikenStorage.load("characters");
+            if (Array.isArray(v)) centralList = v;
+        }
+    } catch (e) { out.error = e && e.message ? e.message : String(e); }
+
+    let entry = null;
+    try { entry = registerCharacterInManagement(data, centralList); } catch (e) { out.error = out.error || String(e); }
+    if (!entry) return out;
+    out.id = entry.id;
+
+    try {
+        if (window.ChronikenSync && typeof ChronikenSync.upsertRegistryEntry === "function") {
+            const central = await ChronikenSync.upsertRegistryEntry(entry, { guardCollision: true });
+            if (central && central.id) {
+                out.centralOk = true;
+                if (central.id !== entry.id) {
+                    // ID war inzwischen anderweitig vergeben -> neue ID uebernehmen
+                    try {
+                        const key = "portal_char_registry";
+                        const list = JSON.parse(localStorage.getItem(key) || "[]");
+                        list.forEach(c => { if (c.id === entry.id) c.id = central.id; });
+                        localStorage.setItem(key, JSON.stringify(list));
+                    } catch (e) {}
+                    data.registryId = central.id;
+                    localStorage.setItem("chroniken_charakter", JSON.stringify(data));
+                    out.id = central.id;
+                }
+            }
+        }
+    } catch (e) {
+        out.error = e && e.message ? e.message : String(e);
+        console.warn("Zentrale Speicherung des Verwaltungs-Eintrags fehlgeschlagen:", e);
+    }
+    return out;
+}
+
+/** Beginnt einen komplett neuen Charakter (löscht Entwurf + gemerkte ID, damit keine ID wiederverwendet wird). */
+function startNewCharacter() {
+    if (!confirm("Neuen Charakter beginnen? Der aktuelle Entwurf in diesem Browser wird geleert (dein fertiger Charakter bleibt gespeichert).")) return;
+    try { localStorage.removeItem("chroniken_charakter"); } catch (e) {}
+    location.reload();
+}
+
+function copyCharId() {
+    const el = document.getElementById("successCharIdValue");
+    if (!el) return;
+    try { navigator.clipboard.writeText(el.textContent.trim()); } catch (e) {}
 }
 
 function downloadAgain() {
@@ -2163,10 +2258,18 @@ async function saveCharacterSheetToCentral(data) {
 
     // Die Verwaltungs-ID ist der feste Schlüssel des Charakterbogens.
     // Falls noch keine ID existiert, wird der Eintrag zuerst registriert.
-    let registryEntry = registerCharacterInManagement(data);
+    let centralList = null;
+    try {
+        if (window.ChronikenStorage && !data.registryId) {
+            ChronikenStorage.invalidate("characters");
+            const v = await ChronikenStorage.load("characters");
+            if (Array.isArray(v)) centralList = v;
+        }
+    } catch (e) { console.warn("Zentrale Charakterliste nicht lesbar:", e); }
+    let registryEntry = registerCharacterInManagement(data, centralList);
     if (window.ChronikenSync && typeof ChronikenSync.upsertRegistryEntry === "function") {
         try {
-            const central = await ChronikenSync.upsertRegistryEntry(registryEntry);
+            const central = await ChronikenSync.upsertRegistryEntry(registryEntry, { guardCollision: !data.registryId || data.registryId === registryEntry.id });
             if (central && central.id) {
                 data.registryId = central.id;
                 registryEntry = { ...registryEntry, ...central, id: central.id };
@@ -2211,7 +2314,8 @@ async function saveToLocalStorage() {
     const status = document.getElementById("saveStatus");
     try {
         await saveCharacterSheetToCentral(data);
-        status.textContent = "✓ Charakterbogen zentral gespeichert";
+        const savedId = (JSON.parse(localStorage.getItem("chroniken_charakter") || "null") || {}).registryId;
+        status.textContent = "✓ Charakterbogen zentral gespeichert" + (savedId ? " · ID: " + savedId : "");
         status.style.color = "#8ee7a5";
     } catch (e) {
         console.warn("Charakterbogen konnte nicht zentral gespeichert werden:", e);
@@ -2278,8 +2382,8 @@ document.addEventListener("DOMContentLoaded", () => { renderDynamicRaceOptions()
   <p>© 2026 Kiyasha · Chroniken – Alle Rechte vorbehalten · <a href="#" class="legal-link" onclick="openLegalNotice(); return false;">Hinweis</a></p>
 </footer>
 
-<script src="chroniken-storage.js"></script>
-<script src="chroniken-sync.js"></script>
+<script src="chroniken-storage.js?v=20261108-2"></script>
+<script src="chroniken-sync.js?v=20261108-2"></script>
 <script src="legal-notice.js"></script>
 </body>
 </html>

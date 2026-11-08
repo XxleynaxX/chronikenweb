@@ -309,13 +309,38 @@
   }
 
   // ---------- Charakter-Register ----------
-  async function upsertRegistryEntry(entry) {
+  function sameCharacter(a, b) {
+    // Gleicher Charakter nur, wenn die Steam-ID übereinstimmt – oder (bei fehlender
+    // Steam-ID auf einer Seite) Name UND Spieler/Discord übereinstimmen.
+    // Reiner Namensvergleich würde zwei verschiedene Spieler mit gleichem Namen vermischen.
+    const lc = function (v) { return String(v || "").trim().toLowerCase(); };
+    const sa = String(a.steamId || "").trim();
+    const sb = String(b.steamId || "").trim();
+    if (sa && sb) return sa === sb;
+    if (lc(a.name) !== lc(b.name) || !lc(a.name)) return false;
+    const pa = lc(a.discordName || a.player), pb = lc(b.discordName || b.player);
+    return !pa || !pb || pa === pb;
+  }
+
+  // opts.guardCollision: Spieler-Anlage – gehört die ID schon einem ANDEREN Charakter,
+  // wird eine neue freie ID vergeben statt den fremden Eintrag zu überschreiben.
+  async function upsertRegistryEntry(entry, opts) {
     if (!entry || !entry.id) return null;
     let saved = null;
+    const guard = !!(opts && opts.guardCollision);
 
     await mutate({
       characters: function (list) {
-        const idx = list.findIndex(function (c) { return c.id === entry.id; });
+        let idx = list.findIndex(function (c) { return c.id === entry.id; });
+        if (guard && idx >= 0 && !sameCharacter(list[idx], entry)) {
+          let max = 0;
+          list.forEach(function (c) {
+            const m = /^CH-(\d+)$/.exec(String(c && c.id || ""));
+            if (m) max = Math.max(max, parseInt(m[1], 10));
+          });
+          entry = Object.assign({}, entry, { id: "CH-" + String(max + 1).padStart(4, "0") });
+          idx = -1;
+        }
         if (idx >= 0) {
           list[idx] = Object.assign({}, list[idx], entry);
           saved = list[idx];
