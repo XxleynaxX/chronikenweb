@@ -77,7 +77,7 @@
 <div><label>Status</label><select id="charAdminStatus"><option value="aktiv">Aktiv</option><option value="pausiert">Pausiert</option><option value="gesperrt">Gesperrt</option><option value="archiviert">Archiviert</option></select></div>
 <div><label>Discord-Tag / Benutzername</label><input id="charAdminDiscord" placeholder="z. B. Schattenfuchs"><small class="muted">Kann hier korrigiert werden, falls der Discord-Name im Charakterbogen falsch ist. Der Bot verwendet diesen Namen für die Rollensynchronisation.</small></div>
 <div><label>Discord-Rollen</label><div class="char-role-checks"><label><input type="checkbox" id="charAdminHeiler"> 🩺 Heiler</label><label><input type="checkbox" id="charAdminBibliothek"> 📚 Bibliothek</label></div><small class="muted">Die Rollen werden anhand des hier eingetragenen Discord-Namens synchronisiert.</small></div>
-<div class="char-admin-full"><label>Gegen welche Regel verstoßen?</label><textarea id="charAdminViolation" placeholder="z. B. R-1-A, R-1-C"></textarea></div>
+<div class="char-admin-full"><label>Gegen welche Regel verstoßen?</label><textarea id="charAdminViolation" placeholder="z. B. R-1-A, R-1-C"></textarea><div id="charAdminViolationResolved" class="muted"></div></div>
 <div class="char-admin-full"><label>Notizen (nur Admin sichtbar)</label><textarea id="charAdminNotes" placeholder="Interne Notizen, Kontext, Absprachen ..."></textarea></div>
 </div>
 <div class="char-admin-actions"><button class="btn" id="charAdminSave">Speichern</button><button type="button" class="btn" id="charAdminCancel" hidden>Abbrechen</button></div>

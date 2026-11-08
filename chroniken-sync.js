@@ -59,11 +59,12 @@
     return out;
   }
 
-  async function putRemote(record) {
+  async function putRemote(record, only) {
     if (!global.ChronikenStorage) {
       throw new Error("ChronikenStorage ist nicht geladen.");
     }
     for (const k of KEYS) {
+      if (only && only.indexOf(k) < 0) continue;
       if (Object.prototype.hasOwnProperty.call(record, k)) {
         const value = Array.isArray(record[k]) ? record[k] : [];
         await global.ChronikenStorage.save(k, value);
@@ -139,7 +140,10 @@
     });
 
     names.forEach(function (k) { writeLocal(k, next[k]); });
-    await putRemote(next);
+    // Nur die tatsächlich geänderten Listen schreiben. Sonst scheitert das Speichern
+    // für Spieler ohne Admin-Recht (z. B. calendar/disabledHolidays sind admin-only)
+    // und der Charakter wird nie zentral angelegt.
+    await putRemote(next, names);
     emit(true);
     return next;
   }

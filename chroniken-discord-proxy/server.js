@@ -630,8 +630,14 @@ const server = http.createServer(async (req, res) => {
       if (single && !db.KEYS[single]) return sendJson(res, 404, { ok: false, error: 'Unbekannter Schlüssel: ' + single });
 
       if (req.method === 'GET') {
+        const sess = sessionFromRequest(req);
+        const isAdm = !!(sess && sess.admin);
+        // Admin-Daten (Aufgaben, Blacklist, Aktivitäten …) nur für Admins.
+        if (single && /^admin_/.test(single) && !isAdm) return sendJson(res, 403, { ok: false, error: 'Nur Admins erlaubt.' });
         if (single) return sendJson(res, 200, { ok: true, key: single, value: await db.getOne(single) });
-        return sendJson(res, 200, { ok: true, data: await db.getAll() });
+        const all = await db.getAll();
+        if (!isAdm) Object.keys(all).forEach(k => { if (/^admin_/.test(k)) delete all[k]; });
+        return sendJson(res, 200, { ok: true, data: all });
       }
 
       if (req.method === 'PUT') {

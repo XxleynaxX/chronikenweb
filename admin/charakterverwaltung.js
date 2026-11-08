@@ -9,7 +9,14 @@
 
   const local=()=>{try{const v=JSON.parse(localStorage.getItem(CHARS_KEY)||"[]");return Array.isArray(v)?v:[]}catch{return[]}};
   const saveLocal=v=>localStorage.setItem(CHARS_KEY,JSON.stringify(v));
-  const nextId=()=>{let n=parseInt(localStorage.getItem(NEXT_ID_KEY)||"1",10);if(!Number.isFinite(n)||n<1)n=1;localStorage.setItem(NEXT_ID_KEY,String(n+1));return"CH-"+String(n).padStart(4,"0")};
+  // Nächste freie ID: höchste vorhandene zentrale ID + 1 (nicht nur der lokale Zähler,
+  // sonst vergeben mehrere Browser dieselbe ID und überschreiben sich gegenseitig).
+  const nextId=(list)=>{
+    let n=parseInt(localStorage.getItem(NEXT_ID_KEY)||"1",10);if(!Number.isFinite(n)||n<1)n=1;
+    (Array.isArray(list)?list:[]).forEach(c=>{const m=/^CH-(\d+)$/.exec(String(c&&c.id||""));if(m)n=Math.max(n,parseInt(m[1],10)+1)});
+    localStorage.setItem(NEXT_ID_KEY,String(n+1));
+    return"CH-"+String(n).padStart(4,"0");
+  };
   const esc=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"}[c]));
   const get=id=>document.getElementById(id);
   const RULE_SECTION_NUMBERS={bau:1,rp:2,erp:3,gefangenschaft:4,stadt:5,charakter:6,magie:7,abwesenheit:8,chat:9,begriffe:10};
@@ -190,7 +197,7 @@
       if(!discordName){
         return {ok:false,skipped:true,error:"Kein Discord-Name im Charakterbogen gefunden."};
       }
-      const res=await fetch(CHARACTER_PROXY_URL.replace(/\\/charakter$/,"")+"/roles/sync",{
+      const res=await fetch(CHARACTER_PROXY_URL.replace(/\/charakter$/,"")+"/roles/sync",{
         method:"POST",
         credentials:"include",
         headers:{"Content-Type":"application/json"},
@@ -235,7 +242,7 @@
           username:"Chroniken Admin",
           embeds:[{
             title:type==="created"?"🆕 Charakter angelegt":type==="violation"?"⚠️ Regelverstoß / Verwarnung":type==="deleted"?"🗑️ Charakter gelöscht":"✏️ Charakter bearbeitet",
-            color:type==="violation"?0xe11d48:type==="deleted"?0x6b7280:type==="created"?0x22c55:0xa855f7,
+            color:type==="violation"?0xe11d48:type==="deleted"?0x6b7280:type==="created"?0x22c55e:0xa855f7,
             fields,
             footer:{text:"Chroniken · Charakterverwaltung"},
             timestamp:new Date().toISOString()
@@ -246,7 +253,15 @@
   }
 
   async function remoteChars(){
-    try{const v=await ChronikenStorage.load("characters");return Array.isArray(v)?v:[]}catch{return local()}
+    // Bewusst KEIN stiller Fallback auf localStorage: eine veraltete lokale Liste
+    // würde sonst beim Speichern die zentrale Datenbank überschreiben.
+    ChronikenStorage.invalidate("characters");
+    const v=await ChronikenStorage.load("characters");
+    return Array.isArray(v)?v:[];
+  }
+  async function remoteCharsOrAlert(){
+    try{return await remoteChars()}
+    catch(e){alert("Charaktere konnten nicht aus der Datenbank geladen werden – nichts wurde geändert.\n"+(e&&e.message||e));return null}
   }
   async function writeChars(list){
     saveLocal(list);
@@ -303,7 +318,13 @@
     body.querySelectorAll("[data-delete]").forEach(b=>b.onclick=()=>deleteChar(b.dataset.delete));
   }
 
-  async function refresh(){renderTable(await remoteChars())}
+  async function refresh(){
+    try{renderTable(await remoteChars())}
+    catch(e){
+      console.error(e);
+      const c=get("charAdminCount");if(c)c.textContent="Datenbank nicht erreichbar: "+(e&&e.message||e);
+    }
+  }
 
   function resetForm(){
     get("charAdminForm").reset();get("charAdminEditId").value="";get("charAdminId").value="";
@@ -311,7 +332,7 @@
     get("charAdminTitle").textContent="Neuer Charakterbogen";get("charAdminSave").textContent="Speichern";get("charAdminCancel").hidden=true;
   }
   async function editChar(id){
-    const c=(await remoteChars()).find(x=>x.id===id);if(!c)return;
+    const all=await remoteCharsOrAlert();if(!all)return;const c=all.find(x=>x.id===id);if(!c)return;
     get("charAdminEditId").value=c.id;get("charAdminId").value=c.id;get("charAdminName").value=c.name||"";
     get("charAdminPlayer").value=c.player||"";get("charAdminSteam").value=c.steamId||"";get("charAdminRace").value=c.race||"";
     get("charAdminWarnings").value=c.warnings??0;get("charAdminStatus").value=c.status||"aktiv";get("charAdminDiscord").value=c.discordName||"";get("charAdminHeiler").checked=!!c.heiler;get("charAdminBibliothek").checked=!!c.bibliothek;get("charAdminViolation").value=c.violationIds?.join(", ")||c.violation||"";updateViolationPreview();get("charAdminNotes").value=c.notes||"";
@@ -319,15 +340,16 @@
     get("charAdminName").focus();
   }
   async function deleteChar(id){
-    const list=await remoteChars(),c=list.find(x=>x.id===id);if(!c||!confirm("Charakter "+id+" wirklich löschen?"))return;
-    await writeChars(list.filter(x=>x.id!==id));
+    const list=await remoteCharsOrAlert();if(!list)return;const c=list.find(x=>x.id===id);if(!c||!confirm("Charakter "+id+" wirklich löschen?"))return;
+    if(!await writeChars(list.filter(x=>x.id!==id))){alert("Löschen in der Datenbank fehlgeschlagen.");return}
     try{await ChronikenSync.removeCharacter(id)}catch(e){console.warn(e)}
     await notify("deleted",c);if(get("charAdminEditId").value===id)resetForm();refresh();
   }
 
   async function openSheet(id){
     const modal=get("charAdminSheetModal"),body=get("charAdminSheetBody");modal.hidden=false;body.innerHTML='<p class="muted">Lade Bogen …</p>';
-    const list=await remoteChars(),c=list.find(x=>x.id===id)||{},sh=await getSheet(id);
+    let list=[];try{list=await remoteChars()}catch{}
+    const c=list.find(x=>x.id===id)||{},sh=await getSheet(id);
     if(!sh||!sh.data){body.innerHTML='<p class="muted">Für <strong>'+esc(id)+'</strong> ist keine Bogen-Kopie gespeichert.</p>';return}
     const d=sh.data;let html="",txt=id+" – "+(sh.name||c.name||"")+"\n";
     SHEET_FIELDS.forEach(([sec,fields])=>{const rows=fields.map(([l,k])=>[l,sheetValue(d,k)]).filter(x=>x[1]);if(!rows.length)return;html+='<h4>'+esc(sec)+'</h4>'+rows.map(r=>'<div class="sheet-row"><b>'+esc(r[0])+'</b><span>'+esc(r[1])+'</span></div>').join("");txt+="\n["+sec+"]\n"+rows.map(r=>r[0]+": "+r[1]).join("\n")+"\n"});
@@ -340,7 +362,8 @@
     try{sessionStorage.setItem("portal_admin_auth","1")}catch{}
     get("charAdminForm").onsubmit=async e=>{
       e.preventDefault();const name=get("charAdminName").value.trim();if(!name)return;
-      const list=await remoteChars(),editId=get("charAdminEditId").value,old=editId?list.find(c=>c.id===editId):null;
+      const list=await remoteCharsOrAlert();if(!list)return;
+      const editId=get("charAdminEditId").value,old=editId?list.find(c=>c.id===editId):null;
       const violationInput=get("charAdminViolation").value.trim();
       const violationIds=parseViolationIds(violationInput);
       const resolvedViolations=resolveViolations(violationInput);
@@ -350,9 +373,8 @@
       const payload={name,player:get("charAdminPlayer").value.trim(),discordName:get("charAdminDiscord").value.trim(),steamId:get("charAdminSteam").value.trim(),race:get("charAdminRace").value,status:get("charAdminStatus").value,warnings:Math.max(0,parseInt(get("charAdminWarnings").value,10)||0),violation:violationIds.join(", "),violationIds,violationDetails,violationTexts:violationTextsStored,notes:get("charAdminNotes").value.trim(),heiler:get("charAdminHeiler").checked,bibliothek:get("charAdminBibliothek").checked,updatedAt:new Date().toISOString()};
       let saved,type="created";
       if(editId){const i=list.findIndex(c=>c.id===editId);if(i<0)return;list[i]={...list[i],...payload};saved=list[i];type=payload.violation!==old?.violation||payload.warnings>(Number(old?.warnings)||0)?"violation":"updated"}
-      else{saved={id:nextId(),createdAt:new Date().toISOString(),...payload};list.push(saved)}
-      await writeChars(list);
-      try{await ChronikenSync.saveCharacter(saved)}catch(e){console.warn(e)}
+      else{saved={id:nextId(list),createdAt:new Date().toISOString(),...payload};list.push(saved)}
+      if(!await writeChars(list)){alert("Speichern in der Datenbank fehlgeschlagen – bitte erneut anmelden / später versuchen. Der Eintrag wurde NICHT zentral gespeichert.");return}
       await syncDiscordNameToSheet(saved);
       const roleSync=await syncDiscordRoles(saved);
       if(roleSync.ok){console.info("[Discord-Rollen] synchronisiert:",roleSync.discordName||"");}
