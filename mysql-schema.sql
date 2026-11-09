@@ -54,3 +54,19 @@ SELECT `key`, label, description,
        updated_at, created_at
 FROM chroniken_data
 ORDER BY label, `key`;
+
+
+CREATE TABLE IF NOT EXISTS admin_blacklist (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  steam_id VARCHAR(32) NOT NULL UNIQUE,
+  discord_id VARCHAR(32) NULL,
+  discord_tag VARCHAR(255) NULL,
+  player_name VARCHAR(255) NULL,
+  reason TEXT NULL,
+  created_by VARCHAR(32) NOT NULL,
+  created_at TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
+  updated_at TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3) ON UPDATE CURRENT_TIMESTAMP(3),
+  INDEX idx_admin_blacklist_steam(steam_id),
+  INDEX idx_admin_blacklist_discord(discord_id),
+  INDEX idx_admin_blacklist_tag(discord_tag)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
