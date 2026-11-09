@@ -304,6 +304,8 @@ const ADMIN_BLACKLIST_SCHEMA = `
 CREATE TABLE IF NOT EXISTS admin_blacklist (
   id INT AUTO_INCREMENT PRIMARY KEY,
   steam_id VARCHAR(32) NOT NULL UNIQUE,
+  discord_id VARCHAR(32) NULL,
+  discord_tag VARCHAR(255) NULL,
   player_name VARCHAR(255) NULL,
   reason TEXT NULL,
   created_by VARCHAR(32) NOT NULL,
@@ -359,6 +361,14 @@ async function syncAdminKeys() {
     );
   }
 }
+async function ensureBlacklistColumns() {
+  const p = getPool();
+  const [cols] = await p.query('SHOW COLUMNS FROM admin_blacklist');
+  const names = new Set(cols.map(c => c.Field));
+  if (!names.has('discord_id')) await p.query('ALTER TABLE admin_blacklist ADD COLUMN discord_id VARCHAR(32) NULL AFTER steam_id');
+  if (!names.has('discord_tag')) await p.query('ALTER TABLE admin_blacklist ADD COLUMN discord_tag VARCHAR(255) NULL AFTER discord_id');
+}
+
 async function ensureAdminSchema() {
   if (adminSchemaPromise) return adminSchemaPromise;
   adminSchemaPromise = (async () => {
@@ -368,6 +378,7 @@ async function ensureAdminSchema() {
     await p.query(ADMIN_TASKS_SCHEMA);
     await p.query(ADMIN_COMMENTS_SCHEMA);
     await p.query(ADMIN_BLACKLIST_SCHEMA);
+    await ensureBlacklistColumns();
     await p.query(ADMIN_CHANGELOG_SCHEMA);
     await p.query(ADMIN_ACTIVITY_SCHEMA);
     await seedAdminChangelog();
@@ -405,9 +416,13 @@ async function adminBlacklistEntry(id) {
 async function adminAddBlacklist(data, actor) {
   await ensureAdminSchema();
   const steamId=String(data.steam_id||'').trim();
+  const discordId=String(data.discord_id||'').trim();
+  const discordTag=String(data.discord_tag||'').trim().slice(0,255);
   if(!/^\d{10,20}$/.test(steamId)) throw Object.assign(new Error('Ungültige Steam-ID.'),{status:400});
+  if(discordId && !/^\d{15,22}$/.test(discordId)) throw Object.assign(new Error('Ungültige Discord-ID.'),{status:400});
+  if(!discordId && !discordTag) throw Object.assign(new Error('Discord-ID oder Discord-Tag muss angegeben werden.'),{status:400});
   try {
-    const [r]=await getPool().query('INSERT INTO admin_blacklist (steam_id,player_name,reason,created_by) VALUES (?,?,?,?)',[steamId,String(data.player_name||'').trim().slice(0,255),String(data.reason||'').trim().slice(0,5000),actor]);
+    const [r]=await getPool().query('INSERT INTO admin_blacklist (steam_id,discord_id,discord_tag,player_name,reason,created_by) VALUES (?,?,?,?,?,?)',[steamId,discordId||null,discordTag||null,String(data.player_name||'').trim().slice(0,255),String(data.reason||'').trim().slice(0,5000),actor]);
     await adminActivity(actor,'blacklist.added',null,null,steamId);
     await syncAdminKeys();
     return adminBlacklistEntry(r.insertId);
@@ -429,7 +444,18 @@ async function isSteamBlacklisted(steamId) {
   const id=String(steamId||'').trim();
   if(!id) return false;
   await ensureAdminSchema();
-  const [rows]=await getPool().query('SELECT id,steam_id,player_name,reason FROM admin_blacklist WHERE steam_id=? LIMIT 1',[id]);
+  const [rows]=await getPool().query('SELECT id,steam_id,discord_id,discord_tag,player_name,reason FROM admin_blacklist WHERE steam_id=? LIMIT 1',[id]);
+  return rows[0] || null;
+}
+async function isDiscordBlacklisted(discordId, discordTag) {
+  const id=String(discordId||'').trim();
+  const tag=String(discordTag||'').trim();
+  if(!id && !tag) return null;
+  await ensureAdminSchema();
+  const [rows]=await getPool().query(
+    'SELECT id,steam_id,discord_id,discord_tag,player_name,reason FROM admin_blacklist WHERE (discord_id IS NOT NULL AND discord_id=?) OR (discord_tag IS NOT NULL AND LOWER(discord_tag)=LOWER(?)) LIMIT 1',
+    [id,tag]
+  );
   return rows[0] || null;
 }
 function steamIdOf(entry){
@@ -571,5 +597,5 @@ async function adminActivities(limit=100) {
 
 module.exports = {
   KEYS, normalizeKey, canWrite, validValue,
-  configured, ensureSchema, getAll, getOne, setMany, claimNotificationKey, status, ensureAdminSchema, syncAdminKeys, adminSummary, adminTasks, adminTask, adminCreateTask, adminUpdateTask, adminDeleteTask, adminProjects, adminCreateProject, adminUpdateProject, adminDeleteProject, adminAddComment, adminActivities, adminBlacklist, adminBlacklistEntry, adminAddBlacklist, adminRemoveBlacklist, isSteamBlacklisted, adminChangelog
+  configured, ensureSchema, getAll, getOne, setMany, claimNotificationKey, status, ensureAdminSchema, syncAdminKeys, adminSummary, adminTasks, adminTask, adminCreateTask, adminUpdateTask, adminDeleteTask, adminProjects, adminCreateProject, adminUpdateProject, adminDeleteProject, adminAddComment, adminActivities, adminBlacklist, adminBlacklistEntry, adminAddBlacklist, adminRemoveBlacklist, isSteamBlacklisted, isDiscordBlacklisted, adminChangelog
 };
