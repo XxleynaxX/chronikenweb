@@ -2,7 +2,21 @@
 <html lang="de"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Die Chroniken · Spieler-Blacklist</title><link rel="stylesheet" href="admin.css"></head>
 <body><div class="shell"><aside class="sidebar"><div class="brand">Die Chroniken <small>Admin</small></div>
-<nav><a href="index.html">🏠 Dashboard</a><a href="aufgaben.html">📋 Aufgaben</a><a href="projekte.html">📁 Projekte</a><a href="charaktere.html">🛡️ Charakterverwaltung</a><a class="active" href="blacklist.html">🚫 Spieler-Blacklist</a><a href="aktivitaeten.html">📜 Aktivitäten</a><a href="../index.html">↩ Zur Webseite</a></nav>
+<nav class="admin-nav">
+<div class="nav-group"><div class="nav-title">Übersicht</div>
+<a  href="index.html"><span>🏠</span><span><b>Dashboard</b><small>Startseite</small></span></a>
+</div>
+<div class="nav-group"><div class="nav-title">Verwaltung</div>
+<a  href="aufgaben.html"><span>📋</span><span><b>Aufgaben</b><small>Planen & kommentieren</small></span></a>
+<a  href="projekte.html"><span>📁</span><span><b>Projekte</b><small>Projekte verwalten</small></span></a>
+<a  href="charaktere.html"><span>🛡️</span><span><b>Charaktere</b><small>Charakterverwaltung</small></span></a>
+<a class="active" href="blacklist.html"><span>🚫</span><span><b>Blacklist</b><small>Discord & Steam</small></span></a>
+</div>
+<div class="nav-group"><div class="nav-title">System</div>
+<a  href="aktivitaeten.html"><span>📜</span><span><b>Aktivitäten</b><small>Änderungsverlauf</small></span></a>
+<a href="../index.html"><span>↩</span><span><b>Zur Webseite</b><small>Admin verlassen</small></span></a>
+</div>
+</nav>
 </aside><main class="main"><header class="top"><div><h1>Spieler-Blacklist</h1><p>Discord-ID/Tag werden beim Login geprüft. Gesperrte Konten erhalten keinen Zugriff und lösen eine Discord-Meldung aus.</p></div><div class="user" id="user">Lade Anmeldung …</div></header>
 <section id="locked" class="panel locked" hidden><h2>🔒 Nur für Admins</h2><p>Dieser Bereich benötigt die Discord-Adminrolle.</p><a class="btn" id="login">Mit Discord anmelden</a></section>
 <div id="app" hidden>
