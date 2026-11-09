@@ -99,6 +99,8 @@ function blacklistEmbed(action, entry, actor) {
   return adminActionEmbed(k[0], k[1], [
     { name: 'Spieler', value: clip(entry.player_name, 256) || 'Unbekannt', inline: true },
     { name: 'Steam-ID', value: clip(entry.steam_id, 80) || '—', inline: true },
+      { name: 'Discord-ID', value: clip(entry.discord_id, 80) || '—', inline: true },
+      { name: 'Discord-Tag', value: clip(entry.discord_tag, 255) || '—', inline: true },
     { name: 'Grund', value: clip(entry.reason, 1000) || 'Kein Grund angegeben', inline: false }
   ], actor);
 }
@@ -281,6 +283,8 @@ async function handle(req, res, url, session, webhook) {
       const b = await readJson(req);
       const entry = await db.adminAddBlacklist({
         steam_id: clip(b.steam_id, 32),
+        discord_id: clip(b.discord_id, 32),
+        discord_tag: clip(b.discord_tag, 255),
         player_name: clip(b.player_name, 255),
         reason: clip(b.reason, 5000)
       }, actor);
