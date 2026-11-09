@@ -143,174 +143,25 @@
 
 
     /* ===== MAGISCHES LORE-BUCH ===== */
-    .lore-book-button {
-      width: 40px;
-      height: 40px;
-      border-radius: 50%;
-      border: 1px solid rgba(192,132,252,.45);
-      background: radial-gradient(circle at 35% 30%, rgba(216,180,254,.28), rgba(91,33,182,.18));
-      color: #eadcff;
-      font-size: 1.25rem;
-      cursor: pointer;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      flex-shrink: 0;
-      box-shadow: inset 0 0 12px rgba(192,132,252,.12), 0 0 10px rgba(139,92,246,.18);
-      transition: transform .25s, box-shadow .25s, border-color .25s;
-    }
-    .lore-book-button:hover {
-      transform: translateY(-2px) scale(1.08) rotate(-3deg);
-      border-color: rgba(216,180,254,.9);
-      box-shadow: 0 0 18px rgba(168,85,247,.45), inset 0 0 14px rgba(216,180,254,.18);
-    }
-
-    .lore-modal {
-      position: fixed;
-      inset: 0;
-      z-index: 2000;
-      display: none;
-      align-items: center;
-      justify-content: center;
-      padding: 24px;
-      background: rgba(5,2,12,.78);
-      backdrop-filter: blur(9px);
-      -webkit-backdrop-filter: blur(9px);
-      animation: loreFade .35s ease;
-    }
-    .lore-modal.open { display: flex; }
-
-    .lore-book {
-      position: relative;
-      width: min(940px, 96vw);
-      height: min(760px, 88vh);
-      display: flex;
-      overflow: hidden;
-      border: 1px solid rgba(216,180,254,.45);
-      border-radius: 16px 22px 22px 16px;
-      background:
-        linear-gradient(90deg, rgba(62,35,20,.96) 0 5%, rgba(247,232,196,.98) 5% 50%, rgba(231,211,171,.98) 50% 95%, rgba(62,35,20,.96) 95%);
-      box-shadow: 0 30px 80px rgba(0,0,0,.7), 0 0 45px rgba(139,92,246,.28);
-      color: #2f2117;
-      transform-origin: center;
-      animation: bookOpen .65s cubic-bezier(.2,.8,.2,1);
-    }
-    .lore-book::before {
-      content: "";
-      position: absolute;
-      top: 0; bottom: 0; left: 50%;
-      width: 2px;
-      transform: translateX(-1px);
-      background: linear-gradient(180deg, transparent, rgba(70,45,28,.4) 12%, rgba(70,45,28,.55) 50%, rgba(70,45,28,.4) 88%, transparent);
-      box-shadow: 0 0 12px rgba(60,35,20,.25);
-      pointer-events: none;
-      z-index: 3;
-    }
-    .lore-page {
-      width: 50%;
-      min-width: 0;
-      padding: 42px 46px 52px;
-      overflow: auto;
-      background:
-        radial-gradient(circle at 20% 15%, rgba(255,255,255,.4), transparent 30%),
-        linear-gradient(90deg, rgba(255,255,255,.08), transparent 12%, transparent 88%, rgba(80,45,20,.08)),
-        #f3e5c4;
-      scrollbar-width: thin;
-      scrollbar-color: #9a6b43 rgba(80,45,20,.08);
-    }
-    .lore-page:first-child { border-radius: 12px 0 0 12px; }
-    .lore-page:last-child { border-radius: 0 12px 12px 0; }
-    .lore-page h2 {
-      margin: 0 0 18px;
-      text-align: center;
-      color: #4a2d1b;
-      font-family: Georgia, "Times New Roman", serif;
-      font-size: clamp(1.35rem, 2.2vw, 2rem);
-      letter-spacing: .04em;
-      text-shadow: 0 1px 0 rgba(255,255,255,.5);
-    }
-    .lore-page h3 {
-      margin: 22px 0 8px;
-      color: #5b341f;
-      font-family: Georgia, "Times New Roman", serif;
-      font-size: 1.08rem;
-    }
-    .lore-page p {
-      margin: 0 0 12px;
-      font-family: Georgia, "Times New Roman", serif;
-      font-size: .94rem;
-      line-height: 1.7;
-      text-align: justify;
-      hyphens: auto;
-    }
-    .lore-page .lore-intro {
-      font-style: italic;
-      text-align: center;
-      color: #5b341f;
-      margin-bottom: 22px;
-    }
-    .lore-page .lore-quote {
-      margin: 20px 0;
-      padding: 14px 16px;
-      border-left: 3px solid #8b5e3c;
-      background: rgba(139,94,60,.08);
-      font-style: italic;
-      text-align: left;
-    }
-    .lore-close {
-      position: absolute;
-      right: 14px;
-      top: 12px;
-      z-index: 10;
-      width: 38px;
-      height: 38px;
-      border: 1px solid rgba(255,255,255,.35);
-      border-radius: 50%;
-      background: rgba(35,18,10,.78);
-      color: #fff;
-      font-size: 1.1rem;
-      cursor: pointer;
-      box-shadow: 0 4px 15px rgba(0,0,0,.35);
-    }
-    .lore-close:hover { background: rgba(91,33,182,.75); transform: scale(1.05); }
-    .lore-page-number {
-      position: sticky;
-      bottom: -42px;
-      margin: 24px -20px -42px;
-      padding-top: 12px;
-      text-align: center;
-      color: rgba(74,45,27,.65);
-      font: .75rem Georgia, "Times New Roman", serif;
-      background: linear-gradient(transparent, #f3e5c4 35%);
-    }
-    @keyframes loreFade { from { opacity: 0; } to { opacity: 1; } }
-    @keyframes bookOpen {
-      from { opacity: 0; transform: perspective(1300px) rotateY(-14deg) scale(.88); }
-      to { opacity: 1; transform: perspective(1300px) rotateY(0) scale(1); }
-    }
-    @media (max-width: 760px) {
-      .lore-modal { padding: 10px; }
-      .lore-book {
-        width: 96vw;
-        height: 92vh;
-        display: block;
-        overflow-y: auto;
-        background: #f3e5c4;
-      }
-      .lore-book::before { display: none; }
-      .lore-page {
-        width: auto;
-        min-height: auto;
-        overflow: visible;
-        padding: 34px 28px 42px;
-        border-radius: 0 !important;
-      }
-      .lore-page + .lore-page {
-        border-top: 1px solid rgba(91,52,31,.18);
-      }
-      .lore-page p { font-size: .9rem; }
-    }
-
+    .lore-book-button{width:40px;height:40px;border-radius:50%;border:1px solid rgba(192,132,252,.45);background:radial-gradient(circle at 35% 30%,rgba(216,180,254,.28),rgba(91,33,182,.18));color:#eadcff;font-size:1.25rem;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;box-shadow:inset 0 0 12px rgba(192,132,252,.12),0 0 10px rgba(139,92,246,.18);transition:.25s}
+    .lore-book-button:hover{transform:translateY(-2px) scale(1.08) rotate(-3deg);border-color:rgba(216,180,254,.9);box-shadow:0 0 18px rgba(168,85,247,.45),inset 0 0 14px rgba(216,180,254,.18)}
+    .lore-modal{position:fixed;inset:0;z-index:2000;display:none;align-items:center;justify-content:center;padding:24px;background:rgba(5,2,12,.82);backdrop-filter:blur(9px);-webkit-backdrop-filter:blur(9px)}
+    .lore-modal.open{display:flex}
+    .lore-book{position:relative;width:min(940px,96vw);height:min(700px,88vh);perspective:1800px;color:#2f2117;animation:bookOpen .55s ease}
+    .lore-book-shell{position:absolute;inset:0;border:1px solid rgba(216,180,254,.45);border-radius:16px 22px 22px 16px;background:#6a4329;padding:10px;box-shadow:0 30px 80px rgba(0,0,0,.7),0 0 45px rgba(139,92,246,.28)}
+    .lore-pages{position:relative;width:100%;height:100%;background:#f3e5c4;border-radius:10px;overflow:hidden;box-shadow:inset 0 0 25px rgba(70,45,28,.22)}
+    .lore-spread{position:absolute;inset:0;display:grid;grid-template-columns:1fr 1fr}
+    .lore-sheet{position:absolute;top:0;width:50%;height:100%;transform-style:preserve-3d;transition:transform .9s cubic-bezier(.65,.05,.36,1);z-index:1}
+    .lore-sheet.left{left:0;transform-origin:right center}.lore-sheet.right{right:0;transform-origin:left center}
+    .lore-face{position:absolute;inset:0;backface-visibility:hidden;background:radial-gradient(circle at 20% 15%,rgba(255,255,255,.4),transparent 30%),linear-gradient(90deg,rgba(255,255,255,.08),transparent 12%,transparent 88%,rgba(80,45,20,.08)),#f3e5c4;padding:42px 46px 70px;overflow:auto;font-family:Georgia,"Times New Roman",serif}
+    .lore-face.back{transform:rotateY(180deg)}
+    .lore-face h2{margin:0 0 18px;text-align:center;color:#4a2d1b;font-size:clamp(1.35rem,2.2vw,2rem);letter-spacing:.04em}.lore-face h3{margin:22px 0 8px;color:#5b341f;font-size:1.08rem}.lore-face p{margin:0 0 12px;font-size:.94rem;line-height:1.7;text-align:justify;hyphens:auto}.lore-face .lore-intro{font-style:italic;text-align:center;color:#5b341f;margin-bottom:22px}.lore-face .lore-quote{margin:20px 0;padding:14px 16px;border-left:3px solid #8b5e3c;background:rgba(139,94,60,.08);font-style:italic}
+    .lore-center{position:absolute;left:50%;top:0;bottom:0;width:3px;transform:translateX(-50%);background:linear-gradient(180deg,transparent,rgba(60,35,20,.5) 12%,rgba(60,35,20,.7) 50%,rgba(60,35,20,.5) 88%,transparent);z-index:8;pointer-events:none}
+    .lore-close{position:absolute;right:-8px;top:-8px;z-index:20;width:38px;height:38px;border:1px solid rgba(255,255,255,.35);border-radius:50%;background:rgba(35,18,10,.9);color:#fff;font-size:1.1rem;cursor:pointer}.lore-close:hover{background:rgba(91,33,182,.8);transform:scale(1.05)}
+    .lore-nav{position:absolute;bottom:12px;left:50%;transform:translateX(-50%);z-index:20;display:flex;gap:12px;align-items:center}.lore-nav button{border:1px solid rgba(91,52,31,.5);background:rgba(247,232,196,.96);color:#4a2d1b;border-radius:20px;padding:8px 16px;font-family:Georgia,serif;cursor:pointer;box-shadow:0 4px 12px rgba(0,0,0,.25)}.lore-nav button:hover:not(:disabled){background:#fff2ce;transform:translateY(-1px)}.lore-nav button:disabled{opacity:.4;cursor:default}.lore-counter{color:#f3e5c4;text-shadow:0 1px 4px #000;font:13px Georgia,serif;min-width:75px;text-align:center}
+    .lore-source-pages{display:none}
+    @keyframes bookOpen{from{opacity:0;transform:scale(.9) rotateY(-12deg)}to{opacity:1;transform:scale(1) rotateY(0)}}
+    @media(max-width:760px){.lore-modal{padding:10px}.lore-book{width:96vw;height:88vh}.lore-pages{overflow:hidden}.lore-spread{display:block}.lore-sheet{width:100%;left:0!important;right:auto!important}.lore-sheet.right{display:none}.lore-center{display:none}.lore-face{padding:34px 25px 70px}.lore-face p{font-size:.9rem}}
     /* ===== ADMIN-BEREICH ===== */
     .admin-section {
       max-width: 1100px;
@@ -538,9 +389,20 @@
   <!-- MAGISCHES LORE-BUCH -->
   <div class="lore-modal" id="loreModal" aria-hidden="true">
     <div class="lore-book" role="dialog" aria-modal="true" aria-labelledby="loreTitle">
+      <div class="lore-book-shell">
+        <div class="lore-pages">
+          <div class="lore-spread" id="loreSpread"></div>
+          <div class="lore-center"></div>
+          <div class="lore-nav">
+            <button id="lorePrev" type="button">‹ Zurück</button>
+            <span class="lore-counter" id="loreCounter">Seite 1–2 / 4</span>
+            <button id="loreNext" type="button">Weiter ›</button>
+          </div>
+        </div>
+      </div>
       <button class="lore-close" id="loreClose" title="Buch schließen" aria-label="Buch schließen">✕</button>
-
-      <article class="lore-page">
+    </div>
+    <div class="lore-source-pages" aria-hidden="true">      <article class="lore-page" data-page="0">
         <h2 id="loreTitle">Die Chroniken</h2>
         <p class="lore-intro">Das Zeitalter der Asche</p>
         <p class="lore-quote">„Hört zu.<br><br>Dies ist die Geschichte einer Welt, die ihre eigene Geschichte weiterschreibt.<br><br>Die Zeit heilt nicht alle Wunden. Manche hinterlassen Narben in der Erde, andere in den Herzen derer, die sie überleben. Doch selbst aus den Trümmern einer vergangenen Welt kann etwas Neues entstehen.“</p>
@@ -563,8 +425,7 @@
 
         <div class="lore-page-number">Seite I · Die Wunden der alten Welt</div>
       </article>
-
-      <article class="lore-page">
+      <article class="lore-page" data-page="1">
         <h3>Die Zeit des Wiederaufbaus</h3>
         <p>Nach hundert Jahren endete der Götterkrieg. Die Waffen verstummten. Doch die Welt war verwundet und nichts sollte jemals wieder so sein wie zuvor.</p>
         <p>Es folgten die nächsten zweihundert Jahre – die Zeit des Wiederaufbaus.</p>
@@ -589,8 +450,7 @@
 
         <div class="lore-page-number">Seite II · Eine Welt, die sich erinnert</div>
       </article>
-
-      <article class="lore-page">
+      <article class="lore-page" data-page="2">
         <h3>Das große Erwachen</h3>
         <p>Das große Erwachen beginnt.</p>
         <p>Die alten Ruhestätten reagieren wieder auf die Magie der Welt. Schutzzauber lösen sich, vergessene Siegel erwachen und die ersten Schlafenden öffnen nach langer Zeit ihre Augen. Doch das Erwachen geschieht nicht auf einmal. Nach und nach kehren die Geretteten zurück. Manche erwachen an den Orten, an denen sie einst in den Schlaf versetzt wurden. Andere finden sich an fremden Orten wieder.</p>
@@ -610,8 +470,7 @@
 
         <div class="lore-page-number">Seite III · Das Erwachen</div>
       </article>
-
-      <article class="lore-page">
+      <article class="lore-page" data-page="3">
         <h3>Deine Geschichte</h3>
         <p>Es gibt keinen vorgeschriebenen Helden und keinen festen Weg, den jeder Spieler durchlaufen muss.</p>
         <p class="lore-quote">Deine Herkunft bestimmt nicht dein Schicksal.<br><br><strong>Deine Entscheidungen tun es.</strong></p>
@@ -626,8 +485,7 @@
         <p class="lore-quote"><strong>Willkommen bei Die Chroniken.</strong><br><br>Eine Welt voller vergessener Geschichten.<br><br>Eine neue Zeit voller Möglichkeiten.<br><br>Und ein Schicksal, das du selbst gestalten kannst.</p>
 
         <div class="lore-page-number">Seite IV · Deine Geschichte beginnt</div>
-      </article>
-    </div>
+      </article></div>
   </div>
 
   <!-- FUCHS -->
@@ -1192,34 +1050,28 @@
     })();
 
     // ===== LORE-BUCH =====
-    (function() {
-      const btn = document.getElementById("loreBookButton");
-      const modal = document.getElementById("loreModal");
-      const close = document.getElementById("loreClose");
-      if (!btn || !modal) return;
-
-      function openBook() {
-        modal.classList.add("open");
-        modal.setAttribute("aria-hidden", "false");
-        document.body.style.overflow = "hidden";
+    (function(){
+      const btn=document.getElementById("loreBookButton"),modal=document.getElementById("loreModal");
+      const close=document.getElementById("loreClose"),spread=document.getElementById("loreSpread");
+      const prev=document.getElementById("lorePrev"),next=document.getElementById("loreNext"),counter=document.getElementById("loreCounter");
+      const sourcePages=[...document.querySelectorAll(".lore-source-pages .lore-page")].map(p=>p.innerHTML);
+      let page=0;
+      if(!btn||!modal||!spread||!sourcePages.length)return;
+      function render(){
+        spread.innerHTML="";
+        const total=sourcePages.length;
+        const l=sourcePages[page],r=sourcePages[page+1];
+        if(l!==undefined)spread.insertAdjacentHTML("beforeend",'<div class="lore-sheet left"><div class="lore-face">'+l+'</div></div>');
+        if(r!==undefined)spread.insertAdjacentHTML("beforeend",'<div class="lore-sheet right"><div class="lore-face">'+r+'</div></div>');
+        counter.textContent="Seite "+(page+1)+"–"+Math.min(page+2,total)+" / "+total;
+        prev.disabled=page===0;next.disabled=page+2>=total;
       }
-
-      function closeBook() {
-        modal.classList.remove("open");
-        modal.setAttribute("aria-hidden", "true");
-        document.body.style.overflow = "";
-      }
-
-      btn.addEventListener("click", openBook);
-      close?.addEventListener("click", closeBook);
-
-      modal.addEventListener("click", function(event) {
-        if (event.target === modal) closeBook();
-      });
-
-      document.addEventListener("keydown", function(event) {
-        if (event.key === "Escape" && modal.classList.contains("open")) closeBook();
-      });
+      function openBook(){page=0;render();modal.classList.add("open");modal.setAttribute("aria-hidden","false");document.body.style.overflow="hidden"}
+      function closeBook(){modal.classList.remove("open");modal.setAttribute("aria-hidden","true");document.body.style.overflow=""}
+      function turn(dir){const total=sourcePages.length;if(dir>0&&page+2<total){page+=2;render()}else if(dir<0&&page>=2){page-=2;render()}}
+      btn.addEventListener("click",openBook);close.addEventListener("click",closeBook);prev.addEventListener("click",()=>turn(-1));next.addEventListener("click",()=>turn(1));
+      modal.addEventListener("click",e=>{if(e.target===modal)closeBook()});
+      document.addEventListener("keydown",e=>{if(!modal.classList.contains("open"))return;if(e.key==="Escape")closeBook();if(e.key==="ArrowRight")turn(1);if(e.key==="ArrowLeft")turn(-1)});
     })();
 
   </script>
