@@ -15,14 +15,20 @@
 <div class="shell">
 <aside class="sidebar">
 <div class="brand">Die Chroniken <small>Admin</small></div>
-<nav>
-<a class="active" href="index.html">🏠 Dashboard</a>
-<a href="aufgaben.html">📋 Aufgaben</a>
-<a href="projekte.html">📁 Projekte</a>
-<a href="charaktere.html">🛡️ Charakterverwaltung</a>
-<a href="blacklist.html">🚫 Spieler-Blacklist</a>
-<a href="aktivitaeten.html">📜 Aktivitäten</a>
-<a href="../index.html">↩ Zur Webseite</a>
+<nav class="admin-nav">
+<div class="nav-group"><div class="nav-title">Übersicht</div>
+<a class="active" href="index.html"><span>🏠</span><span><b>Dashboard</b><small>Startseite</small></span></a>
+</div>
+<div class="nav-group"><div class="nav-title">Verwaltung</div>
+<a href="aufgaben.html"><span>📋</span><span><b>Aufgaben</b><small>Planen & kommentieren</small></span></a>
+<a href="projekte.html"><span>📁</span><span><b>Projekte</b><small>Projekte verwalten</small></span></a>
+<a href="charaktere.html"><span>🛡️</span><span><b>Charaktere</b><small>Charakterverwaltung</small></span></a>
+<a href="blacklist.html"><span>🚫</span><span><b>Blacklist</b><small>Discord & Steam</small></span></a>
+</div>
+<div class="nav-group"><div class="nav-title">System</div>
+<a href="aktivitaeten.html"><span>📜</span><span><b>Aktivitäten</b><small>Änderungsverlauf</small></span></a>
+<a href="../index.html"><span>↩</span><span><b>Zur Webseite</b><small>Admin verlassen</small></span></a>
+</div>
 </nav>
 </aside>
 <main class="main">
@@ -33,8 +39,15 @@
 <article><span>📋</span><strong id="total">0</strong><small>Aufgaben gesamt</small></article><article><span>⚪</span><strong id="open">0</strong><small>Offen</small></article><article><span>🟡</span><strong id="working">0</strong><small>In Arbeit</small></article><article><span>🔵</span><strong id="waiting">0</strong><small>Wartet</small></article><article><span>🔴</span><strong id="blocked">0</strong><small>Blockiert</small></article><article><span>🟢</span><strong id="done">0</strong><small>Fertig</small></article>
 </section>
 <section class="panel admin-shortcuts">
-<div class="panel-head"><h2>🛡️ Charakterverwaltung</h2><span class="muted">Eigener Bereich für Charaktere, Verwarnungen und Regelverstöße</span></div>
-<a class="btn" href="charaktere.html">🛡️ Charakterverwaltung öffnen</a>
+<div class="panel-head"><h2>⚡ Schnellzugriff</h2><span class="muted">Die wichtigsten Admin-Bereiche direkt erreichbar</span></div>
+<div class="quick-links">
+<a class="quick-link" href="aufgaben.html"><span>📋</span><strong>Aufgaben</strong><small>Aufgaben erstellen, bearbeiten und kommentieren</small></a>
+<a class="quick-link" href="projekte.html"><span>📁</span><strong>Projekte</strong><small>Projekte und deren Status verwalten</small></a>
+<a class="quick-link" href="charaktere.html"><span>🛡️</span><strong>Charaktere</strong><small>Charaktere, Verwarnungen und Regelverstöße</small></a>
+<a class="quick-link" href="blacklist.html"><span>🚫</span><strong>Blacklist</strong><small>Steam- und Discord-Sperren verwalten</small></a>
+<a class="quick-link" href="aktivitaeten.html"><span>📜</span><strong>Aktivitäten</strong><small>Nachvollziehen, was im Adminbereich passiert</small></a>
+<a class="quick-link" href="../index.html"><span>↩</span><strong>Zur Webseite</strong><small>Zur öffentlichen Chroniken-Seite</small></a>
+</div>
 </section>
 <section class="grid2"><div class="panel"><div class="panel-head"><h2>Aktuelle Aufgaben</h2><a class="btn small" href="aufgaben.html">Alle anzeigen</a></div><div id="tasks" class="task-list"></div></div><div class="panel"><div class="panel-head"><h2>Letzte Aktivitäten</h2><a class="btn small" href="aktivitaeten.html">Verlauf</a></div><div id="activity" class="activity-list"></div></div></section>
 <section class="panel"><div class="panel-head"><h2>📜 Changelog</h2><span class="muted">Was im Admin-System umgesetzt wurde</span></div><div id="changelog" class="activity-list"></div></section>
