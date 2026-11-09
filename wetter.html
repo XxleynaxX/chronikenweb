@@ -16,13 +16,15 @@
 
   <style>
     .weather-wrap {
-      max-width: 900px;
+      max-width: 1080px;
       margin: 0 auto;
       padding: 2rem 1.5rem 4rem;
     }
 
     .weather-card {
-      background: var(--bg-card);
+      position: relative;
+      overflow: hidden;
+      background: radial-gradient(circle at 80% 0, rgba(168,85,247,.13), transparent 35%), var(--bg-card);
       border: 1px solid var(--border);
       border-radius: 18px;
       padding: 2rem;
@@ -33,8 +35,11 @@
     }
 
     .weather-icon {
-      font-size: 5rem;
+      font-size: 5.5rem;
+      filter: drop-shadow(0 0 18px rgba(192,132,252,.25));
+      animation: weatherFloat 4s ease-in-out infinite;
     }
+    @keyframes weatherFloat{0%,100%{transform:translateY(0)}50%{transform:translateY(-5px)}}
 
     .weather-name {
       font-size: 2rem;
@@ -55,6 +60,17 @@
       background: rgba(168, 85, 247, .06);
     }
 
+    .weather-meta-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:.7rem;margin-top:1rem;text-align:left}
+    .weather-meta-box{padding:.8rem;border:1px solid var(--border);border-radius:12px;background:rgba(255,255,255,.025)}
+    .weather-meta-box span{display:block;font-size:.7rem;text-transform:uppercase;letter-spacing:.08em;color:var(--text-muted);margin-bottom:.2rem}
+    .weather-meta-box strong{color:var(--text)}
+    .weather-forecast{display:grid;grid-template-columns:repeat(3,1fr);gap:.8rem;margin-top:1rem}
+    .forecast-card{padding:1rem;border:1px solid var(--border);border-radius:14px;background:linear-gradient(145deg,rgba(255,255,255,.035),rgba(168,85,247,.035));text-align:center}
+    .forecast-card.current{border-color:rgba(168,85,247,.55);box-shadow:0 0 20px rgba(168,85,247,.1)}
+    .forecast-card .ficon{font-size:2rem}
+    .forecast-card strong{display:block;margin-top:.25rem;color:var(--text)}
+    .forecast-card small{display:block;margin-top:.3rem;color:var(--text-muted)}
+    .weather-section-title{margin-top:2.2rem}
     .history {
       display: grid;
       grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
@@ -92,7 +108,7 @@
     .wstatus.err { color: #fb7185; }
     .wstatus.ok { color: #22c55e; }
     .admin-badge { display: inline-block; font-size: .75rem; padding: .1rem .5rem; border-radius: 999px; background: rgba(168,85,247,.2); color: var(--accent-soft); margin-left: .4rem; vertical-align: middle; }
-    @media (max-width: 700px) { .wrow { grid-template-columns: 3.2rem 1fr 4rem auto; } .wrow .wdesc { grid-column: 1 / -1; order: 5; } .wrow.head { display: none; } }
+    @media (max-width: 700px) { .weather-meta-grid,.weather-forecast{grid-template-columns:1fr}.wrow { grid-template-columns: 3.2rem 1fr 4rem auto; } .wrow .wdesc { grid-column: 1 / -1; order: 5; } .wrow.head { display: none; } }
   </style>
 </head>
 
@@ -147,20 +163,19 @@
       <p class="weather-desc" id="desc"></p>
 
       <div class="timer">
-
-        <strong>
-          Nächster Wetterwechsel
-        </strong>
+        <strong>Nächster Wetterwechsel</strong>
 
         <div
           id="countdown"
           style="font-size:1.6rem;margin-top:.4rem"
-        >
-          00:00:00
+        >00:00:00</div>
+        <div class="weather-meta-grid">
+          <div class="weather-meta-box"><span>Wechselzeit</span><strong id="nextChange">–</strong></div>
+          <div class="weather-meta-box"><span>Rhythmus</span><strong id="weatherInterval">–</strong></div>
+          <div class="weather-meta-box"><span>Status</span><strong id="weatherStatus">Aktiv</strong></div>
         </div>
-
       </div>
-
+      <div class="weather-forecast" id="forecast"></div>
     </div>
 
 
@@ -217,9 +232,8 @@
 
     <section style="margin-top:2rem">
 
-      <h2>
-        🌙 Mögliche Wetterlagen
-      </h2>
+      <h2 class="weather-section-title">🌙 Mögliche Wetterlagen</h2>
+      <p class="small">Die Chroniken zeigen hier alle Wetterlagen, die das Land erreichen können.</p>
 
       <div
         class="history"
@@ -259,6 +273,24 @@
       el("desc").textContent = weather.description || "";
       el("countdown").textContent = ChronikenWeather.format(ChronikenWeather.msNext());
       el("subtitle").textContent = "Das Wetter der Chroniken wechselt alle " + ChronikenWeather.formatInterval(weather.intervalMinutes) + ".";
+      if (el("nextChange")) el("nextChange").textContent = new Date(ChronikenWeather.nextChangeTime()).toLocaleTimeString("de-DE",{hour:"2-digit",minute:"2-digit"});
+      if (el("weatherInterval")) el("weatherInterval").textContent = ChronikenWeather.formatInterval(weather.intervalMinutes);
+      if (el("weatherStatus")) el("weatherStatus").textContent = weather.forced ? "Vom Admin gesetzt" : "Natürlicher Verlauf";
+      renderForecast();
+    }
+
+    function renderForecast() {
+      if (!window.ChronikenWeather || !el("forecast")) return;
+      const st = ChronikenWeather.getShared();
+      const now = Date.now();
+      const base = ChronikenWeather.get();
+      const cards = [0,1,2].map(function(i){
+        const slot = base.slot + i;
+        const ms = st.intervalMinutes * 60000;
+        const current = ChronikenWeather._compute(st, now + i * ms);
+        return '<div class="forecast-card' + (i === 0 ? ' current' : '') + '"><div class="ficon">' + escapeHtml(current.icon) + '</div><strong>' + escapeHtml(current.name) + '</strong><small>' + (i === 0 ? 'Jetzt' : 'in ' + i + ' Wechsel') + '</small></div>';
+      });
+      el("forecast").innerHTML = cards.join("");
     }
 
     window.addEventListener("chroniken-weather-changed", function (event) {
