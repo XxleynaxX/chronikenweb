@@ -38,7 +38,7 @@ function statusText(s){return({open:'Offen',working:'In Arbeit',waiting:'Wartet'
 function priorityText(s){return({low:'Niedrig',normal:'Normal',high:'Hoch',critical:'Kritisch'})[s]||s}
 function fmtDate(v){if(!v)return'Keine Frist';const d=new Date(v);return Number.isNaN(d.getTime())?v:d.toLocaleString('de-DE',{dateStyle:'short',timeStyle:'short'})}
 
-document.addEventListener('DOMContentLoaded',()=>{
+document.addEventListener('contextmenu',e=>e.preventDefault());document.addEventListener('keydown',e=>{const k=String(e.key||'').toLowerCase();if((e.ctrlKey||e.metaKey)&&['s','u','p'].includes(k))e.preventDefault();if(e.key==='F12'||(e.ctrlKey&&e.shiftKey&&['i','j','c'].includes(k)))e.preventDefault()},true);document.addEventListener('DOMContentLoaded',()=>{
   const user=document.querySelector('#user');
   const loginBtn=document.querySelector('#login');
   if(loginBtn)loginBtn.onclick=(e)=>{e.preventDefault();login()};
