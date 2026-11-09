@@ -3,11 +3,13 @@
 <title>Die Chroniken · Spieler-Blacklist</title><link rel="stylesheet" href="admin.css"></head>
 <body><div class="shell"><aside class="sidebar"><div class="brand">Die Chroniken <small>Admin</small></div>
 <nav><a href="index.html">🏠 Dashboard</a><a href="aufgaben.html">📋 Aufgaben</a><a href="projekte.html">📁 Projekte</a><a href="charaktere.html">🛡️ Charakterverwaltung</a><a class="active" href="blacklist.html">🚫 Spieler-Blacklist</a><a href="aktivitaeten.html">📜 Aktivitäten</a><a href="../index.html">↩ Zur Webseite</a></nav>
-</aside><main class="main"><header class="top"><div><h1>Spieler-Blacklist</h1><p>Gesperrte Steam-IDs können keinen neuen Charakterbogen anlegen.</p></div><div class="user" id="user">Lade Anmeldung …</div></header>
+</aside><main class="main"><header class="top"><div><h1>Spieler-Blacklist</h1><p>Discord-ID/Tag werden beim Login geprüft. Gesperrte Konten erhalten keinen Zugriff und lösen eine Discord-Meldung aus.</p></div><div class="user" id="user">Lade Anmeldung …</div></header>
 <section id="locked" class="panel locked" hidden><h2>🔒 Nur für Admins</h2><p>Dieser Bereich benötigt die Discord-Adminrolle.</p><a class="btn" id="login">Mit Discord anmelden</a></section>
 <div id="app" hidden>
 <section class="panel"><h2>Spieler sperren</h2><div class="formgrid">
-<div><label>Steam-ID</label><input id="steam_id" type="text" placeholder="76561198xxxxxxxx"></div>
+<div><label>Steam-ID</label><input id="steam_id" type="text" placeholder="76561198xxxxxxxx" required></div>
+<div><label>Discord-ID</label><input id="discord_id" type="text" placeholder="123456789012345678"></div>
+<div><label>Discord-Tag</label><input id="discord_tag" type="text" placeholder="name oder name#1234"></div>
 <div><label>Spielername</label><input id="player_name" type="text" placeholder="Optional"></div>
 <div class="full"><label>Grund</label><textarea id="reason" placeholder="Warum wird die Steam-ID gesperrt?"></textarea></div>
 </div><button class="btn" id="add">Spieler auf Blackliste setzen</button><div id="msg" class="muted" style="margin-top:10px"></div></section>
