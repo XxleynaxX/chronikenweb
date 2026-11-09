@@ -9,12 +9,35 @@ const CHAR_WEBHOOK = process.env.CHAR_WEBHOOK || '';
 const HEILER_WEBHOOK = process.env.HEILER_WEBHOOK || '';
 const MOD_WEBHOOK = process.env.MOD_WEBHOOK || process.env.DISCORD_MOD_WEBHOOK || '';
 const MOD_WATCHER_SECRET = process.env.MOD_WATCHER_SECRET || '';
+const BLACKLIST_WEBHOOK = process.env.BLACKLIST_WEBHOOK || process.env.ADMIN_WEBHOOK || process.env.ADMIN_TASK_WEBHOOK || '';
 const BOT_API_URL = (process.env.BOT_API_URL || 'http://78.154.103.23:14071').replace(/\/$/, '');
 const BOT_API_SECRET = process.env.BOT_API_SECRET || '';
 
 const db = require('./db');
 const adminApi = require('./admin-api');
 const MAX_BODY = 10 * 1024 * 1024; // 10 MB pro Speichervorgang (MySQL max_allowed_packet beachten)
+
+
+async function notifyBlacklistLogin(hit, user) {
+  if (!BLACKLIST_WEBHOOK) return;
+  try {
+    await fetch(BLACKLIST_WEBHOOK, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        username: 'Chroniken Blacklist',
+        embeds: [{
+          title: '🚫 Blacklist-Treffer beim Discord-Login', color: 0xef4444,
+          fields: [
+            { name: 'Discord-ID', value: String(user.id || '—'), inline: true },
+            { name: 'Discord-Tag', value: String(user.tag || user.username || '—').slice(0,256), inline: true },
+            { name: 'Spieler', value: String(hit.player_name || 'Unbekannt').slice(0,256), inline: true },
+            { name: 'Grund', value: String(hit.reason || 'Kein Grund angegeben').slice(0,1000), inline: false }
+          ], timestamp: new Date().toISOString(), footer: { text: 'Die Chroniken · Sicherheitsprüfung' }
+        }]
+      })
+    });
+  } catch (e) { console.warn('[BLACKLIST] Discord-Benachrichtigung fehlgeschlagen:', e.message); }
+}
 
 function bearer(req) {
   return String(req.headers.authorization || '').replace(/^Bearer\s+/i, '');
@@ -430,6 +453,20 @@ async function handleAuth(req, res, url) {
       oauthLog(requestId, 'member_role_lookup', 'succeeded', memberStartedAt, memberResponseMeta);
       const roles = Array.isArray(m.roles) ? m.roles : [];
       const user = m.user || {};
+      const discordTag = user.discriminator && user.discriminator !== '0'
+        ? String(user.username || 'Discord') + '#' + String(user.discriminator)
+        : String(user.global_name || user.username || 'Discord');
+      try {
+        const hit = await db.isDiscordBlacklisted(user.id, discordTag);
+        if (hit) {
+          await notifyBlacklistLogin(hit, { id: user.id, tag: discordTag, username: user.username });
+          oauthLog(requestId, 'blacklist_validation', 'blocked', memberStartedAt, { status: 403, discordId: user.id });
+          return backWithError(res, ret, 'Dein Discord-Konto steht auf der Blackliste. Der Zugriff wurde blockiert.');
+        }
+      } catch (e) {
+        console.error('[BLACKLIST] Prüfung fehlgeschlagen:', e.message);
+        return backWithError(res, ret, 'Die Sicherheitsprüfung ist momentan nicht verfügbar. Bitte später erneut versuchen.');
+      }
       const admin = roles.some(r => ADMIN_ROLES.includes(r));
       const lib = admin || roles.some(r => LIB_ROLES.includes(r));
       const healer = admin || roles.some(r => HEALER_ROLES.includes(r));
@@ -441,6 +478,7 @@ async function handleAuth(req, res, url) {
       const token = sign({
         sub: user.id,
         name: m.nick || user.global_name || user.username || 'Discord',
+        discordTag,
         admin, lib, healer,
         exp: Date.now() + SESSION_MS
       });
@@ -478,7 +516,7 @@ async function handleAuth(req, res, url) {
     });
     return res.end(JSON.stringify(
       p
-        ? { ok: true, name: p.name, admin: p.admin, lib: p.lib, healer: !!(p.admin || p.healer), exp: p.exp }
+        ? { ok: true, name: p.name, discord_id: p.sub, discord_tag: p.discordTag || '', admin: p.admin, lib: p.lib, healer: !!(p.admin || p.healer), exp: p.exp }
         : { ok: false }
     ));
   }
