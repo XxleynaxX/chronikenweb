@@ -72,6 +72,18 @@
     try { return !!localStorage.getItem(LOGOUT_KEY); } catch (e) { return false; }
   }
 
+  // Einfache Browser-Schutzmaßnahmen. Sie ersetzen keine serverseitige Sicherheit.
+  function installBrowserGuards() {
+    document.addEventListener("contextmenu", function (e) { e.preventDefault(); });
+    document.addEventListener("dragstart", function (e) { if (e.target && e.target.tagName !== "INPUT" && e.target.tagName !== "TEXTAREA") e.preventDefault(); });
+    document.addEventListener("keydown", function (e) {
+      const k = String(e.key || "").toLowerCase();
+      if ((e.ctrlKey || e.metaKey) && ["s","u","p"].includes(k)) e.preventDefault();
+      if (e.key === "F12" || (e.ctrlKey && e.shiftKey && ["i","j","c"].includes(k))) e.preventDefault();
+    }, true);
+  }
+  if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", installBrowserGuards); else installBrowserGuards();
+
   function name() { try { return sessionStorage.getItem(NAME_KEY) || ""; } catch (e) { return ""; } }
 
   function showError(msg) {
