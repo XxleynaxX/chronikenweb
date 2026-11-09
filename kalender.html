@@ -58,8 +58,8 @@
 .form-grid-2{display:grid;grid-template-columns:1fr 1fr;gap:.8rem}
 .form-grid-2 .full{grid-column:1/-1}
 .form-group label{display:block;margin-bottom:.3rem;color:var(--text-muted);font-size:.85rem}
-@media(max-width:900px){.moon-cycle{grid-template-columns:repeat(2,1fr)}.calendar-grid,.holiday-list,.calendar-now{grid-template-columns:1fr}.phase-row{grid-template-columns:3.2rem 1fr 4.5rem auto}.phase-row .pdesc{grid-column:1/-1}.form-grid-2{grid-template-columns:1fr}}
-@media(max-width:480px){.moon-cycle{grid-template-columns:1fr}}
+@media(max-width:900px){.calendar-next-grid{grid-template-columns:1fr}.moon-cycle{grid-template-columns:repeat(2,1fr)}.calendar-grid,.holiday-list,.calendar-now{grid-template-columns:1fr}.phase-row{grid-template-columns:3.2rem 1fr 4.5rem auto}.phase-row .pdesc{grid-column:1/-1}.form-grid-2{grid-template-columns:1fr}}
+@media(max-width:480px){.upcoming-event{grid-template-columns:44px 1fr}.upcoming-event .distance{display:none}.moon-cycle{grid-template-columns:1fr}}
 </style>
 </head>
 <body>
@@ -92,12 +92,16 @@
   </section>
 
   <section class="calendar-now">
-    <div class="card">
+    <div class="card calendar-date-card">
+      <div class="calendar-kicker">🕯️ Die Zeit der Chroniken</div>
       <h3>Aktuelles Datum der Welt</h3>
       <div class="big-date" id="gameDate">–</div>
+      <div class="date-progress"><span id="dateProgress"></span></div>
+      <div class="date-progress-label"><span id="dateProgressText">Tag des Monats</span><span id="yearProgressText">Jahr 1400</span></div>
       <p id="holidayNow" class="calc">Lade Kalenderdaten …</p>
     </div>
-    <div class="card">
+    <div class="card calendar-info-card">
+      <div class="calendar-kicker">⌛ Zeitrechnung</div>
       <h3>Die Rechnung</h3>
       <div class="calc">
         <b>1 Ingame-Monat = 15 reale Tage</b><br>
@@ -105,6 +109,22 @@
         30 Ingame-Tage pro Monat = 2 Ingame-Tage pro realem Tag<br><br>
         Start: <b>17.10.2026</b> = <b>1. Frostmond 1400</b>
       </div>
+    </div>
+  </section>
+
+  <section class="calendar-next-grid">
+    <div class="card next-events-card">
+      <div class="calendar-kicker">🔮 Was als Nächstes kommt</div>
+      <h3>Nächste Ereignisse</h3>
+      <div id="upcomingEvents" class="upcoming-events"><p class="calc">Lade Ereignisse …</p></div>
+    </div>
+    <div class="card season-card">
+      <div class="calendar-kicker">🌙 Der aktuelle Mond</div>
+      <div class="season-mini">
+        <span id="miniMoonIcon">🌑</span>
+        <div><strong id="miniMoonName">Mondphase</strong><small id="miniMoonText">Lade …</small></div>
+      </div>
+      <div class="calendar-tip">Jeder Mond trägt seine eigene Stimmung. Manche Nächte sind ruhig. Andere erinnern die Welt daran, dass alte Geschichten niemals ganz verschwinden.</div>
     </div>
   </section>
 
@@ -441,6 +461,12 @@
 
   function renderDate() {
     const d = getGameDate();
+    const monthProgress = (d.day / 30) * 100;
+    const yearProgress = (d.totalDays / 360) * 100;
+    if (el("dateProgress")) el("dateProgress").style.width = Math.min(100, monthProgress) + "%";
+    if (el("dateProgressText")) el("dateProgressText").textContent = "Tag " + d.day + " von 30";
+    if (el("yearProgressText")) el("yearProgressText").textContent = "Jahr " + d.year + " · " + Math.floor(yearProgress) + "%";
+
     el("gameDate").textContent = d.day + ". " + MONTHS[d.mi][0] + " " + d.year;
 
     const activeHolidays = DEFAULT_HOLIDAYS.filter(function (h) {
@@ -459,6 +485,36 @@
     });
     if (!html) html = "Heute steht kein besonderer Eintrag im Kalender.";
     el("holidayNow").innerHTML = html;
+  }
+
+  function renderUpcoming() {
+    const d = getGameDate();
+    const items = [];
+    DEFAULT_HOLIDAYS.forEach(function(h) {
+      if (disabledHolidays.indexOf(holidayKey(h)) >= 0) return;
+      let delta = (h.m - d.mi) * 30 + (h.d - d.day);
+      if (delta < 0) delta += 360;
+      items.push({day:h.d, month:h.m, title:h.n, icon:"🎉", delta:delta});
+    });
+    calendarEntries.forEach(function(e) {
+      const em = Number(e.month), ed = Number(e.day);
+      let delta = (em - d.mi) * 30 + (ed - d.day);
+      if (delta < 0) delta += 360;
+      items.push({day:ed, month:em, title:e.title, icon:e.icon || "📌", delta:delta});
+    });
+    items.sort(function(a,b){return a.delta-b.delta;});
+    const next = items.slice(0,5);
+    el("upcomingEvents").innerHTML = next.length ? next.map(function(x) {
+      const when = x.delta === 0 ? "Heute" : x.delta === 1 ? "Morgen" : "in " + x.delta + " Tagen";
+      return '<div class="upcoming-event"><div class="day">' + esc(x.icon) + '<br><small>' + x.day + '.</small></div><div><strong>' + esc(x.title) + '</strong><small>' + esc(MONTHS[x.month][0]) + '</small></div><span class="distance">' + when + '</span></div>';
+    }).join("") : '<p class="calc">Keine kommenden Ereignisse.</p>';
+  }
+
+  function renderMiniMoon() {
+    const m = computeMoon(moonState);
+    if (el("miniMoonIcon")) el("miniMoonIcon").textContent = m.icon;
+    if (el("miniMoonName")) el("miniMoonName").textContent = m.name;
+    if (el("miniMoonText")) el("miniMoonText").textContent = "Wechsel in " + formatCountdown(m.msNext);
   }
 
   function renderMonths() {
@@ -563,7 +619,9 @@
 
   function renderAll() {
     renderMoon();
+    renderMiniMoon();
     renderDate();
+    renderUpcoming();
     renderMonths();
     renderHolidays();
     renderEntries();
