@@ -510,6 +510,19 @@ async function handleAuth(req, res, url) {
   // 3) Token prüfen (Website fragt beim Laden nach)
   if (url.pathname === '/auth/me') {
     const p = sessionFromRequest(req);
+    if (p) {
+      try {
+        const hit = await db.isDiscordBlacklisted(p.sub, p.discordTag || '');
+        if (hit) {
+          await notifyBlacklistLogin(hit, { id: p.sub, tag: p.discordTag || p.name || 'Discord' });
+          clearSessionCookie(res);
+          return sendJson(res, 403, { ok: false, blacklisted: true, error: 'Dein Discord-Konto steht auf der Blackliste.' });
+        }
+      } catch (e) {
+        console.error('[BLACKLIST] Laufende Prüfung fehlgeschlagen:', e.message);
+        return sendJson(res, 503, { ok: false, error: 'Sicherheitsprüfung momentan nicht verfügbar.' });
+      }
+    }
     res.writeHead(p ? 200 : 401, {
       'Content-Type': 'application/json',
       'Cache-Control': 'no-store'
