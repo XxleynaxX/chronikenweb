@@ -5,6 +5,9 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Chroniken – Start</title>
   <link rel="stylesheet" href="style.css">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Caveat:wght@400;500;600;700&family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;0,700;1,400;1,500&family=Great+Vibes&display=swap" rel="stylesheet">
   <style>
     .live-news {
       max-width: 1100px;
@@ -142,28 +145,454 @@
 
 
 
-    /* ===== MAGISCHES LORE-BUCH ===== */
-    .lore-book-button{width:40px;height:40px;border-radius:50%;border:1px solid rgba(192,132,252,.45);background:radial-gradient(circle at 35% 30%,rgba(216,180,254,.28),rgba(91,33,182,.18));color:#eadcff;font-size:1.25rem;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;box-shadow:inset 0 0 12px rgba(192,132,252,.12),0 0 10px rgba(139,92,246,.18);transition:.25s}
-    .lore-book-button:hover{transform:translateY(-2px) scale(1.08) rotate(-3deg);border-color:rgba(216,180,254,.9);box-shadow:0 0 18px rgba(168,85,247,.45),inset 0 0 14px rgba(216,180,254,.18)}
-    .lore-modal{position:fixed;inset:0;z-index:2000;display:none;align-items:center;justify-content:center;padding:24px;background:rgba(5,2,12,.82);backdrop-filter:blur(9px);-webkit-backdrop-filter:blur(9px)}
+    /* ===== MAGISCHES LORE-BUCH – Mystische Version ===== */
+    .lore-book-button{
+      width:44px;height:44px;border-radius:50%;
+      border:1px solid rgba(192,132,252,.55);
+      background:
+        radial-gradient(circle at 35% 30%,rgba(216,180,254,.38),rgba(91,33,182,.22)),
+        radial-gradient(circle at 70% 70%,rgba(167,139,250,.15),transparent 60%);
+      color:#eadcff;font-size:1.3rem;cursor:pointer;
+      display:flex;align-items:center;justify-content:center;flex-shrink:0;
+      box-shadow:
+        inset 0 0 14px rgba(192,132,252,.18),
+        0 0 12px rgba(139,92,246,.35),
+        0 0 28px rgba(139,92,246,.15);
+      transition:all .3s cubic-bezier(.4,0,.2,1);
+      position:relative;
+      animation:bookBtnPulse 3.5s ease-in-out infinite;
+    }
+    .lore-book-button::before{
+      content:"";position:absolute;inset:-4px;border-radius:50%;
+      border:1px solid rgba(192,132,252,.25);
+      animation:bookBtnRing 3.5s ease-in-out infinite;
+      pointer-events:none;
+    }
+    .lore-book-button:hover{
+      transform:translateY(-3px) scale(1.12) rotate(-6deg);
+      border-color:rgba(216,180,254,1);
+      box-shadow:
+        0 0 22px rgba(168,85,247,.65),
+        0 0 40px rgba(139,92,246,.35),
+        inset 0 0 18px rgba(216,180,254,.25);
+      animation:none;
+    }
+    @keyframes bookBtnPulse{
+      0%,100%{box-shadow:inset 0 0 14px rgba(192,132,252,.18),0 0 12px rgba(139,92,246,.35),0 0 28px rgba(139,92,246,.15)}
+      50%{box-shadow:inset 0 0 18px rgba(192,132,252,.28),0 0 18px rgba(168,85,247,.55),0 0 36px rgba(139,92,246,.28)}
+    }
+    @keyframes bookBtnRing{
+      0%,100%{transform:scale(1);opacity:.6}
+      50%{transform:scale(1.15);opacity:.15}
+    }
+
+    .lore-modal{
+      position:fixed;inset:0;z-index:2000;display:none;
+      align-items:center;justify-content:center;padding:24px;
+      background:radial-gradient(ellipse at 50% 35%,rgba(40,22,10,.7),rgba(8,4,2,.94));
+      backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);
+      overflow:hidden;
+    }
     .lore-modal.open{display:flex}
-    .lore-book{position:relative;width:min(940px,96vw);height:min(700px,88vh);perspective:1800px;color:#2f2117;animation:bookOpen .55s ease}
-    .lore-book-shell{position:absolute;inset:0;border:1px solid rgba(216,180,254,.45);border-radius:16px 22px 22px 16px;background:#6a4329;padding:10px;box-shadow:0 30px 80px rgba(0,0,0,.7),0 0 45px rgba(139,92,246,.28)}
-    .lore-pages{position:relative;width:100%;height:100%;background:#f3e5c4;border-radius:10px;overflow:hidden;box-shadow:inset 0 0 25px rgba(70,45,28,.22)}
+    .lore-modal::before{
+      content:"";position:absolute;inset:0;pointer-events:none;
+      background:
+        radial-gradient(1.5px 1.5px at 12% 18%,rgba(255,220,160,.5),transparent),
+        radial-gradient(1.5px 1.5px at 28% 72%,rgba(220,180,120,.35),transparent),
+        radial-gradient(1px 1px at 45% 35%,rgba(255,240,200,.4),transparent),
+        radial-gradient(1.5px 1.5px at 62% 15%,rgba(200,160,100,.4),transparent),
+        radial-gradient(1px 1px at 78% 58%,rgba(255,220,160,.3),transparent),
+        radial-gradient(1.5px 1.5px at 88% 82%,rgba(180,140,80,.3),transparent),
+        radial-gradient(1px 1px at 8% 55%,rgba(255,230,180,.25),transparent),
+        radial-gradient(1.5px 1.5px at 35% 88%,rgba(200,160,100,.35),transparent);
+      animation:starTwinkle 9s ease-in-out infinite alternate;
+    }
+    @keyframes starTwinkle{
+      0%{opacity:.4}
+      100%{opacity:.85}
+    }
+
+    .lore-book{
+      position:relative;width:min(940px,96vw);height:min(700px,88vh);
+      perspective:2000px;color:#2f2117;
+      animation:bookOpen .7s cubic-bezier(.22,1,.36,1);
+    }
+    .lore-book-shell{
+      position:absolute;inset:0;
+      border:2px solid #1e1008;
+      border-radius:5px 12px 12px 5px;
+      background:
+        linear-gradient(155deg,#2e1a0c 0%,#4a2e18 20%,#3d2412 45%,#5a3820 70%,#2a180e 100%);
+      padding:14px 12px 14px 16px;
+      box-shadow:
+        0 40px 100px rgba(0,0,0,.85),
+        0 12px 30px rgba(0,0,0,.55),
+        inset 0 1px 0 rgba(200,160,100,.08),
+        inset 0 -3px 10px rgba(0,0,0,.5),
+        inset 4px 0 14px rgba(0,0,0,.4);
+      overflow:visible;
+    }
+    /* Stark abgenutztes Leder */
+    .lore-book-shell::before{
+      content:"";position:absolute;inset:0;border-radius:5px 12px 12px 5px;
+      background:
+        radial-gradient(ellipse at 15% 25%,rgba(0,0,0,.28),transparent 38%),
+        radial-gradient(ellipse at 85% 75%,rgba(0,0,0,.22),transparent 35%),
+        radial-gradient(ellipse at 50% 8%,rgba(60,35,15,.3),transparent 40%),
+        radial-gradient(ellipse at 70% 40%,rgba(0,0,0,.12),transparent 30%),
+        radial-gradient(ellipse at 25% 80%,rgba(0,0,0,.15),transparent 28%),
+        repeating-linear-gradient(108deg,transparent,transparent 2px,rgba(0,0,0,.05) 2px,rgba(0,0,0,.05) 3px),
+        repeating-linear-gradient(18deg,transparent,transparent 4px,rgba(0,0,0,.03) 4px,rgba(0,0,0,.03) 5px);
+      pointer-events:none;z-index:1;
+    }
+    /* Verblichener Goldrand */
+    .lore-book-shell::after{
+      content:"";position:absolute;inset:5px;border-radius:2px 6px 6px 2px;
+      border:1px solid rgba(140,100,45,.2);
+      box-shadow:
+        inset 0 0 0 1px rgba(30,18,8,.5),
+        0 0 0 1px rgba(0,0,0,.4);
+      pointer-events:none;z-index:2;
+    }
+
+    .lore-pages{
+      position:relative;width:100%;height:100%;
+      background:
+        radial-gradient(ellipse at 15% 20%,rgba(180,140,90,.15),transparent 50%),
+        radial-gradient(ellipse at 85% 80%,rgba(120,80,40,.12),transparent 45%),
+        linear-gradient(180deg,#e8d5a8 0%,#dcc89a 40%,#d4bc8c 100%);
+      border-radius:3px 6px 6px 3px;overflow:hidden;
+      box-shadow:
+        inset 0 0 50px rgba(60,35,15,.35),
+        inset 4px 0 20px rgba(40,25,10,.25),
+        inset -2px 0 12px rgba(40,25,10,.15);
+    }
+    /* Schwebende Partikel im Buch */
+    .lore-particles{
+      position:absolute;inset:0;pointer-events:none;z-index:15;overflow:hidden;
+    }
+    .lore-particle{
+      position:absolute;width:2px;height:2px;border-radius:50%;
+      background:rgba(220,190,140,.6);
+      box-shadow:0 0 4px rgba(200,160,100,.5);
+      animation:floatParticle linear infinite;
+    }
+    @keyframes floatParticle{
+      0%{transform:translateY(100%) scale(.4);opacity:0}
+      10%{opacity:.8}
+      90%{opacity:.5}
+      100%{transform:translateY(-20%) scale(1.1);opacity:0}
+    }
+
     .lore-spread{position:absolute;inset:0;display:grid;grid-template-columns:1fr 1fr}
-    .lore-sheet{position:absolute;top:0;width:50%;height:100%;transform-style:preserve-3d;transition:transform .9s cubic-bezier(.65,.05,.36,1);z-index:1}
-    .lore-sheet.left{left:0;transform-origin:right center}.lore-sheet.right{right:0;transform-origin:left center}
-    .lore-face{position:absolute;inset:0;backface-visibility:hidden;background:radial-gradient(circle at 20% 15%,rgba(255,255,255,.4),transparent 30%),linear-gradient(90deg,rgba(255,255,255,.08),transparent 12%,transparent 88%,rgba(80,45,20,.08)),#f3e5c4;padding:42px 46px 78px;overflow:hidden;font-family:Georgia,"Times New Roman",serif;box-sizing:border-box}
-    .lore-face::after{content:"";position:absolute;inset:0;pointer-events:none;background:linear-gradient(90deg,rgba(70,40,20,.12),transparent 8%,transparent 92%,rgba(70,40,20,.12));}
+    .lore-sheet{
+      position:absolute;top:0;width:50%;height:100%;
+      transform-style:preserve-3d;
+      transition:transform 1.05s cubic-bezier(.65,.05,.36,1);
+      z-index:1;
+    }
+    .lore-sheet.left{left:0;transform-origin:right center}
+    .lore-sheet.right{right:0;transform-origin:left center}
+    .lore-face{
+      position:absolute;inset:0;backface-visibility:hidden;
+      background:
+        /* Starke Altersflecken / Foxing */
+        radial-gradient(ellipse 90px 55px at 10% 15%,rgba(120,70,25,.28),transparent),
+        radial-gradient(ellipse 70px 45px at 90% 78%,rgba(100,55,20,.22),transparent),
+        radial-gradient(ellipse 55px 40px at 72% 10%,rgba(140,85,35,.2),transparent),
+        radial-gradient(ellipse 45px 35px at 22% 90%,rgba(90,50,18,.24),transparent),
+        radial-gradient(ellipse 80px 50px at 50% 50%,rgba(130,80,30,.1),transparent),
+        radial-gradient(ellipse 40px 30px at 40% 30%,rgba(110,65,25,.14),transparent),
+        /* Wasserflecken */
+        radial-gradient(ellipse 100px 70px at 75% 40%,rgba(90,70,40,.12),transparent),
+        radial-gradient(ellipse 60px 50px at 30% 65%,rgba(80,60,35,.1),transparent),
+        /* Papiertextur – dunkler, älter */
+        radial-gradient(ellipse at 20% 15%,rgba(255,240,210,.25),transparent 40%),
+        linear-gradient(90deg,rgba(70,40,15,.12),transparent 8%,transparent 92%,rgba(60,35,12,.14)),
+        linear-gradient(180deg,#e0c898 0%,#d4bc88 45%,#c9ae78 100%);
+      padding:42px 46px 78px;overflow:hidden;
+      font-family:"Cormorant Garamond",Georgia,"Times New Roman",serif;
+      box-sizing:border-box;
+      color:#1a1008;
+    }
+    .lore-face::before{
+      content:"";position:absolute;inset:0;pointer-events:none;
+      background:
+        /* Papierfasern */
+        repeating-linear-gradient(0deg,transparent,transparent 2px,rgba(80,45,15,.02) 2px,rgba(80,45,15,.02) 3px),
+        repeating-linear-gradient(90deg,transparent,transparent 3px,rgba(70,40,12,.015) 3px,rgba(70,40,12,.015) 4px),
+        /* Starke Ecken-Abnutzung / Dreck */
+        radial-gradient(ellipse at 0% 0%,rgba(60,30,10,.35),transparent 22%),
+        radial-gradient(ellipse at 100% 0%,rgba(55,28,8,.32),transparent 20%),
+        radial-gradient(ellipse at 0% 100%,rgba(50,25,8,.38),transparent 24%),
+        radial-gradient(ellipse at 100% 100%,rgba(50,25,8,.35),transparent 22%),
+        /* Schmutzränder */
+        linear-gradient(180deg,rgba(50,28,10,.12),transparent 8%),
+        linear-gradient(0deg,rgba(45,25,8,.15),transparent 10%),
+        linear-gradient(90deg,rgba(40,20,8,.1),transparent 6%),
+        linear-gradient(270deg,rgba(40,20,8,.1),transparent 6%);
+    }
+    .lore-face::after{
+      content:"";position:absolute;inset:0;pointer-events:none;
+      background:
+        linear-gradient(90deg,rgba(40,22,8,.22),transparent 7%,transparent 93%,rgba(40,22,8,.2)),
+        /* zentrale Abnutzung */
+        radial-gradient(ellipse at 50% 50%,transparent 40%,rgba(50,30,12,.06) 100%);
+      box-shadow:inset 0 0 70px rgba(50,28,10,.18);
+    }
     .lore-face > *{position:relative;z-index:1}
     .lore-face.back{transform:rotateY(180deg)}
-    .lore-face h2{margin:0 0 18px;text-align:center;color:#4a2d1b;font-size:clamp(1.35rem,2.2vw,2rem);letter-spacing:.04em}.lore-face h3{margin:22px 0 8px;color:#5b341f;font-size:1.08rem}.lore-face p{margin:0 0 12px;font-size:.94rem;line-height:1.7;text-align:justify;hyphens:auto}.lore-face .lore-intro{font-style:italic;text-align:center;color:#5b341f;margin-bottom:22px}.lore-face .lore-quote{margin:20px 0;padding:14px 16px;border-left:3px solid #8b5e3c;background:rgba(139,94,60,.08);font-style:italic}
-    .lore-center{position:absolute;left:50%;top:0;bottom:0;width:3px;transform:translateX(-50%);background:linear-gradient(180deg,transparent,rgba(60,35,20,.5) 12%,rgba(60,35,20,.7) 50%,rgba(60,35,20,.5) 88%,transparent);z-index:8;pointer-events:none}
-    .lore-close{position:absolute;right:-8px;top:-8px;z-index:20;width:38px;height:38px;border:1px solid rgba(255,255,255,.35);border-radius:50%;background:rgba(35,18,10,.9);color:#fff;font-size:1.1rem;cursor:pointer}.lore-close:hover{background:rgba(91,33,182,.8);transform:scale(1.05)}
-    .lore-nav{position:absolute;bottom:12px;left:50%;transform:translateX(-50%);z-index:20;display:flex;gap:12px;align-items:center}.lore-nav button{border:1px solid rgba(91,52,31,.5);background:rgba(247,232,196,.96);color:#4a2d1b;border-radius:20px;padding:8px 16px;font-family:Georgia,serif;cursor:pointer;box-shadow:0 4px 12px rgba(0,0,0,.25)}.lore-nav button:hover:not(:disabled){background:#fff2ce;transform:translateY(-1px)}.lore-nav button:disabled{opacity:.4;cursor:default}.lore-counter{color:#f3e5c4;text-shadow:0 1px 4px #000;font:13px Georgia,serif;min-width:75px;text-align:center}
+
+    /* Titel – geschwungene Feder-Kalligrafie */
+    .lore-face h2{
+      margin:0 0 14px;text-align:center;
+      font-family:"Great Vibes",cursive;
+      font-weight:400;
+      font-size:clamp(2rem,3.2vw,2.7rem);
+      color:#1a1008;
+      letter-spacing:.02em;
+      text-shadow:
+        0.5px 0.5px 0 rgba(80,40,10,.25),
+        0 0 1px rgba(40,20,5,.3);
+      line-height:1.25;
+    }
+    /* Zwischenüberschriften – handgeschrieben */
+    .lore-face h3{
+      margin:20px 0 8px;
+      font-family:"Caveat",cursive;
+      font-weight:600;
+      font-size:1.35rem;
+      color:#2a180c;
+      letter-spacing:.01em;
+      text-shadow:0.4px 0.4px 0 rgba(60,30,10,.2);
+    }
+    /* Fließtext – alte Tinte, leichte Unregelmäßigkeit */
+    .lore-face p{
+      margin:0 0 11px;
+      font-family:"Cormorant Garamond",Georgia,serif;
+      font-size:1.05rem;
+      font-weight:500;
+      line-height:1.68;
+      text-align:justify;
+      hyphens:auto;
+      color:#1c1208;
+      /* leichte Tinten-Unschärfe wie von Feder */
+      text-shadow:0.3px 0.2px 0 rgba(50,25,8,.18);
+    }
+    .lore-face p strong{
+      font-weight:700;
+      color:#1a0e06;
+      letter-spacing:.01em;
+    }
+    /* Intro – kursiv, federähnlich */
+    .lore-face .lore-intro{
+      font-family:"Caveat",cursive;
+      font-style:normal;
+      font-weight:500;
+      font-size:1.25rem;
+      text-align:center;
+      color:#3a2410;
+      margin-bottom:18px;
+      letter-spacing:.03em;
+      text-shadow:0.3px 0.3px 0 rgba(60,30,10,.2);
+    }
+    /* Zitate – stärker handschriftlich */
+    .lore-face .lore-quote{
+      margin:16px 0;
+      padding:12px 16px 12px 18px;
+      border-left:2px solid #6a4528;
+      background:linear-gradient(90deg,rgba(100,65,30,.09),rgba(80,50,20,.03));
+      font-family:"Cormorant Garamond",Georgia,serif;
+      font-style:italic;
+      font-size:1.08rem;
+      font-weight:500;
+      color:#24160c;
+      line-height:1.65;
+      box-shadow:inset 0 0 18px rgba(60,35,15,.04);
+      text-shadow:0.25px 0.25px 0 rgba(40,20,8,.15);
+    }
+    .lore-page-number{
+      position:absolute;bottom:18px;left:0;right:0;text-align:center;
+      font-family:"Caveat",cursive;
+      font-size:.95rem;
+      color:#5a3e22;
+      letter-spacing:.06em;
+      opacity:.85;
+    }
+
+    /* ===== PERGAMENT-RISSE + KNICK + DRECK (jede Seite eigene) ===== */
+    .lore-tears{
+      position:absolute;inset:0;pointer-events:none;z-index:3;
+      overflow:hidden;
+    }
+    .lore-tear{
+      position:absolute;
+      background:
+        linear-gradient(135deg,rgba(55,30,12,.6),rgba(35,18,8,.4) 40%,transparent 70%);
+      box-shadow:
+        1px 1px 2px rgba(0,0,0,.18),
+        inset 0 0 3px rgba(25,12,4,.25);
+      opacity:.88;
+    }
+    /* Knick-Linien */
+    .lore-crease{
+      position:absolute;pointer-events:none;
+      background:linear-gradient(90deg,transparent,rgba(60,35,15,.22),rgba(40,22,10,.12),transparent);
+      box-shadow:0 0 1px rgba(30,15,5,.15);
+    }
+    /* Dreck / Schmutzflecken */
+    .lore-dirt{
+      position:absolute;pointer-events:none;border-radius:50%;
+      background:radial-gradient(ellipse,rgba(50,28,10,.28),rgba(40,20,8,.1) 50%,transparent 70%);
+    }
+
+    /* Variante 1 */
+    .tear-v1 .t1{top:-2px;left:8%;width:18px;height:28px;clip-path:polygon(0 0,100% 0,70% 100%,20% 85%,0 55%);transform:rotate(-8deg)}
+    .tear-v1 .t2{top:12%;right:-3px;width:14px;height:22px;clip-path:polygon(0 10%,100% 0,100% 100%,30% 90%,0 40%);transform:rotate(12deg)}
+    .tear-v1 .t3{bottom:8%;left:-2px;width:20px;height:16px;clip-path:polygon(0 0,80% 20%,100% 100%,0 80%);transform:rotate(-4deg)}
+    .tear-v1 .c1{top:22%;left:5%;width:70%;height:1.5px;transform:rotate(-3deg);opacity:.7}
+    .tear-v1 .c2{top:68%;left:15%;width:55%;height:1px;transform:rotate(2deg);opacity:.5}
+    .tear-v1 .d1{top:35%;right:12%;width:55px;height:40px}
+    .tear-v1 .d2{bottom:25%;left:8%;width:40px;height:30px}
+    /* Variante 2 */
+    .tear-v2 .t1{top:5%;right:-4px;width:12px;height:55px;clip-path:polygon(30% 0,100% 5%,100% 100%,40% 95%,0 50%,25% 20%);transform:rotate(3deg)}
+    .tear-v2 .t2{bottom:-3px;left:25%;width:35px;height:14px;clip-path:polygon(0 40%,30% 0,100% 20%,80% 100%,15% 90%);transform:rotate(-2deg)}
+    .tear-v2 .t3{top:40%;left:-3px;width:16px;height:24px;clip-path:polygon(0 0,100% 15%,70% 100%,0 85%);transform:rotate(-15deg)}
+    .tear-v2 .c1{top:40%;left:8%;width:80%;height:2px;transform:rotate(4deg);opacity:.65}
+    .tear-v2 .c2{top:18%;left:20%;width:40%;height:1px;transform:rotate(-6deg);opacity:.45}
+    .tear-v2 .d1{top:55%;left:20%;width:70px;height:50px}
+    .tear-v2 .d2{top:10%;right:15%;width:35px;height:28px}
+    /* Variante 3 */
+    .tear-v3 .t1{top:-1px;left:35%;width:22px;height:18px;clip-path:polygon(10% 0,100% 0,75% 100%,0 80%);transform:rotate(5deg)}
+    .tear-v3 .t2{top:55%;right:-2px;width:18px;height:30px;clip-path:polygon(0 5%,100% 0,100% 70%,60% 100%,0 90%);transform:rotate(8deg)}
+    .tear-v3 .t3{bottom:15%;left:5%;width:14px;height:20px;clip-path:polygon(0 20%,80% 0,100% 100%,20% 90%);transform:rotate(-20deg)}
+    .tear-v3 .t4{top:25%;left:-2px;width:11px;height:18px;clip-path:polygon(0 0,100% 30%,60% 100%,0 70%);transform:rotate(6deg)}
+    .tear-v3 .c1{top:50%;left:10%;width:65%;height:1.5px;transform:rotate(-2deg);opacity:.6}
+    .tear-v3 .d1{top:20%;left:40%;width:50px;height:45px}
+    .tear-v3 .d2{bottom:30%;right:8%;width:45px;height:35px}
+    /* Variante 4 */
+    .tear-v4 .t1{bottom:-4px;right:-4px;width:42px;height:38px;clip-path:polygon(20% 0,100% 0,100% 100%,0 100%,15% 55%);transform:rotate(0deg)}
+    .tear-v4 .t2{top:8%;left:-3px;width:15px;height:32px;clip-path:polygon(0 0,90% 10%,100% 100%,0 85%);transform:rotate(-6deg)}
+    .tear-v4 .t3{top:60%;right:2%;width:12px;height:16px;clip-path:polygon(0 0,100% 20%,80% 100%,10% 90%);opacity:.6}
+    .tear-v4 .c1{top:30%;left:5%;width:75%;height:2px;transform:rotate(5deg);opacity:.7}
+    .tear-v4 .c2{top:72%;left:25%;width:45%;height:1px;transform:rotate(-3deg);opacity:.5}
+    .tear-v4 .d1{top:45%;left:15%;width:60px;height:48px}
+    .tear-v4 .d2{top:8%;right:20%;width:38px;height:32px}
+    /* Variante 5 */
+    .tear-v5 .t1{top:-3px;left:15%;width:48px;height:20px;clip-path:polygon(0 0,20% 60%,40% 10%,60% 80%,80% 15%,100% 50%,100% 0);transform:rotate(1deg)}
+    .tear-v5 .t2{bottom:20%;right:-3px;width:16px;height:28px;clip-path:polygon(20% 0,100% 0,100% 100%,0 80%,30% 40%);transform:rotate(10deg)}
+    .tear-v5 .t3{top:45%;left:-2px;width:13px;height:22px;clip-path:polygon(0 10%,100% 0,70% 100%,0 90%);transform:rotate(-12deg)}
+    .tear-v5 .c1{top:55%;left:12%;width:70%;height:1.5px;transform:rotate(-4deg);opacity:.65}
+    .tear-v5 .c2{top:25%;left:30%;width:35%;height:1px;transform:rotate(7deg);opacity:.4}
+    .tear-v5 .d1{bottom:15%;left:25%;width:65px;height:42px}
+    .tear-v5 .d2{top:35%;right:10%;width:42px;height:35px}
+    /* Variante 6 */
+    .tear-v6 .t1{top:15%;right:-5px;width:20px;height:70px;clip-path:polygon(40% 0,100% 5%,100% 95%,30% 100%,0 55%,35% 30%);transform:rotate(18deg)}
+    .tear-v6 .t2{bottom:-2px;left:40%;width:28px;height:16px;clip-path:polygon(0 30%,40% 0,100% 40%,70% 100%,10% 90%);transform:rotate(-5deg)}
+    .tear-v6 .t3{top:5%;left:2%;width:12px;height:14px;clip-path:polygon(0 0,100% 0,60% 100%,0 70%);opacity:.7}
+    .tear-v6 .c1{top:35%;left:8%;width:60%;height:2px;transform:rotate(-7deg);opacity:.7}
+    .tear-v6 .c2{top:60%;left:20%;width:50%;height:1px;transform:rotate(3deg);opacity:.45}
+    .tear-v6 .d1{top:20%;left:25%;width:55px;height:45px}
+    .tear-v6 .d2{bottom:20%;right:15%;width:48px;height:38px}
+    /* Variante 7 */
+    .tear-v7 .t1{bottom:-3px;left:10%;width:25px;height:18px;clip-path:polygon(0 30%,25% 0,55% 50%,80% 10%,100% 40%,90% 100%,10% 100%);transform:rotate(2deg)}
+    .tear-v7 .t2{bottom:-2px;left:55%;width:30px;height:15px;clip-path:polygon(0 40%,30% 0,60% 45%,100% 5%,100% 100%,0 100%);transform:rotate(-3deg)}
+    .tear-v7 .t3{top:20%;right:-3px;width:14px;height:25px;clip-path:polygon(0 0,100% 15%,100% 100%,20% 85%);transform:rotate(7deg)}
+    .tear-v7 .c1{top:28%;left:10%;width:75%;height:1.5px;transform:rotate(2deg);opacity:.6}
+    .tear-v7 .c2{top:75%;left:5%;width:40%;height:1px;transform:rotate(-5deg);opacity:.5}
+    .tear-v7 .d1{top:40%;right:8%;width:58px;height:50px}
+    .tear-v7 .d2{top:12%;left:15%;width:36px;height:28px}
+    /* Variante 8 */
+    .tear-v8 .t1{top:30%;left:8%;width:10px;height:10px;border-radius:40% 60% 50% 50%;background:radial-gradient(circle,rgba(50,28,10,.45),rgba(40,20,8,.2));box-shadow:inset 0 0 4px rgba(0,0,0,.3);clip-path:none}
+    .tear-v8 .t2{top:55%;right:12%;width:8px;height:8px;border-radius:50%;background:radial-gradient(circle,rgba(50,28,10,.4),rgba(40,20,8,.15));clip-path:none}
+    .tear-v8 .t3{top:-2px;right:20%;width:20px;height:22px;clip-path:polygon(15% 0,100% 0,70% 100%,0 70%);transform:rotate(-10deg)}
+    .tear-v8 .t4{bottom:10%;left:-2px;width:15px;height:20px;clip-path:polygon(0 0,100% 25%,70% 100%,0 80%);transform:rotate(5deg)}
+    .tear-v8 .c1{top:45%;left:15%;width:65%;height:2px;transform:rotate(-2deg);opacity:.65}
+    .tear-v8 .c2{top:15%;left:25%;width:50%;height:1px;transform:rotate(4deg);opacity:.4}
+    .tear-v8 .d1{bottom:28%;right:18%;width:52px;height:40px}
+    .tear-v8 .d2{top:60%;left:30%;width:40px;height:32px}
+
+    .lore-center{
+      position:absolute;left:50%;top:0;bottom:0;width:5px;
+      transform:translateX(-50%);
+      background:linear-gradient(180deg,
+        transparent 2%,
+        #2a1810 8%,
+        #1a0e08 25%,
+        #3d2818 50%,
+        #1a0e08 75%,
+        #2a1810 92%,
+        transparent 98%);
+      z-index:8;pointer-events:none;
+      box-shadow:
+        -2px 0 6px rgba(0,0,0,.35),
+        2px 0 6px rgba(0,0,0,.25),
+        inset 0 0 4px rgba(0,0,0,.5);
+    }
+    .lore-center::before{
+      content:"";position:absolute;left:50%;top:12%;bottom:12%;width:1px;
+      transform:translateX(-50%);
+      background:linear-gradient(180deg,transparent,rgba(180,140,70,.3),transparent);
+    }
+
+    .lore-close{
+      position:absolute;right:-10px;top:-10px;z-index:25;
+      width:38px;height:38px;border:1px solid #4a3220;
+      border-radius:50%;background:linear-gradient(160deg,#3d2818,#1e1008);
+      color:#d4b896;font-size:1.1rem;cursor:pointer;
+      box-shadow:0 3px 12px rgba(0,0,0,.5),inset 0 1px 0 rgba(255,220,160,.1);
+      transition:all .25s;
+    }
+    .lore-close:hover{
+      background:linear-gradient(160deg,#5a3a22,#2a1810);
+      transform:scale(1.06);color:#f0e0c0;
+      box-shadow:0 4px 16px rgba(0,0,0,.55);
+    }
+
+    .lore-nav{
+      position:absolute;bottom:14px;left:50%;transform:translateX(-50%);
+      z-index:20;display:flex;gap:14px;align-items:center;
+    }
+    .lore-nav button{
+      border:1px solid #6a4a28;
+      background:linear-gradient(180deg,#e8d4a8,#d4bc88);
+      color:#2e1a0c;border-radius:4px;padding:8px 16px;
+      font-family:Georgia,serif;cursor:pointer;
+      box-shadow:0 3px 10px rgba(0,0,0,.3),inset 0 1px 0 rgba(255,240,200,.3);
+      transition:all .22s;
+    }
+    .lore-nav button:hover:not(:disabled){
+      background:linear-gradient(180deg,#f0e0b8,#e0c898);
+      transform:translateY(-1px);
+      box-shadow:0 4px 14px rgba(0,0,0,.35);
+    }
+    .lore-nav button:disabled{opacity:.4;cursor:default}
+    .lore-counter{
+      color:#d4bc8c;text-shadow:0 1px 4px #000;
+      font:13px Georgia,serif;min-width:80px;text-align:center;
+      letter-spacing:.04em;font-style:italic;
+    }
+
     .lore-source-pages{display:none}
-    @keyframes bookOpen{from{opacity:0;transform:scale(.9) rotateY(-12deg)}to{opacity:1;transform:scale(1) rotateY(0)}}
-    @media(max-width:760px){.lore-modal{padding:10px}.lore-book{width:96vw;height:88vh}.lore-pages{overflow:hidden}.lore-spread{display:block}.lore-sheet{width:100%;left:0!important;right:auto!important}.lore-sheet.right{display:none}.lore-center{display:none}.lore-face{padding:34px 25px 70px}.lore-face p{font-size:.9rem}}
+    @keyframes bookOpen{
+      from{opacity:0;transform:scale(.88) rotateY(-18deg) translateY(20px)}
+      to{opacity:1;transform:scale(1) rotateY(0) translateY(0)}
+    }
+    @media(max-width:760px){
+      .lore-modal{padding:10px}
+      .lore-book{width:96vw;height:88vh}
+      .lore-pages{overflow:hidden}
+      .lore-spread{display:block}
+      .lore-sheet{width:100%;left:0!important;right:auto!important}
+      .lore-sheet.right{display:none}
+      .lore-center{display:none}
+      .lore-face{padding:34px 25px 70px}
+      .lore-face p{font-size:1rem}
+      .lore-face h2{font-size:1.85rem}
+      .lore-face h3{font-size:1.2rem}
+      .lore-face .lore-intro{font-size:1.1rem}
+      .lore-face .lore-quote{font-size:1rem}
+    }
     /* ===== ADMIN-BEREICH ===== */
     .admin-section {
       max-width: 1100px;
@@ -395,6 +824,7 @@
         <div class="lore-pages">
           <div class="lore-spread" id="loreSpread"></div>
           <div class="lore-center"></div>
+          <div class="lore-particles" id="loreParticles" aria-hidden="true"></div>
           <div class="lore-nav">
             <button id="lorePrev" type="button">‹ Zurück</button>
             <span class="lore-counter" id="loreCounter">Seite 1–2 / 4</span>
@@ -996,31 +1426,91 @@
       }
     })();
 
-    // ===== LORE-BUCH =====
+    // ===== LORE-BUCH (mystisch) =====
     (function(){
       const btn=document.getElementById("loreBookButton"),modal=document.getElementById("loreModal");
       const close=document.getElementById("loreClose"),spread=document.getElementById("loreSpread");
       const prev=document.getElementById("lorePrev"),next=document.getElementById("loreNext"),counter=document.getElementById("loreCounter");
+      const particlesEl=document.getElementById("loreParticles");
       const sourcePages=[...document.querySelectorAll(".lore-source-pages .lore-page")].map(p=>p.innerHTML);
-      let page=0;
+      let page=0, particleTimer=null;
       if(!btn||!modal||!spread||!sourcePages.length)return;
+
+      function spawnParticles(){
+        if(!particlesEl)return;
+        particlesEl.innerHTML="";
+        const count=18;
+        for(let i=0;i<count;i++){
+          const p=document.createElement("div");
+          p.className="lore-particle";
+          const size=1.5+Math.random()*3;
+          p.style.width=size+"px";
+          p.style.height=size+"px";
+          p.style.left=(5+Math.random()*90)+"%";
+          p.style.animationDuration=(6+Math.random()*10)+"s";
+          p.style.animationDelay=(Math.random()*5)+"s";
+          p.style.opacity=0.3+Math.random()*0.6;
+          if(Math.random()>0.55){
+            p.style.background="rgba(255,235,190,.7)";
+            p.style.boxShadow="0 0 5px rgba(220,180,120,.55)";
+          } else {
+            p.style.background="rgba(180,150,100,.45)";
+            p.style.boxShadow="0 0 3px rgba(140,100,60,.4)";
+          }
+          particlesEl.appendChild(p);
+        }
+      }
+
+      function tearsHTML(pageIdx){
+        const variants=["tear-v1","tear-v2","tear-v3","tear-v4","tear-v5","tear-v6","tear-v7","tear-v8"];
+        const v=variants[pageIdx % variants.length];
+        return '<div class="lore-tears '+v+'" aria-hidden="true">'
+          +'<div class="lore-tear t1"></div><div class="lore-tear t2"></div><div class="lore-tear t3"></div><div class="lore-tear t4"></div>'
+          +'<div class="lore-crease c1"></div><div class="lore-crease c2"></div>'
+          +'<div class="lore-dirt d1"></div><div class="lore-dirt d2"></div>'
+          +'</div>';
+      }
       function render(){
         spread.innerHTML="";
         const total=sourcePages.length;
         const l=sourcePages[page],r=sourcePages[page+1];
-        if(l!==undefined)spread.insertAdjacentHTML("beforeend",'<div class="lore-sheet left"><div class="lore-face">'+l+'</div></div>');
-        if(r!==undefined)spread.insertAdjacentHTML("beforeend",'<div class="lore-sheet right"><div class="lore-face">'+r+'</div></div>');
+        if(l!==undefined)spread.insertAdjacentHTML("beforeend",'<div class="lore-sheet left"><div class="lore-face">'+tearsHTML(page)+l+'</div></div>');
+        if(r!==undefined)spread.insertAdjacentHTML("beforeend",'<div class="lore-sheet right"><div class="lore-face">'+tearsHTML(page+1)+r+'</div></div>');
         counter.textContent="Seite "+(page+1)+"–"+Math.min(page+2,total)+" / "+total;
         prev.disabled=page===0;next.disabled=page+2>=total;
         const faces=spread.querySelectorAll(".lore-face");
         faces.forEach(face=>{face.scrollTop=0;});
       }
-      function openBook(){page=0;render();modal.classList.add("open");modal.setAttribute("aria-hidden","false");document.body.style.overflow="hidden"}
-      function closeBook(){modal.classList.remove("open");modal.setAttribute("aria-hidden","true");document.body.style.overflow=""}
-      function turn(dir){const total=sourcePages.length;if(dir>0&&page+2<total){page+=2;render()}else if(dir<0&&page>=2){page-=2;render()}}
-      btn.addEventListener("click",openBook);close.addEventListener("click",closeBook);prev.addEventListener("click",()=>turn(-1));next.addEventListener("click",()=>turn(1));
+
+      function openBook(){
+        page=0;render();
+        modal.classList.add("open");
+        modal.setAttribute("aria-hidden","false");
+        document.body.style.overflow="hidden";
+        spawnParticles();
+      }
+      function closeBook(){
+        modal.classList.remove("open");
+        modal.setAttribute("aria-hidden","true");
+        document.body.style.overflow="";
+        if(particlesEl)particlesEl.innerHTML="";
+      }
+      function turn(dir){
+        const total=sourcePages.length;
+        if(dir>0&&page+2<total){page+=2;render()}
+        else if(dir<0&&page>=2){page-=2;render()}
+      }
+      btn.addEventListener("click",openBook);
+      close.addEventListener("click",closeBook);
+      prev.addEventListener("click",()=>turn(-1));
+      next.addEventListener("click",()=>turn(1));
       modal.addEventListener("click",e=>{if(e.target===modal)closeBook()});
-      document.addEventListener("keydown",e=>{if(!modal.classList.contains("open"))return;if(e.key==="Escape")closeBook();if(e.key==="ArrowRight")turn(1);if(e.key==="ArrowLeft")turn(-1)});
+      document.addEventListener("keydown",e=>{
+        if(!modal.classList.contains("open"))return;
+        if(e.key==="Escape")closeBook();
+        if(e.key==="ArrowRight")turn(1);
+        if(e.key==="ArrowLeft")turn(-1);
+      });
     })();
 
   </script>
