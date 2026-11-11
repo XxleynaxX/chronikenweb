@@ -722,12 +722,32 @@ function diaryNormalizeDiscordName(value) {
 
 function diaryIdentityValues(character, keys) {
   if (!character || typeof character !== 'object') return [];
+
+  // Charakterdaten sind historisch unterschiedlich aufgebaut.
+  // Discord-Daten können direkt oder verschachtelt gespeichert sein.
+  const wanted = new Set(keys.map(k => String(k).toLowerCase()));
   const values = [];
-  for (const key of keys) {
-    const value = character[key];
-    if (Array.isArray(value)) values.push(...value);
-    else if (value != null) values.push(value);
+  const seen = new Set();
+
+  function walk(value) {
+    if (value == null || typeof value !== 'object' || seen.has(value)) return;
+    seen.add(value);
+
+    if (Array.isArray(value)) {
+      for (const item of value) walk(item);
+      return;
+    }
+
+    for (const [key, child] of Object.entries(value)) {
+      if (wanted.has(String(key).toLowerCase())) {
+        if (Array.isArray(child)) values.push(...child);
+        else if (child != null) values.push(child);
+      }
+      if (child && typeof child === 'object') walk(child);
+    }
   }
+
+  walk(character);
   return values;
 }
 
@@ -793,8 +813,11 @@ async function diaryCharacterForDiscord(identity) {
       .map(diaryNormalizeDiscordName)
       .filter(Boolean);
 
-    const idMatch = wantedId && ids.includes(wantedId);
-    const nameMatch = wantedNames.some(name => names.includes(name));
+    // Hat der Charakter bereits eine Discord-ID, ist ausschließlich diese
+    // ID gültig. Username/Tag bleibt nur Fallback für alte Datensätze ohne ID.
+    const hasStoredDiscordId = ids.length > 0;
+    const idMatch = !!wantedId && ids.includes(wantedId);
+    const nameMatch = !hasStoredDiscordId && wantedNames.some(name => names.includes(name));
 
     if (!idMatch && !nameMatch) continue;
 
