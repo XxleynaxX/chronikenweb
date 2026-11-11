@@ -627,7 +627,11 @@ const server = http.createServer(async (req, res) => {
     try {
       const charId = p.admin
         ? String(url.searchParams.get('char_id') || '').trim()
-        : await db.diaryCharacterForDiscord(p.sub, [p.discordUsername, p.discordTag, p.name]);
+        : await db.diaryCharacterForDiscord(
+            p.sub,
+            [p.discordUsername, p.discordTag, p.name],
+            String(url.searchParams.get('char_id') || '').trim()
+          );
       if (!p.admin && !charId) return sendJson(res, 403, { ok: false, error: 'Dein Discord-Account ist noch keinem Charakter zugeordnet.' });
       const entries = await db.diaryListByDiscord(p.sub, charId || null);
       return sendJson(res, 200, {
@@ -650,7 +654,11 @@ const server = http.createServer(async (req, res) => {
       const body = JSON.parse(await readBody(req) || '{}');
       const resolvedCharId = p.admin
         ? body.char_id
-        : await db.diaryCharacterForDiscord(p.sub, [p.discordUsername, p.discordTag, p.name]);
+        : await db.diaryCharacterForDiscord(
+            p.sub,
+            [p.discordUsername, p.discordTag, p.name],
+            String(body.char_id || '').trim()
+          );
       if (!resolvedCharId) return sendJson(res, 403, { ok: false, error: 'Dein Discord-Account ist noch keinem Charakter zugeordnet.' });
       const entry = await db.diaryCreateEntry({
         char_id: resolvedCharId,
