@@ -625,11 +625,18 @@ const server = http.createServer(async (req, res) => {
     const p = sessionFromRequest(req);
     if (!p || !(p.admin || p.player)) return sendJson(res, 401, { ok: false, error: 'Login erforderlich (Spieler-Rolle).' });
     try {
+      const identity = {
+        discordId: p.sub,
+        discordUsername: p.discordUsername,
+        discordTag: p.discordTag,
+        displayName: p.name,
+        name: p.name
+      };
       const charId = p.admin
         ? String(url.searchParams.get('char_id') || '').trim()
-        : await db.diaryCharacterForDiscord(p.discordUsername);
+        : await db.diaryCharacterForDiscord(identity);
       if (!p.admin && !charId) return sendJson(res, 403, { ok: false, error: 'Dein Discord-Account ist noch keinem Charakter zugeordnet.' });
-      const entries = await db.diaryListByDiscord(p.discordUsername, charId || null);
+      const entries = await db.diaryListByDiscord(identity, charId || null);
       return sendJson(res, 200, {
         ok: true,
         discord_id: String(p.sub),
@@ -648,9 +655,16 @@ const server = http.createServer(async (req, res) => {
     if (!p || !(p.admin || p.player)) return sendJson(res, 401, { ok: false, error: 'Login erforderlich (Spieler-Rolle).' });
     try {
       const body = JSON.parse(await readBody(req) || '{}');
+      const identity = {
+        discordId: p.sub,
+        discordUsername: p.discordUsername,
+        discordTag: p.discordTag,
+        displayName: p.name,
+        name: p.name
+      };
       const resolvedCharId = p.admin
         ? body.char_id
-        : await db.diaryCharacterForDiscord(p.discordUsername);
+        : await db.diaryCharacterForDiscord(identity);
       if (!resolvedCharId) return sendJson(res, 403, { ok: false, error: 'Dein Discord-Account ist noch keinem Charakter zugeordnet.' });
       const entry = await db.diaryCreateEntry({
         char_id: resolvedCharId,
@@ -688,11 +702,21 @@ const server = http.createServer(async (req, res) => {
       const id = Number(url.pathname.split('/').pop());
       const entry = await db.diaryGetEntry(id);
       if (!entry) return sendJson(res, 404, { ok: false, error: 'Eintrag nicht gefunden' });
-      // Admin sieht alles; Spieler nur Eintraege seines Discord-Benutzernamens.
+      // Admin sieht alles; Spieler nur Eintraege seines echten Discord-Accounts.
+      // Die Discord-ID ist primaer. Der Namensvergleich bleibt als Fallback
+      // fuer alte Tagebuch-Eintraege erhalten.
       if (!p.admin) {
-        const ownName = String(p.discordUsername || '').trim().toLowerCase();
-        const entryName = String(entry.discord_name || '').trim().replace(/^@/, '').toLowerCase();
-        if (!ownName || entryName !== ownName) {
+        const ownId = String(p.sub || '').trim();
+        const ownNames = [
+          p.discordUsername,
+          p.discordTag,
+          p.name
+        ].map(db.diaryNormalizeDiscordName).filter(Boolean);
+
+        const entryId = String(entry.discord_id || '').trim();
+        const entryName = db.diaryNormalizeDiscordName(entry.discord_name);
+
+        if ((!ownId || entryId !== ownId) && (!entryName || !ownNames.includes(entryName))) {
           return sendJson(res, 403, { ok: false, error: 'Kein Zugriff' });
         }
       }
