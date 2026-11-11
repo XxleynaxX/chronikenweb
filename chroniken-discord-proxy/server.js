@@ -668,10 +668,12 @@ const server = http.createServer(async (req, res) => {
         displayName: p.name,
         name: p.name
       };
-      const resolvedCharId = p.admin
+      // Admins geben die CH-Nummer an (Admin-Seite); schreibt ein Admin über „Mein Tagebuch“,
+      // wird – wie bei Spielern – der eigene Charakter genommen.
+      const resolvedCharId = (p.admin && body.char_id)
         ? body.char_id
         : await db.diaryCharacterForDiscord(identity);
-      if (!resolvedCharId) return sendJson(res, 403, { ok: false, error: 'Dein Discord-Account ist noch keinem Charakter zugeordnet.' });
+      if (!resolvedCharId) return sendJson(res, 403, { ok: false, error: 'Dein Discord-Account ist noch keinem Charakter zugeordnet. Bitte im Charakterbogen deinen Discord-Benutzernamen eintragen oder das Team bitten, dich im Admin-Tagebuch zu verknüpfen.' });
       const entry = await db.diaryCreateEntry({
         char_id: resolvedCharId,
         discord_id: p.sub,

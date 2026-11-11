@@ -1,0 +1,587 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Chroniken – Admin · Charakterverwaltung</title>
+  <link rel="stylesheet" href="style.css">
+  <style>
+    .sheet-modal{position:fixed;inset:0;z-index:100000;background:rgba(5,3,12,.88);overflow:auto;padding:2rem 1rem}
+    .sheet-box{max-width:820px;margin:0 auto;background:#150e29;border:1px solid var(--border);border-radius:14px;padding:1.4rem 1.6rem;box-shadow:0 0 30px rgba(124,92,255,.25)}
+    #tableWrap{overflow-x:auto}
+    .actions-cell{white-space:nowrap}
+    .sheet-head{display:flex;justify-content:space-between;align-items:center;gap:1rem;margin-bottom:1rem;border-bottom:1px solid var(--border);padding-bottom:.8rem}
+    .sheet-head h2{margin:0}
+    .sheet-row{display:grid;grid-template-columns:190px 1fr;gap:.8rem;padding:.45rem 0;border-bottom:1px dashed rgba(122,98,214,.3)}
+    .sheet-row .k{color:var(--accent-soft,#a48cf0);font-weight:600}
+    .sheet-row .v{white-space:pre-wrap;word-break:break-word}
+    .sheet-section{margin:1rem 0 .2rem;font-weight:700;letter-spacing:.5px;color:#d9c8ff}
+    .sheet-foot{margin-top:1rem;display:flex;gap:.8rem;align-items:center}
+    @media(max-width:600px){.sheet-row{grid-template-columns:1fr}}
+    .admin-layout{max-width:1100px;margin:0 auto;padding:0 1.5rem 3rem}
+    .admin-bar{display:flex;flex-wrap:wrap;gap:.8rem;align-items:center;margin-bottom:1.5rem;padding:1rem 1.2rem;background:var(--bg-card);border:1px solid var(--border);border-radius:10px}
+    .admin-bar .status-ok{color:var(--success);font-weight:600}
+    .char-table{width:100%;border-collapse:collapse;margin-top:.5rem}
+    .char-table th,.char-table td{text-align:left;padding:.75rem .9rem;border-bottom:1px solid var(--border);vertical-align:top;font-size:.92rem}
+    .char-table th{color:var(--accent-soft);font-weight:600;background:rgba(168,85,247,.06)}
+    .char-table tr:hover td{background:rgba(255,255,255,.02)}
+    .char-id{font-family:ui-monospace,monospace;color:var(--accent-soft);font-weight:700;white-space:nowrap}
+    .warn-badge{display:inline-block;min-width:1.6rem;text-align:center;padding:.15rem .45rem;border-radius:999px;font-size:.8rem;font-weight:700;background:rgba(225,29,72,.15);color:#fb7185;border:1px solid rgba(225,29,72,.35)}
+    .warn-badge.zero{background:rgba(34,197,94,.12);color:#4ade80;border-color:rgba(34,197,94,.3)}
+    .form-card{background:var(--bg-card);border:1px solid var(--border);border-radius:10px;padding:1.4rem 1.5rem;margin-bottom:1.5rem}
+    .form-card h2{color:var(--accent-soft);font-size:1.15rem;margin-bottom:1rem}
+    .form-grid{display:grid;grid-template-columns:1fr 1fr;gap:1rem 1.2rem}
+    .form-grid .full{grid-column:1/-1}
+    .form-group label{display:block;margin-bottom:.35rem;color:var(--text-muted);font-size:.88rem}
+    .form-group input,.form-group textarea,.form-group select{width:100%;padding:.55rem .75rem;border-radius:6px;border:1px solid var(--border);background:var(--bg-input);color:var(--text);font-size:.95rem}
+    .form-group textarea{min-height:90px;resize:vertical}
+    .form-group input:focus,.form-group textarea:focus,.form-group select:focus{outline:none;border-color:var(--accent);box-shadow:0 0 0 2px rgba(168,85,247,.2)}
+    .form-actions{display:flex;flex-wrap:wrap;gap:.6rem;margin-top:1.1rem}
+    .empty-hint{color:var(--text-muted);padding:1.5rem 0;text-align:center}
+    .locked-msg{max-width:480px;margin:4rem auto;text-align:center;background:var(--bg-card);border:1px solid var(--border);border-radius:12px;padding:2rem}
+    .locked-msg h2{color:var(--accent-soft);margin-bottom:.6rem}
+    .violation-preview{font-size:.85rem;color:var(--text-muted);max-width:220px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+    .actions-cell{white-space:nowrap}.actions-cell button{margin-right:.35rem}
+    .master-tiles{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:1rem}
+    .master-tile{display:flex;flex-direction:column;gap:.45rem;padding:1.2rem;border:1px solid var(--border);border-radius:12px;background:rgba(168,85,247,.05);color:var(--text);text-decoration:none;transition:.18s ease}
+    .master-tile:hover{transform:translateY(-2px);border-color:var(--accent);background:rgba(168,85,247,.1)}
+    .healer-tile{position:relative;overflow:hidden}
+    .healer-tile:after{content:"🩺";position:absolute;right:.8rem;bottom:.45rem;font-size:2.4rem;opacity:.08;pointer-events:none}
+    .master-tile small{color:var(--text-muted);line-height:1.4}.tile-icon{font-size:1.7rem}
+    @media(max-width:700px){.form-grid{grid-template-columns:1fr}.char-table{display:block;overflow-x:auto}}
+
+    /* Votes Admin */
+    .vote-stat{
+      background:rgba(168,85,247,.08);
+      border:1px solid var(--border);
+      border-radius:10px;
+      padding:.55rem 1rem;
+      min-width:100px;
+      text-align:center;
+    }
+    .vote-stat b{display:block;font-size:1.35rem;color:var(--accent-soft);font-variant-numeric:tabular-nums}
+    .vote-stat span{font-size:.75rem;color:var(--text-muted);text-transform:uppercase;letter-spacing:.04em}
+    .vote-bar{
+      height:6px;background:rgba(0,0,0,.35);border-radius:99px;overflow:hidden;min-width:60px;
+    }
+    .vote-bar i{display:block;height:100%;background:linear-gradient(90deg,#a855f7,#c084fc);border-radius:99px}
+    .votes-rank{
+      display:inline-flex;align-items:center;justify-content:center;
+      width:1.7rem;height:1.7rem;border-radius:50%;font-size:.8rem;font-weight:700;
+      background:rgba(168,85,247,.12);border:1px solid var(--border);color:var(--text-muted);
+    }
+    .votes-rank.g1{background:linear-gradient(135deg,#f6d36b,#b8862a);color:#2a1c05;border:0}
+    .votes-rank.g2{background:linear-gradient(135deg,#e4e4e4,#9a9a9a);color:#222;border:0}
+    .votes-rank.g3{background:linear-gradient(135deg,#e0a06a,#9a5a2a);color:#2a1405;border:0}
+    #votesTabCur.active,#votesTabPrev.active{
+      background:var(--accent)!important;color:#1a0a28!important;border-color:var(--accent)!important;
+    }
+  </style>
+</head>
+<body>
+<div class="bg-overlay"></div>
+<header>
+  <div class="logo-wrap"><div class="logo">Chroniken</div></div>
+  <nav>
+      <a href="index.html">Start</a>
+      <a href="news.html">News</a>
+      <a href="events.html">Events</a>
+      <a href="kalender.html">Kalender</a>
+      <a href="wiki.html">Wiki</a>
+      <a href="bibliothek.html">Bibliothek</a>
+      <a href="voelker.html">Völker</a>
+      <a href="berufe.html">Berufe</a>
+      <a href="kreaturen.html">Kreaturen</a>
+      <a href="regeln.html">Regeln</a>
+      <a href="goetter.html">Götter</a>
+      <a href="karte.html">Karte</a>
+      <a href="charakterbogen.html">Charakterbogen</a>
+      <a href="heilerakte.html">Heilerakte</a>
+      <a href="wetter.html" id="navWetter" data-admin-only style="display:none;">Wetter</a>
+      <a href="admin.html" id="navAdmin" class="active" data-admin-only style="display:none;">Admin</a>
+    </nav>
+</header>
+
+<main class="admin-layout">
+  <h1 class="page-title">Admin · Charakterverwaltung</h1>
+  <p class="page-desc">Charakterbögen anlegen, Verwarnungen und Regelverstöße dokumentieren. Jeder neue Charakter erhält eine laufende ID.</p>
+
+  <div id="lockedView" class="locked-msg" style="display:none">
+    <h2>🔒 Nur für Admins</h2>
+    <p>Bitte mit Discord anmelden (Admin-Rolle nötig), um die Verwaltung zu nutzen.</p>
+    <p style="margin-top:1rem"><button type="button" class="btn btn-discord btn-discord-lg" data-discord-login><svg class="discord-logo" viewBox="0 0 127.14 96.36" aria-hidden="true"><path fill="currentColor" d="M107.7 8.07A105.15 105.15 0 0 0 81.47 0a72.06 72.06 0 0 0-3.36 6.83 97.68 97.68 0 0 0-29.11 0A72.37 72.37 0 0 0 45.64 0a105.89 105.89 0 0 0-26.25 8.09C2.79 32.65-1.71 56.6.54 80.21a105.73 105.73 0 0 0 32.17 16.15 77.7 77.7 0 0 0 6.89-11.11 68.42 68.42 0 0 1-10.85-5.18c.91-.66 1.8-1.34 2.66-2a75.57 75.57 0 0 0 64.32 0c.87.71 1.76 1.39 2.66 2a68.68 68.68 0 0 1-10.87 5.19 77 77 0 0 0 6.89 11.1 105.25 105.25 0 0 0 32.19-16.14c2.64-27.38-4.51-51.11-18.9-72.15ZM42.45 65.69C36.18 65.69 31 60 31 53s5-12.74 11.43-12.74S54 46 53.89 53s-5.05 12.69-11.44 12.69Zm42.24 0C78.41 65.69 73.25 60 73.25 53s5-12.74 11.44-12.74S96.23 46 96.12 53s-5.04 12.69-11.43 12.69Z"/></svg><span>Mit Discord anmelden</span></button></p>
+    <p style="margin-top:1rem"><a href="index.html" class="btn secondary">Zur Startseite</a></p>
+  </div>
+
+  <div id="adminView" style="display:none">
+    <div class="admin-bar">
+      <span class="status-ok">✓ Angemeldet als Admin</span>
+      <span class="status" id="charCount">0 Charaktere</span>
+      <button type="button" class="btn secondary" id="btnLogout" style="margin-left:auto">Abmelden</button>
+    </div>
+
+    <!-- ===== Votes / Top-Voter (Admin) ===== -->
+    <div class="form-card" id="votesAdminCard">
+      <div style="display:flex;flex-wrap:wrap;align-items:center;gap:.8rem;margin-bottom:.8rem">
+        <h2 style="margin:0">🗳 Votes · Top-Voter</h2>
+        <div style="display:flex;gap:.4rem;margin-left:auto">
+          <button type="button" class="btn secondary" id="votesTabCur" style="padding:.35rem .8rem;font-size:.85rem">Dieser Monat</button>
+          <button type="button" class="btn secondary" id="votesTabPrev" style="padding:.35rem .8rem;font-size:.85rem">Letzter Monat</button>
+          <button type="button" class="btn secondary" id="votesRefresh" style="padding:.35rem .8rem;font-size:.85rem" title="Aktualisieren">↻</button>
+        </div>
+      </div>
+      <p style="color:var(--text-muted);font-size:.9rem;margin-bottom:.9rem">
+        Wie oft einzelne Spieler für den Server gevotet haben (Daten von conan-exiles.com).
+        <a href="conan-votes.html" target="_blank" rel="noopener" style="color:var(--accent-soft)">Vollständige Votes-Seite öffnen →</a>
+      </p>
+      <div class="votes-stats" id="votesStats" style="display:flex;flex-wrap:wrap;gap:.7rem;margin-bottom:1rem">
+        <div class="vote-stat"><b id="vsVoters">–</b><span>Voter</span></div>
+        <div class="vote-stat"><b id="vsVotes">–</b><span>Votes gesamt</span></div>
+        <div class="vote-stat"><b id="vsLast">–</b><span>Letzter Vote</span></div>
+      </div>
+      <input type="search" id="votesSearch" placeholder="Spieler suchen …" style="width:100%;max-width:320px;padding:.5rem .75rem;border-radius:8px;border:1px solid var(--border);background:var(--bg-input);color:var(--text);margin-bottom:.8rem">
+      <div id="votesListWrap" style="max-height:420px;overflow:auto">
+        <p class="empty-hint" id="votesEmpty">Lade Votes …</p>
+        <table class="char-table" id="votesTable" style="display:none">
+          <thead>
+            <tr>
+              <th style="width:3rem">#</th>
+              <th>Spieler</th>
+              <th style="width:6rem">Votes</th>
+              <th style="width:40%">Anteil</th>
+            </tr>
+          </thead>
+          <tbody id="votesBody"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- Charakter-Webhook wurde absichtlich entfernt.
+         Charakter-Benachrichtigungen laufen ausschließlich über den Render-Proxy. -->
+    <div class="form-card">
+      <h2>📅 Events & Kalender verwalten</h2>
+      <p style="color:var(--text-muted);font-size:.9rem;margin-bottom:1rem">Hier kannst du als Admin Geburtstage, Charakter-Events und Kalender-Feiertage löschen. Ein gelöschter Geburtstag wird automatisch aus Events und Kalender entfernt.</p>
+      <div id="adminEventManager"></div>
+    </div>
+
+    <div class="form-card">
+      <h2>Stammdaten</h2>
+      <p style="color:var(--text-muted);font-size:.9rem;margin-bottom:1rem">Völker, Berufe und Götter werden über die jeweilige Kachel verwaltet.</p>
+      <div class="master-tiles">
+        <a class="master-tile" href="voelker.html"><span class="tile-icon">🦊</span><strong>Völker & Rassen</strong><small>Beschreibung, Stärken, Schwächen und Größen</small></a>
+        <a class="master-tile" href="berufe.html"><span class="tile-icon">⚒️</span><strong>Berufe</strong><small>Hauptberuf oder Nebenberuf anlegen</small></a>
+        <a class="master-tile" href="goetter.html"><span class="tile-icon">✨</span><strong>Götter</strong><small>Götter und ihre Beschreibungen verwalten</small></a>
+        <a class="master-tile" href="karte.html"><span class="tile-icon">🗺️</span><strong>Weltkarte</strong><small>Marker setzen, bearbeiten und löschen</small></a>
+        <a class="master-tile" href="wetter.html"><span class="tile-icon">🌦️</span><strong>Wetter</strong><small>Wetter wählen, überspringen, Timer &amp; Wetterlagen · Discord-Meldung</small></a>
+        <a class="master-tile healer-tile" href="heilerakte.html"><span class="tile-icon">🩺</span><strong>Heilerakte</strong><small>Medizinische RP-Akten verwalten · nur für Heiler und Admins</small></a>
+      </div>
+    </div>
+
+    <div class="form-card">
+      <h2 id="formTitle">Neuer Charakterbogen</h2>
+      <form id="charForm">
+        <input type="hidden" id="editId" value="">
+        <div class="form-grid">
+          <div class="form-group"><label>Laufende ID</label><input type="text" id="charIdDisplay" readonly placeholder="wird automatisch vergeben" style="opacity:.85"></div>
+          <div class="form-group"><label>Charaktername *</label><input type="text" id="charName" required placeholder="z. B. Elara Mondschatten"></div>
+          <div class="form-group"><label>Spieler / OOC-Name</label><input type="text" id="playerName" placeholder="Name des Spielers"></div>
+          <div class="form-group"><label>Steam-ID</label><input type="text" id="steamId" placeholder="z. B. 76561198xxxxxxxx"></div>
+          <div class="form-group"><label>Volk / Rasse</label>
+            <select id="race">
+              <option value="">— bitte wählen —</option><option>Mensch</option><option>Elf</option><option>Zwerg</option><option>Orc</option><option>Kitsune</option><option>Wolf</option><option>Troll</option><option>Tiefling</option><option>Gnom</option><option>Halbling</option><option>Minotaurus</option><option>Drachengeborener</option><option>Dämon</option><option>Fee</option><option>Halbgigant</option><option>Goblin</option><option>Wasserwesen</option><option>Vogelwesen</option><option>Tierwesen</option><option>Halborc</option><option>Halbelf</option><option>Wargwandler</option>
+            </select>
+          </div>
+          <div class="form-group"><label>Anzahl Verwarnungen</label><input type="number" id="warnings" min="0" step="1" value="0"></div>
+          <div class="form-group"><label>Status</label><select id="status"><option value="aktiv">Aktiv</option><option value="pausiert">Pausiert</option><option value="gesperrt">Gesperrt</option><option value="archiviert">Archiviert</option></select></div>
+          <div class="form-group full"><label>Gegen welche Regel verstoßen?</label><textarea id="violation" placeholder="z. B. Regel 4.2 – Metagaming im Event X …"></textarea></div>
+          <div class="form-group full"><label>Notizen (nur Admin sichtbar)</label><textarea id="notes" placeholder="Interne Notizen, Kontext, Absprachen …"></textarea></div>
+        </div>
+        <div class="form-actions"><button type="submit" class="btn" id="btnSave">Speichern</button><button type="button" class="btn secondary" id="btnCancel" style="display:none">Abbrechen</button></div>
+      </form>
+    </div>
+
+    <div class="form-card">
+      <h2>Registrierte Charakterbögen</h2>
+      <div id="tableWrap">
+        <p class="empty-hint" id="emptyHint">Noch keine Charaktere angelegt.</p>
+        <table class="char-table" id="charTable" style="display:none">
+          <thead><tr><th>ID</th><th>Charakter</th><th>Spieler</th><th>Steam-ID</th><th>Verwarnungen</th><th>Regelverstoß</th><th>Status</th><th></th></tr></thead>
+          <tbody id="charBody"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</main>
+
+<div id="sheetModal" class="sheet-modal" style="display:none" role="dialog" aria-modal="true">
+  <div class="sheet-box">
+    <div class="sheet-head"><h2 id="sheetTitle">Charakterbogen</h2><button type="button" class="btn secondary" id="sheetClose">Schließen</button></div>
+    <div id="sheetBody"></div>
+    <div class="sheet-foot"><button type="button" class="btn" id="sheetCopy">📋 Als Text kopieren</button><span id="sheetCopyMsg" class="small"></span></div>
+  </div>
+</div>
+
+<footer><p>© Kiyasha</p></footer>
+
+
+<script src="chroniken-auth.js"></script>
+<script src="chroniken-storage.js"></script>
+<script src="chroniken-sync.js"></script>
+<script>
+const AUTH_KEY="portal_admin_auth";
+const CHARS_KEY="portal_char_registry";
+const NEXT_ID_KEY="portal_char_next_id";
+const CHARACTER_PROXY_URL="https://chronikenweb-1.onrender.com/charakter";
+
+function isAdmin(){try{return sessionStorage.getItem(AUTH_KEY)==="1"}catch{return false}}
+function setAdmin(on){try{if(on)sessionStorage.setItem(AUTH_KEY,"1");else sessionStorage.removeItem(AUTH_KEY)}catch{}}
+function loadChars(){try{return JSON.parse(localStorage.getItem(CHARS_KEY))||[]}catch{return[]}}
+function saveChars(list){localStorage.setItem(CHARS_KEY,JSON.stringify(list))}
+function nextId(){let n=parseInt(localStorage.getItem(NEXT_ID_KEY)||"1",10);if(!Number.isFinite(n)||n<1)n=1;localStorage.setItem(NEXT_ID_KEY,String(n+1));return"CH-"+String(n).padStart(4,"0")}
+function escapeHtml(s){return String(s??"").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;")}
+
+/* Charaktere gehen NICHT mehr direkt zu Discord.
+   Der Browser kennt nur noch den öffentlichen Render-Endpunkt. */
+async function sendCharacterProxy(payload){
+  try{
+    const r=await fetch(CHARACTER_PROXY_URL,{
+      method:"POST",
+      headers:{"Content-Type":"application/json"},
+      body:JSON.stringify(payload)
+    });
+    let data={};try{data=await r.json()}catch{}
+    return{ok:r.ok&&data.ok!==false,reason:r.ok?"":"http_"+r.status}
+  }catch(e){console.warn("Charakter-Proxy fehlgeschlagen:",e);return{ok:false,reason:"network"}}
+}
+function buildCharEmbed(type,char,extra){
+  const colors={created:0x22c55e,updated:0xa855f7,violation:0xe11d48,deleted:0x6b7280};
+  const titles={created:"🆕 Charakter angelegt",updated:"✏️ Charakter bearbeitet",violation:"⚠️ Regelverstoß / Verwarnung",deleted:"🗑️ Charakter gelöscht"};
+  const fields=[
+    {name:"ID",value:char.id||"—",inline:true},{name:"Charakter",value:char.name||"—",inline:true},
+    {name:"Spieler",value:char.player||"—",inline:true},{name:"Steam-ID",value:char.steamId||"—",inline:true},
+    {name:"Volk",value:char.race||"—",inline:true},{name:"Status",value:char.status||"aktiv",inline:true},
+    {name:"Verwarnungen",value:String(char.warnings??0),inline:true}
+  ];
+  if(char.violation)fields.push({name:"Regelverstoß",value:String(char.violation).slice(0,1000),inline:false});
+  if(extra&&extra.note)fields.push({name:"Hinweis",value:String(extra.note).slice(0,500),inline:false});
+  return{username:"Chroniken Admin",embeds:[{title:titles[type]||"Charakter-Update",color:colors[type]||0xa855f7,fields,footer:{text:"Chroniken · Charakterverwaltung"},timestamp:new Date().toISOString()}]};
+}
+async function notifyCharEvent(type,char,extra){
+  const result=await sendCharacterProxy(buildCharEmbed(type,char,extra));
+  const st=document.getElementById("webhookStatus");
+  if(!st)return;
+  st.textContent=result.ok?"✓ Charakter über Render gemeldet":"Charakter-Proxy fehlgeschlagen ("+(result.reason||"?")+")";
+  st.style.color=result.ok?"var(--success)":"#fb7185";
+  setTimeout(()=>{st.textContent=""},4000);
+}
+
+function renderTable(){
+  const list=loadChars().slice().sort((a,b)=>(a.id||"").localeCompare(b.id||"")),tbody=document.getElementById("charBody"),table=document.getElementById("charTable"),empty=document.getElementById("emptyHint");
+  document.getElementById("charCount").textContent=list.length+" Charakter"+(list.length===1?"":"e");
+  if(!list.length){table.style.display="none";empty.style.display="block";tbody.innerHTML="";return}
+  empty.style.display="none";table.style.display="table";
+  tbody.innerHTML=list.map(c=>{
+    const w=Number(c.warnings)||0;
+    return `<tr><td class="char-id">${escapeHtml(c.id)}</td><td><strong>${escapeHtml(c.name)}</strong>${c.race?`<div class="topic-meta">${escapeHtml(c.race)}</div>`:""}</td><td>${escapeHtml(c.player||"—")}</td><td>${escapeHtml(c.steamId||"—")}</td><td><span class="warn-badge ${w===0?"zero":""}">${w}</span></td><td><div class="violation-preview" title="${escapeHtml(c.violation||"")}">${escapeHtml(c.violation||"—")}</div></td><td>${escapeHtml(c.status||"aktiv")}</td><td class="actions-cell"><button type="button" class="btn" data-sheet="${escapeHtml(c.id)}">Bogen ansehen</button><button type="button" class="btn secondary" data-edit="${escapeHtml(c.id)}">Bearbeiten</button><button type="button" class="btn danger" data-del="${escapeHtml(c.id)}">Löschen</button></td></tr>`
+  }).join("");
+  tbody.querySelectorAll("[data-sheet]").forEach(b=>b.addEventListener("click",()=>openSheet(b.dataset.sheet)));
+  tbody.querySelectorAll("[data-edit]").forEach(b=>b.addEventListener("click",()=>startEdit(b.dataset.edit)));
+  tbody.querySelectorAll("[data-del]").forEach(b=>b.addEventListener("click",async()=>{
+    const id=b.dataset.del;if(!confirm("Charakter "+id+" wirklich löschen?"))return;
+    const list=loadChars(),char=list.find(c=>c.id===id);if(!char)return;
+    saveChars(list.filter(c=>c.id!==id));if(document.getElementById("editId").value===id)resetForm();renderTable();try{await ChronikenSync.removeCharacter(id)}catch(e){alert("Zentral löschen fehlgeschlagen: "+e.message)}await notifyCharEvent("deleted",char);
+  }));
+}
+function resetForm(){document.getElementById("charForm").reset();document.getElementById("editId").value="";document.getElementById("charIdDisplay").value="";document.getElementById("warnings").value="0";document.getElementById("formTitle").textContent="Neuer Charakterbogen";document.getElementById("btnSave").textContent="Speichern";document.getElementById("btnCancel").style.display="none"}
+function startEdit(id){
+  const c=loadChars().find(x=>x.id===id);if(!c)return;
+  document.getElementById("editId").value=c.id;document.getElementById("charIdDisplay").value=c.id;document.getElementById("charName").value=c.name||"";
+  document.getElementById("playerName").value=c.player||"";document.getElementById("steamId").value=c.steamId||"";document.getElementById("race").value=c.race||"";
+  document.getElementById("warnings").value=c.warnings??0;document.getElementById("status").value=c.status||"aktiv";document.getElementById("violation").value=c.violation||"";document.getElementById("notes").value=c.notes||"";
+  document.getElementById("formTitle").textContent="Charakter bearbeiten · "+c.id;document.getElementById("btnSave").textContent="Aktualisieren";document.getElementById("btnCancel").style.display="inline-block";document.getElementById("charName").focus()
+}
+document.getElementById("charForm").addEventListener("submit",async e=>{
+  e.preventDefault();const name=document.getElementById("charName").value.trim();if(!name)return;
+  const editId=document.getElementById("editId").value,list=loadChars(),old=editId?list.find(c=>c.id===editId):null;
+  const payload={name,player:document.getElementById("playerName").value.trim(),steamId:document.getElementById("steamId").value.trim(),race:document.getElementById("race").value.trim(),warnings:Math.max(0,parseInt(document.getElementById("warnings").value,10)||0),status:document.getElementById("status").value,violation:document.getElementById("violation").value.trim(),notes:document.getElementById("notes").value.trim(),updatedAt:new Date().toISOString()};
+  let saved,eventType="created";
+  if(editId){
+    const idx=list.findIndex(c=>c.id===editId);if(idx<0)return;list[idx]={...list[idx],...payload};saved=list[idx];
+    const violationChanged=(payload.violation||"")!==(old?.violation||""),warningsUp=payload.warnings>(Number(old?.warnings)||0);
+    eventType=(payload.violation&&violationChanged)||warningsUp?"violation":"updated";
+  }else{
+    try{saved=await ChronikenSync.addCharacter(payload)}catch(e){saved={id:nextId(),createdAt:new Date().toISOString(),...payload};alert("Zentral speichern fehlgeschlagen, nur lokal gespeichert: "+e.message)}
+    list.push(saved)
+  }
+  saveChars(list);
+  if(editId){try{await ChronikenSync.saveCharacter(saved)}catch(e){alert("Zentral speichern fehlgeschlagen: "+e.message)}}
+  await notifyCharEvent(eventType,saved,{note:eventType==="violation"?(payload.warnings>(Number(old?.warnings)||0)?"Verwarnungen erhöht ("+(old?.warnings??0)+" → "+payload.warnings+")":"Regelverstoß aktualisiert"):null});
+  resetForm();renderTable();
+});
+document.getElementById("btnCancel").addEventListener("click",resetForm);
+
+/* ===== Bogen-Kopie ansehen (was der Spieler eingetragen hat) ===== */
+const SHEET_FIELDS=[
+  ["Allgemein",[["Charaktername","name"],["Discord","discordName"],["Steam-ID","steamId"],["Geburtstag","@birthday"],["Alter","age"],["Geschlecht","gender"],["Größe","size"],["Gesinnung","alignment"],["Gott/Göttin","god"]]],
+  ["Volk & Beruf",[["Volk","race"],["Unterarten","subraces"],["Hauptberuf","mainJob"],["Nebenberuf","subJob"]]],
+  ["Verwandlung & Magie",[["Verwandlung","transformInput"],["Magieschulen","magicSchools"],["Magie-Details","magicDetails"],["Magieregeln akzeptiert","@magicRules"]]],
+  ["Aussehen & Anhängsel",[["Haare","hairInput"],["Augen","eyesInput"],["Aussehen","appearanceInput"],["Ohren","earsInput"],["Flügel","wingsInput"],["Schwanz","tailInput"],["Sonstiges","otherInput"]]],
+  ["Hintergrund",[["Hintergrund","background"],["Ziele & Vorhaben","goalsInput"],["Fähigkeiten","abilities"],["Eigenschaften","traits"]]],
+  ["OOC",[["Größen-Sonderfreigabe","@sizeOk"],["Fesseln & Versklavung akzeptiert","@consent"],["OOC-Phobien / Grenzen","phobias"]]]
+];
+function sheetValue(d,key){
+  if(key==="@birthday"){if(d.birthdayDay===undefined&&d.birthdayMonth===undefined&&!d.birthdayYear)return"";const m=d.birthdayMonth!==undefined&&d.birthdayMonth!==""?ADMIN_MONTHS[Number(d.birthdayMonth)]||"":"";return[d.birthdayDay?d.birthdayDay+".":"",m,d.birthdayYear||""].filter(Boolean).join(" ")}
+  if(key==="@magicRules")return d.magicRulesAccepted?"Ja"+(d.verifiedUsername?" – von "+d.verifiedUsername:""):"";
+  if(key==="@sizeOk")return d.sizeConfirmed?"Ja"+(d.sizeVerifiedUsername?" – von "+d.sizeVerifiedUsername:""):"";
+  if(key==="@consent")return d.consentAccepted?"Ja"+(d.consentVerifiedUsername?" – von "+d.consentVerifiedUsername:""):"";
+  const v=d[key];return Array.isArray(v)?v.join(", "):(v==null?"":String(v));
+}
+let sheetText="";
+async function openSheet(id){
+  const modal=document.getElementById("sheetModal"),body=document.getElementById("sheetBody");
+  document.getElementById("sheetTitle").textContent="Charakterbogen · "+id;document.getElementById("sheetCopyMsg").textContent="";
+  body.innerHTML='<p class="small">Lade Bogen …</p>';modal.style.display="block";sheetText="";
+  let sheets=[];try{sheets=await ChronikenSync.loadShared("characterSheets")}catch(e){}
+  const sh=sheets.find(x=>x.id===id),c=loadChars().find(x=>x.id===id)||{};
+  if(!sh||!sh.data){body.innerHTML='<p class="small">Für <strong>'+escapeHtml(id)+'</strong> ist keine Bogen-Kopie gespeichert. Das passiert bei Einträgen, die von Hand in der Verwaltung angelegt oder vor diesem Update erstellt wurden. Sobald der Spieler den Bogen erneut fertigstellt, erscheint sie hier.</p>';return}
+  document.getElementById("sheetTitle").textContent="Charakterbogen · "+id+" · "+(sh.name||c.name||"");
+  let html="",txt=id+" – "+(sh.name||c.name||"")+"\n";
+  SHEET_FIELDS.forEach(([sec,fields])=>{
+    const rows=fields.map(([label,key])=>[label,sheetValue(sh.data,key)]).filter(r=>r[1]);
+    if(!rows.length)return;
+    html+='<div class="sheet-section">'+escapeHtml(sec)+'</div>'+rows.map(r=>'<div class="sheet-row"><span class="k">'+escapeHtml(r[0])+'</span><span class="v">'+escapeHtml(r[1])+'</span></div>').join("");
+    txt+="\n["+sec+"]\n"+rows.map(r=>r[0]+": "+r[1]).join("\n")+"\n";
+  });
+  if(sh.savedAt){const t="Abgegeben/aktualisiert: "+new Date(sh.savedAt).toLocaleString("de-DE");html+='<p class="small" style="margin-top:1rem">'+escapeHtml(t)+'</p>';txt+="\n"+t+"\n"}
+  body.innerHTML=html||'<p class="small">Der Bogen enthält keine Angaben.</p>';sheetText=txt;
+}
+document.getElementById("sheetClose").addEventListener("click",()=>{document.getElementById("sheetModal").style.display="none"});
+document.getElementById("sheetModal").addEventListener("click",e=>{if(e.target.id==="sheetModal")e.target.style.display="none"});
+document.addEventListener("keydown",e=>{if(e.key==="Escape")document.getElementById("sheetModal").style.display="none"});
+document.getElementById("sheetCopy").addEventListener("click",async()=>{try{await navigator.clipboard.writeText(sheetText);document.getElementById("sheetCopyMsg").textContent="✓ Kopiert"}catch(e){document.getElementById("sheetCopyMsg").textContent="Kopieren nicht möglich"}});
+
+
+const ADMIN_MONTHS=["Frostmond","Eismond","Tauwind","Blütenmond","Sonnenhain","Glutmond","Erntemond","Goldlaub","Nebelmond","Dunkelmond","Sternenfall","Nachtfrost"];
+const ADMIN_FIXED_HOLIDAYS=[[0,1,"Nacht der ersten Flamme"],[2,15,"Fest der drei Winde"],[3,20,"Blütensegen"],[5,15,"Sonnenwende der Krone"],[6,30,"Danktag der Ernte"],[8,13,"Nacht des Schleiers"],[10,30,"Sternennacht"],[11,15,"Fuchsfeuer"]];
+async function renderAdminEventManager(){
+  const box=document.getElementById("adminEventManager");if(!box||!isAdmin()){if(box)box.innerHTML='<p class="small">Bitte zuerst als Admin anmelden.</p>';return}
+  if(!window.ChronikenStorage){box.innerHTML='<p class="small">chroniken-storage.js wurde nicht geladen.</p>';return}
+  box.innerHTML='<p class="small">Lade Kalenderdaten aus der Datenbank …</p>';
+  let mainBirthdays,characterEvents,custom,disabled;
+  try{
+    [mainBirthdays,characterEvents,custom,disabled]=await Promise.all([ChronikenStorage.load("birthdays"),ChronikenStorage.load("characterEvents"),ChronikenSync.loadShared("calendar"),ChronikenSync.loadShared("disabledHolidays")]);
+  }catch(e){box.innerHTML='<p class="small">Kalender konnte nicht geladen werden: '+escapeHtml(e.message)+'</p>';return}
+  const sync=window.ChronikenSync;
+  const syncBirthdays=sync?sync.load("birthdays"):[],syncEvents=sync?sync.load("events"):[];
+  const months=ADMIN_MONTHS,esc=escapeHtml;
+  const birthdays=[];const seen=new Set();
+  mainBirthdays.concat(syncBirthdays).forEach(b=>{if(b&&b.name&&!seen.has(b.name)){seen.add(b.name);birthdays.push(b)}});
+  const card=(label,sub,btn)=>`<div class="card" style="margin:.6rem 0;padding:.8rem;display:flex;justify-content:space-between;gap:1rem;align-items:center"><span><strong>${label}</strong><br><small>${sub}</small></span>${btn}</div>`;
+  let html="";
+  if(birthdays.length)html+='<h3 style="margin-top:1rem">🎂 Geburtstage</h3>';
+  birthdays.forEach(b=>html+=card("🎂 "+esc(b.name),`${esc(b.day)}. ${esc(b.monthName||months[b.month]||"Monat")}${b.year?" "+esc(b.year):""}`,`<button class="btn danger" type="button" data-admin-bday="${esc(b.name)}">Löschen</button>`));
+  const evs=characterEvents.filter(e=>e.eventType!=="Geburtstag").map(e=>({...e,_src:"main"})).concat(syncEvents.filter(e=>e.eventType!=="Geburtstag").map(e=>({...e,_src:"sync"})));
+  if(evs.length)html+='<h3 style="margin-top:1rem">📅 Events</h3>';
+  evs.forEach(e=>html+=card("📅 "+esc(e.title||e.characterName||"Event"),esc(e.date||""),`<button class="btn danger" type="button" data-admin-event="${esc(e.id)}" data-src="${e._src}">Löschen</button>`));
+  if(custom.length)html+='<h3 style="margin-top:1rem">🗓️ Eigene Kalendereinträge</h3>';
+  custom.forEach((h,i)=>html+=card("🗓️ "+esc(h.n),`${esc(h.d)}. ${esc(months[h.m]||"")}${h.t?" · "+esc(h.t):""}`,`<button class="btn danger" type="button" data-admin-custom="${i}">Löschen</button>`));
+  html+='<h3 style="margin-top:1rem">✨ Feste Feiertage</h3>';
+  ADMIN_FIXED_HOLIDAYS.forEach((h,i)=>{
+    const off=disabled.includes(i);
+    html+=card("✨ "+esc(h[2])+(off?" <small>(ausgeblendet)</small>":""),`${h[1]}. ${months[h[0]]}`,off?`<button class="btn secondary" type="button" data-admin-holiday-on="${i}">Wieder anzeigen</button>`:`<button class="btn danger" type="button" data-admin-holiday="${i}">Aus Kalender entfernen</button>`);
+  });
+  html+='<p class="small" style="margin-top:.8rem"><a href="kalender.html">→ Zum Kalender</a> (dort kannst du auch neue Einträge anlegen)</p>';
+  box.innerHTML=html;
+  const run=async fn=>{box.querySelectorAll("button").forEach(b=>b.disabled=true);try{await fn()}catch(e){alert("Speichern fehlgeschlagen: "+e.message)}renderAdminEventManager()};
+  box.querySelectorAll("[data-admin-bday]").forEach(b=>b.addEventListener("click",()=>{const n=b.dataset.adminBday;if(!confirm("Geburtstag von "+n+" wirklich löschen?"))return;run(async()=>{
+    await ChronikenStorage.save("birthdays",mainBirthdays.filter(x=>x.name!==n));
+    await ChronikenStorage.save("characterEvents",characterEvents.filter(x=>!(x.eventType==="Geburtstag"&&x.characterName===n)));
+    if(sync)await sync.removeBirthday(n,true);
+  })}));
+  box.querySelectorAll("[data-admin-event]").forEach(b=>b.addEventListener("click",()=>{const id=b.dataset.adminEvent;if(!confirm("Dieses Event wirklich löschen?"))return;run(async()=>{
+    if(b.dataset.src==="sync"){if(sync)await sync.removeEvent(id)}
+    else await ChronikenStorage.save("characterEvents",characterEvents.filter(x=>String(x.id)!==id));
+  })}));
+  box.querySelectorAll("[data-admin-custom]").forEach(b=>b.addEventListener("click",()=>{const i=Number(b.dataset.adminCustom);if(!confirm("Diesen Kalendereintrag wirklich löschen?"))return;run(async()=>{
+    await ChronikenSync.saveShared("calendar",custom.filter((_,j)=>j!==i));
+  })}));
+  box.querySelectorAll("[data-admin-holiday]").forEach(b=>b.addEventListener("click",()=>{const i=Number(b.dataset.adminHoliday);if(!confirm("Diesen Feiertag aus dem Kalender entfernen?"))return;run(async()=>{
+    await ChronikenSync.saveShared("disabledHolidays",disabled.includes(i)?disabled:disabled.concat([i]));
+  })}));
+  box.querySelectorAll("[data-admin-holiday-on]").forEach(b=>b.addEventListener("click",()=>{const i=Number(b.dataset.adminHolidayOn);run(async()=>{
+    await ChronikenSync.saveShared("disabledHolidays",disabled.filter(x=>x!==i));
+  })}));
+}
+
+function updateLoginUI(){
+  const logged=isAdmin();
+  document.getElementById("lockedView").style.display=logged?"none":"block";document.getElementById("adminView").style.display=logged?"block":"none";
+  if(logged){renderTable();renderAdminEventManager();loadAdminVotes()}
+}
+function doLogout(){setAdmin(false);try{sessionStorage.removeItem("portal_bibliothek_auth");sessionStorage.removeItem("portal_heiler_auth")}catch(e){}if(window.ChronikenAuth&&ChronikenAuth.logout)return ChronikenAuth.logout();location.replace("index.html")}
+document.getElementById("btnLogout").addEventListener("click",doLogout);
+
+/* ========== Admin Votes (Top-Voter) ========== */
+(function(){
+  const API_KEY = "wUh7JPwEUsO53w3qeBCIyC3tj688bVdbkuA";
+  const API = "https://conan-exiles.com/api/";
+  const WORKER_URL = "";
+  const USE_PUBLIC_PROXY = true;
+  const SOURCES = [];
+  if (WORKER_URL) SOURCES.push({kind:"proxy", base:WORKER_URL});
+  SOURCES.push({kind:"proxy", base:"proxy.php"});
+  SOURCES.push({kind:"api", wrap:u=>u});
+  if (USE_PUBLIC_PROXY){
+    SOURCES.push({kind:"api", wrap:u=>"https://api.allorigins.win/raw?url="+encodeURIComponent(u)});
+    SOURCES.push({kind:"api", wrap:u=>"https://corsproxy.io/?"+encodeURIComponent(u)});
+  }
+
+  let month = "current";
+  let voters = [];
+  let lastVotes = [];
+
+  const esc = s => String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"}[c]));
+  const $ = id => document.getElementById(id);
+
+  async function ft(url){
+    const c = new AbortController(), t = setTimeout(()=>c.abort(),9000);
+    try{
+      const r = await fetch(url,{signal:c.signal});
+      if(!r.ok) throw new Error(r.status);
+      return await r.text();
+    } finally { clearTimeout(t); }
+  }
+
+  function apiUrl(el, extra){
+    return `${API}?object=servers&element=${el}&key=${API_KEY}${extra}&limit=100&format=json`;
+  }
+
+  function findArray(d){
+    if(Array.isArray(d)) return d;
+    if(d && typeof d === "object")
+      for(const k of Object.keys(d)){ const r = findArray(d[k]); if(r) return r; }
+    return null;
+  }
+
+  function pick(o, names){
+    for(const n of names){
+      const k = Object.keys(o).find(x=>x.toLowerCase()===n);
+      if(k && o[k] !== "" && o[k] != null) return o[k];
+    }
+    return null;
+  }
+
+  async function getData(el, extra){
+    let err;
+    for(const s of SOURCES){
+      try{
+        let out;
+        if(s.kind === "proxy"){
+          const d = JSON.parse(await ft(`${s.base}?element=${el}${extra}&limit=100`));
+          if(d.error) throw new Error(d.error);
+          out = d;
+        } else {
+          out = {items: JSON.parse(await ft(s.wrap(apiUrl(el, extra))))};
+        }
+        return out;
+      }catch(e){ err = e; }
+    }
+    throw err || new Error("keine Quelle");
+  }
+
+  function toItems(d){
+    return findArray(d.items ?? d) || [];
+  }
+
+  function renderVotesTable(){
+    const q = ($("votesSearch").value || "").toLowerCase();
+    const list = voters.filter(v => v.name.toLowerCase().includes(q));
+    const empty = $("votesEmpty");
+    const table = $("votesTable");
+    const body = $("votesBody");
+    if(!list.length){
+      table.style.display = "none";
+      empty.style.display = "block";
+      empty.textContent = voters.length ? "Kein Spieler gefunden." : "Noch keine Votes in diesem Zeitraum.";
+      return;
+    }
+    empty.style.display = "none";
+    table.style.display = "table";
+    const max = Math.max(...voters.map(v=>v.count), 1);
+    body.innerHTML = list.map((v,i) => {
+      const pos = voters.indexOf(v) + 1;
+      const rankCls = pos<=3 ? " g"+pos : "";
+      const pct = Math.round(v.count / max * 100);
+      const steam = /^\d{17}$/.test(String(v.steam||""))
+        ? `<a href="https://steamcommunity.com/profiles/${v.steam}" target="_blank" rel="noopener" style="color:inherit">${esc(v.name)}</a>`
+        : esc(v.name);
+      return `<tr>
+        <td><span class="votes-rank${rankCls}">${pos}</span></td>
+        <td>${steam}</td>
+        <td><strong style="color:var(--accent-soft)">${v.count}</strong></td>
+        <td><div class="vote-bar"><i style="width:${pct}%"></i></div></td>
+      </tr>`;
+    }).join("");
+  }
+
+  function updateStats(){
+    $("vsVoters").textContent = voters.length || "–";
+    $("vsVotes").textContent = voters.length ? voters.reduce((a,v)=>a+v.count,0) : "–";
+    if(lastVotes.length){
+      const t = lastVotes[0].time;
+      if(t != null){
+        const d = /^\d{9,13}$/.test(String(t))
+          ? new Date(String(t).length > 10 ? +t : t*1000)
+          : new Date(String(t).replace(" ","T"));
+        $("vsLast").textContent = isNaN(d) ? "–" : d.toLocaleString("de-DE",{day:"2-digit",month:"2-digit",hour:"2-digit",minute:"2-digit"});
+      } else $("vsLast").textContent = "–";
+    } else $("vsLast").textContent = "–";
+  }
+
+  window.loadAdminVotes = async function(){
+    $("votesEmpty").style.display = "block";
+    $("votesEmpty").textContent = "Lade Votes …";
+    $("votesTable").style.display = "none";
+    try{
+      const [vData, rData] = await Promise.all([
+        getData("voters", `&month=${month}`),
+        getData("votes", "")
+      ]);
+      voters = toItems(vData).map(o=>({
+        name: pick(o,["nickname","username","name","player"]) || "Unbekannt",
+        count: Number(pick(o,["votes","count","total","vote","number"]) || 0),
+        steam: pick(o,["steamid","steam_id"])
+      })).sort((a,b)=>b.count-a.count);
+      lastVotes = toItems(rData).map(o=>({
+        name: pick(o,["nickname","username","name","player"]) || "Unbekannt",
+        time: pick(o,["date","time","timestamp","created","datetime","voted"])
+      }));
+      updateStats();
+      renderVotesTable();
+    }catch(e){
+      console.warn("[AdminVotes]", e);
+      $("votesEmpty").textContent = "Votes konnten nicht geladen werden (Proxy / API prüfen).";
+      voters = [];
+      updateStats();
+    }
+  };
+
+  function setMonth(m){
+    month = m;
+    $("votesTabCur").classList.toggle("active", m==="current");
+    $("votesTabPrev").classList.toggle("active", m==="previous");
+    loadAdminVotes();
+  }
+
+  $("votesTabCur").addEventListener("click", ()=>setMonth("current"));
+  $("votesTabPrev").addEventListener("click", ()=>setMonth("previous"));
+  $("votesRefresh").addEventListener("click", ()=>loadAdminVotes());
+  $("votesSearch").addEventListener("input", renderVotesTable);
+  $("votesTabCur").classList.add("active");
+})();
+
+updateLoginUI();
+document.addEventListener("chroniken-synced",()=>{if(isAdmin()){renderAdminEventManager();renderTable()}});
+</script>
+</body>
+</html>

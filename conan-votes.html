@@ -1,0 +1,444 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Server Votes</title>
+<style>
+  :root{
+    --bg:#120e0a; --card:#1c1610; --line:#382b1d;
+    --gold:#d9a441; --gold2:#f0c870; --text:#eadfce; --muted:#9a8a74;
+    --gr:#7cc576; --red:#d9645a;
+  }
+  *{box-sizing:border-box}
+  body{
+    margin:0; min-height:100vh; color:var(--text);
+    font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+    background:radial-gradient(1000px 420px at 50% -120px,#43301a 0%,transparent 70%),var(--bg);
+  }
+  header{text-align:center; padding:42px 16px 18px}
+  h1{
+    margin:0; font-size:clamp(1.8rem,5vw,2.7rem); letter-spacing:.07em; text-transform:uppercase;
+    color:var(--gold2); text-shadow:0 2px 20px rgba(217,164,65,.35);
+  }
+  header p{margin:8px 0 0; color:var(--muted)}
+  .chips{display:flex; gap:10px; justify-content:center; flex-wrap:wrap; margin-top:18px}
+  .chip{
+    background:var(--card); border:1px solid var(--line); border-radius:99px;
+    padding:6px 16px; font-size:.88rem; display:flex; align-items:center; gap:8px;
+  }
+  .chip b{color:var(--gold2)}
+  .dot{width:9px; height:9px; border-radius:50%; background:var(--muted)}
+  .dot.on{background:var(--gr); box-shadow:0 0 8px var(--gr)}
+  .dot.off{background:var(--red)}
+  .stats{display:flex; gap:12px; justify-content:center; flex-wrap:wrap; margin-top:16px}
+  .stat{background:var(--card); border:1px solid var(--line); border-radius:12px; padding:10px 20px; min-width:130px}
+  .stat b{display:block; font-size:1.5rem; color:var(--gold2)}
+  .stat span{font-size:.78rem; color:var(--muted); text-transform:uppercase; letter-spacing:.05em}
+
+  .wrap{
+    max-width:1150px; margin:0 auto; padding:12px 16px 40px;
+    display:grid; grid-template-columns:repeat(auto-fit,minmax(340px,1fr)); gap:22px;
+  }
+  .card{
+    background:linear-gradient(180deg,#211911,var(--card));
+    border:1px solid var(--line); border-radius:16px;
+    box-shadow:0 10px 30px rgba(0,0,0,.45); overflow:hidden; display:flex; flex-direction:column;
+  }
+  .head{
+    padding:14px 18px; display:flex; align-items:center; gap:10px; flex-wrap:wrap;
+    border-bottom:1px solid var(--line); background:rgba(217,164,65,.07);
+  }
+  .head h2{margin:0; font-size:1.05rem; color:var(--gold); letter-spacing:.03em}
+  .head .sp{flex:1}
+  .tabs{display:flex; background:#120e0a; border-radius:8px; padding:3px}
+  .tabs button{background:none; border:0; color:var(--muted); padding:5px 12px; border-radius:6px; cursor:pointer; font-size:.82rem}
+  .tabs button.on{background:var(--gold); color:#1a1209; font-weight:600}
+  input[type=search]{
+    margin:14px 18px 0; padding:9px 12px; border-radius:8px;
+    border:1px solid var(--line); background:#120e0a; color:var(--text);
+    width:calc(100% - 36px); outline:none;
+  }
+  input[type=search]:focus{border-color:var(--gold)}
+  .list{padding:10px 12px 14px; max-height:560px; overflow:auto}
+  .row{display:flex; align-items:center; gap:12px; padding:9px 8px; border-radius:10px; border-bottom:1px solid rgba(58,45,32,.5)}
+  .row:hover{background:rgba(217,164,65,.07)}
+  .rank{
+    width:32px; height:32px; flex:none; border-radius:50%; display:grid; place-items:center;
+    background:#120e0a; border:1px solid var(--line); font-size:.85rem; color:var(--muted);
+  }
+  .g1 .rank{background:linear-gradient(135deg,#f6d36b,#b8862a); color:#2a1c05; border:0; font-weight:700}
+  .g2 .rank{background:linear-gradient(135deg,#e4e4e4,#9a9a9a); color:#222; border:0; font-weight:700}
+  .g3 .rank{background:linear-gradient(135deg,#e0a06a,#9a5a2a); color:#2a1405; border:0; font-weight:700}
+  .avatar{
+    width:34px; height:34px; flex:none; border-radius:10px; display:grid; place-items:center;
+    font-weight:700; color:#1a1209; background:linear-gradient(135deg,var(--gold2),var(--gold));
+  }
+  .info{flex:1; min-width:0}
+  .name{font-weight:600; white-space:nowrap; overflow:hidden; text-overflow:ellipsis}
+  .name a{color:inherit; text-decoration:none}
+  .name a:hover{color:var(--gold2); text-decoration:underline}
+  .sub{font-size:.78rem; color:var(--muted)}
+  .badge{
+    flex:none; background:rgba(217,164,65,.15); color:var(--gold2);
+    border:1px solid rgba(217,164,65,.35); padding:3px 11px; border-radius:99px; font-weight:700; font-size:.9rem;
+  }
+  .bar{height:4px; background:#120e0a; border-radius:9px; margin-top:6px; overflow:hidden}
+  .bar i{display:block; height:100%; background:linear-gradient(90deg,var(--gold),var(--gold2))}
+  .ok{color:var(--gr)}
+  .state{color:var(--muted); text-align:center; padding:34px 10px; line-height:1.6}
+  .spin{width:26px; height:26px; margin:0 auto 10px; border-radius:50%; border:3px solid var(--line); border-top-color:var(--gold); animation:r 1s linear infinite}
+  @keyframes r{to{transform:rotate(360deg)}}
+  .btn{background:var(--gold); color:#1a1209; border:0; border-radius:8px; padding:9px 18px; font-weight:700; cursor:pointer; margin-top:18px}
+  .btn:hover{background:var(--gold2)}
+  .actions{display:flex; gap:12px; justify-content:center; flex-wrap:wrap; margin-top:18px}
+  .actions .btn{margin-top:0; text-decoration:none; font-size:.95rem; display:inline-block}
+  .btn.vote{
+    padding:11px 26px; font-size:1.05rem; box-shadow:0 0 22px rgba(217,164,65,.35);
+    background:linear-gradient(135deg,var(--gold2),var(--gold));
+  }
+  .btn.vote:hover{transform:translateY(-1px); box-shadow:0 0 30px rgba(217,164,65,.55)}
+  .btn.ghost{background:transparent; color:var(--gold2); border:1px solid var(--line)}
+  .btn.ghost:hover{background:rgba(217,164,65,.1)}
+
+  footer{text-align:center; color:var(--muted); font-size:.8rem; padding:0 16px 30px; line-height:1.7}
+  footer .warn{color:var(--red)}
+</style>
+</head>
+<body>
+<header>
+  <h1>⚔ Server Votes</h1>
+  <p>Top-Voter &amp; letzte Votes live von conan-exiles.com</p>
+  <div class="chips" id="status" hidden></div>
+  <div class="stats">
+    <div class="stat"><b id="sVoters">–</b><span>Voter</span></div>
+    <div class="stat"><b id="sVotes">–</b><span>Votes (Monat)</span></div>
+    <div class="stat"><b id="sLast">–</b><span>Letzter Vote</span></div>
+  </div>
+  <div class="actions">
+    <a class="btn vote" id="voteBtn" href="#" target="_blank" rel="noopener">🗳 Jetzt für uns voten</a>
+    <button class="btn ghost" onclick="loadAll()">↻ Aktualisieren</button>
+  </div>
+</header>
+
+<main class="wrap">
+  <section class="card">
+    <div class="head">
+      <h2>🏆 Top-Voter</h2><span class="sp"></span>
+      <div class="tabs">
+        <button id="tabCur" class="on" onclick="setMonth('current')">Dieser Monat</button>
+        <button id="tabPrev" onclick="setMonth('previous')">Letzter Monat</button>
+      </div>
+    </div>
+    <input type="search" id="q1" placeholder="Spieler suchen …" oninput="renderVoters()">
+    <div class="list" id="voters"></div>
+  </section>
+
+  <section class="card">
+    <div class="head"><h2>🗳 Letzte Votes</h2></div>
+    <input type="search" id="q2" placeholder="Spieler suchen …" oninput="renderVotes()">
+    <div class="list" id="votes"></div>
+  </section>
+</main>
+<footer>
+  Daten: conan-exiles.com API · Cache ca. 3 Minuten<br>
+  <span id="src"></span>
+</footer>
+
+<script>
+  /* ================= Einstellungen ================= */
+  const API_KEY = "wUh7JPwEUsO53w3qeBCIyC3tj688bVdbkuA"; // nur für direkten Abruf / öffentliche Proxys nötig
+  const API     = "https://conan-exiles.com/api/";
+  const LIMIT   = 100;
+
+  // Hierhin führen der „Jetzt voten“-Button und die Steam-/Discord-Kacheln im Popup.
+  const VOTE_URL = "https://conan-exiles.com/server/91542/vote/";
+
+  // Eigener Cloudflare Worker (siehe worker.js). Wenn eingetragen, wird er als Erstes benutzt:
+  const WORKER_URL = "";            // z. B. "https://votes.deinname.workers.dev"
+
+  // Öffentliche CORS-Proxys als Notlösung. ACHTUNG: Der Key geht dabei über Fremddienste.
+  // Für eine öffentliche Seite auf false setzen und stattdessen Worker oder proxy.php nutzen.
+  const USE_PUBLIC_PROXY = true;
+
+  /* ================= Quellen (werden der Reihe nach probiert) ================= */
+  const SOURCES = [];
+  if (WORKER_URL) SOURCES.push({name:"Cloudflare Worker", kind:"proxy", base:WORKER_URL});
+  SOURCES.push({name:"proxy.php",       kind:"proxy", base:"proxy.php"});
+  SOURCES.push({name:"direkter Abruf",  kind:"api",   wrap:u=>u});
+  if (USE_PUBLIC_PROXY){
+    SOURCES.push({name:"allorigins.win", kind:"api", pub:true, wrap:u=>"https://api.allorigins.win/raw?url="+encodeURIComponent(u)});
+    SOURCES.push({name:"corsproxy.io",   kind:"api", pub:true, wrap:u=>"https://corsproxy.io/?"+encodeURIComponent(u)});
+  }
+  let lastSource = null;
+
+  let month = "current", voters = [], votes = [];
+  const $ = id => document.getElementById(id);
+  const esc = s => String(s ?? "").replace(/[&<>"']/g, c =>
+    ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+
+  /* ================= Abruf ================= */
+  const apiUrl = (el, extra, fmt) =>
+    `${API}?object=servers&element=${el}&key=${API_KEY}${extra}` +
+    (el === "detail" ? "" : `&limit=${LIMIT}&format=${fmt}`);
+
+  async function ft(u){
+    const c = new AbortController(), t = setTimeout(() => c.abort(), 9000);
+    try{
+      const r = await fetch(u, {signal:c.signal});
+      if (!r.ok) throw new Error(r.status);
+      return await r.text();
+    } finally { clearTimeout(t); }
+  }
+
+  function parseHtml(html){
+    const doc = new DOMParser().parseFromString(html, "text/html");
+    let best = null, bc = 0;
+    doc.querySelectorAll("table").forEach(t => {
+      const tr = t.querySelector("tr"); if (!tr) return;
+      const c = tr.querySelectorAll("th,td").length;
+      if (c > bc){ best = t; bc = c; }
+    });
+    if (!best || bc < 3) return null;
+    const rows  = [...best.querySelectorAll("tr")];
+    const heads = [...rows[0].querySelectorAll("th,td")]
+      .map(h => h.textContent.trim().toLowerCase().replace(/[^a-z0-9]+/g,"_"));
+    return rows.slice(1).map(tr => {
+      const cells = [...tr.querySelectorAll("td,th")].map(c => c.textContent.trim());
+      if (cells.length !== heads.length) return null;
+      const o = {}; heads.forEach((h,i) => o[h] = cells[i]); return o;
+    }).filter(Boolean);
+  }
+
+  async function viaApi(s, el, extra){
+    if (el === "detail")
+      return {detail: JSON.parse(await ft(s.wrap(apiUrl(el, extra, "json"))))};
+    try{
+      const d = JSON.parse(await ft(s.wrap(apiUrl(el, extra, "json"))));
+      return {items: d};
+    }catch(e){
+      const rows = parseHtml(await ft(s.wrap(apiUrl(el, extra, "html"))));
+      if (rows === null) throw new Error("keine Tabelle gefunden");
+      return {items: rows};
+    }
+  }
+
+  /* Demo-Modus: Seite mit ?demo aufrufen (…/conan-votes.html?demo) → zeigt Fantasie-Daten */
+  const DEMO = new URLSearchParams(location.search).has("demo");
+  function demoData(el){
+    const names = ["Conan","Valeria","Thorgrim","Yasmina","Xalthar","Bêlit","Subotai","Kull","Pallantides","Zenobia"];
+    const steam = i => "7656119800000" + String(1000 + i * 37).padStart(4, "0");
+    if (el === "voters")
+      return {items: names.map((n,i) => ({nickname:n, votes: 30 - i*3 - (i%2), steamid: steam(i)}))};
+    if (el === "votes"){
+      const now = Math.floor(Date.now()/1000);
+      return {items: names.concat(names).slice(0,14).map((n,i) => ({
+        nickname:n, timestamp: now - i*5400 - 600, steamid: steam(i % 10), claimed: i % 3 ? 1 : 0}))};
+    }
+    return null;
+  }
+
+  async function getData(el, extra){
+    if (DEMO){ const d = demoData(el); if (d){ lastSource = {name:"Demo-Daten (Fantasie)"}; showSource(); return d; } }
+    let err;
+    for (const s of SOURCES){
+      try{
+        let out;
+        if (s.kind === "proxy"){
+          const d = JSON.parse(await ft(`${s.base}?element=${el}${extra}&limit=${LIMIT}`));
+          if (d.error) throw new Error(d.error);
+          out = d;
+        } else out = await viaApi(s, el, extra);
+        lastSource = s; showSource();
+        return out;
+      }catch(e){ err = e; }
+    }
+    throw err || new Error("keine Quelle erreichbar");
+  }
+
+  /* ================= Daten erkennen ================= */
+  function findArray(d){
+    if (Array.isArray(d)) return d;
+    if (d && typeof d === "object")
+      for (const k of Object.keys(d)){ const r = findArray(d[k]); if (r) return r; }
+    return null;
+  }
+  function toItems(d){
+    if (d.html) return parseHtml(d.html) || [];
+    return findArray(d.items ?? d) || [];
+  }
+  function pick(o, names){
+    for (const n of names){
+      const k = Object.keys(o).find(x => x.toLowerCase() === n);
+      if (k && o[k] !== "" && o[k] != null) return o[k];
+    }
+    return null;
+  }
+  function deepPick(o, names, depth = 0){
+    if (!o || typeof o !== "object" || depth > 4) return null;
+    for (const n of names){
+      const k = Object.keys(o).find(x => x.toLowerCase() === n);
+      if (k && o[k] !== "" && o[k] != null && typeof o[k] !== "object") return o[k];
+    }
+    for (const k of Object.keys(o)){
+      const r = deepPick(o[k], names, depth + 1); if (r != null) return r;
+    }
+    return null;
+  }
+  const normVoter = o => ({
+    name:  pick(o,["nickname","username","name","player"]) ?? "Unbekannt",
+    count: Number(pick(o,["votes","count","total","vote","number"]) ?? 0),
+    steam: pick(o,["steamid","steam_id"])
+  });
+  const normVote = o => ({
+    name:  pick(o,["nickname","username","name","player"]) ?? "Unbekannt",
+    time:  pick(o,["date","time","timestamp","created","datetime","voted"]),
+    steam: pick(o,["steamid","steam_id"]),
+    claimed: pick(o,["claimed"])
+  });
+  function fmtTime(t){
+    if (t == null) return "";
+    const d = /^\d{9,13}$/.test(String(t))
+      ? new Date(String(t).length > 10 ? +t : t * 1000)
+      : new Date(String(t).replace(" ","T"));
+    if (isNaN(d)) return String(t);
+    return d.toLocaleString("de-DE",{day:"2-digit",month:"2-digit",hour:"2-digit",minute:"2-digit"});
+  }
+  const nameHtml = (n, steam) => /^\d{17}$/.test(String(steam ?? ""))
+    ? `<a href="https://steamcommunity.com/profiles/${steam}" target="_blank" rel="noopener">${esc(n)}</a>`
+    : esc(n);
+
+  /* ================= Laden ================= */
+  const loading = id => $(id).innerHTML = '<div class="state"><div class="spin"></div>Lade …</div>';
+  const showError = id => $(id).innerHTML =
+    `<div class="state">⚠ Daten konnten nicht geladen werden.<br>
+     <small>Weder Worker, proxy.php noch ein direkter Abruf hat funktioniert.<br>
+     Siehe Anleitung: Worker einrichten oder proxy.php auf PHP-Webspace legen.</small></div>`;
+
+  async function loadVoters(){
+    loading("voters");
+    try{
+      const d = await getData("voters", `&month=${month}`);
+      voters = toItems(d).map(normVoter).sort((a,b) => b.count - a.count);
+      renderVoters();
+    }catch(e){ voters = []; showError("voters"); }
+    updateStats();
+  }
+  async function loadVotes(){
+    loading("votes");
+    try{
+      const d = await getData("votes", "");
+      votes = toItems(d).map(normVote);
+      renderVotes();
+    }catch(e){ votes = []; showError("votes"); }
+    updateStats();
+  }
+  async function loadDetail(){
+    try{
+      const d = await getData("detail", "");
+      renderStatus(d.detail ?? d);
+    }catch(e){ $("status").hidden = true; }
+  }
+
+  /* ================= Darstellung ================= */
+  function renderStatus(o){
+    const name = deepPick(o,["name","server_name","hostname"]);
+    const st   = deepPick(o,["status","online","is_online"]);
+    const pl   = deepPick(o,["players","numplayers","players_online","current_players"]);
+    const max  = deepPick(o,["maxplayers","max_players","slots"]);
+    const vt   = deepPick(o,["votes","vote_count","monthly_votes"]);
+    const rk   = deepPick(o,["rank","position","ranking"]);
+    const chips = [];
+    if (name) chips.push(`<div class="chip"><b>${esc(name)}</b></div>`);
+    if (st != null){
+      const on = /^(1|online|true|up)$/i.test(String(st));
+      chips.push(`<div class="chip"><span class="dot ${on?"on":"off"}"></span>${on?"Online":"Offline"}</div>`);
+    }
+    if (pl != null) chips.push(`<div class="chip">👥 <b>${esc(pl)}${max!=null?" / "+esc(max):""}</b> Spieler</div>`);
+    if (vt != null) chips.push(`<div class="chip">🗳 <b>${esc(vt)}</b> Votes</div>`);
+    if (rk != null) chips.push(`<div class="chip">🏅 Rang <b>#${esc(rk)}</b></div>`);
+    $("status").innerHTML = chips.join("");
+    $("status").hidden = !chips.length;
+  }
+  function renderVoters(){
+    const q = $("q1").value.toLowerCase();
+    const list = voters.filter(v => v.name.toLowerCase().includes(q));
+    if (!list.length){
+      $("voters").innerHTML = voters.length
+        ? '<div class="state">Kein Spieler gefunden.</div>'
+        : '<div class="state">🕊 Noch keine Votes in diesem Zeitraum.<br><small>Sobald jemand für den Server votet, erscheint er hier.</small></div>';
+      return;
+    }
+    const max = Math.max(...voters.map(v => v.count), 1);
+    $("voters").innerHTML = list.map(v => {
+      const pos = voters.indexOf(v) + 1;
+      return `<div class="row ${pos<=3?"g"+pos:""}">
+        <div class="rank">${pos}</div>
+        <div class="info">
+          <div class="name">${nameHtml(v.name, v.steam)}</div>
+          <div class="bar"><i style="width:${Math.round(v.count/max*100)}%"></i></div>
+        </div>
+        <div class="badge">${v.count}</div></div>`;
+    }).join("");
+  }
+  function renderVotes(){
+    const q = $("q2").value.toLowerCase();
+    const list = votes.filter(v => v.name.toLowerCase().includes(q));
+    if (!list.length){
+      $("votes").innerHTML = votes.length
+        ? '<div class="state">Kein Spieler gefunden.</div>'
+        : '<div class="state">🕊 Noch keine Votes in diesem Monat.<br><small>Sobald jemand für den Server votet, erscheint er hier.</small></div>';
+      return;
+    }
+    $("votes").innerHTML = list.map(v => {
+      const claimed = /^(1|yes|true|ja)$/i.test(String(v.claimed));
+      return `<div class="row">
+        <div class="avatar">${esc(v.name.charAt(0).toUpperCase())}</div>
+        <div class="info">
+          <div class="name">${nameHtml(v.name, v.steam)}</div>
+          <div class="sub">${esc(fmtTime(v.time))}</div>
+        </div>
+        ${claimed ? '<span class="ok" title="Belohnung abgeholt">✔</span>' : ""}
+      </div>`;
+    }).join("");
+  }
+  function updateStats(){
+    if (voters.length){
+      $("sVoters").textContent = voters.length;
+      $("sVotes").textContent  = voters.reduce((a,v) => a + v.count, 0);
+    }
+    if (votes.length) $("sLast").textContent = fmtTime(votes[0].time) || "–";
+  }
+  function showSource(){
+    if (!lastSource) return;
+    $("src").innerHTML = `Datenquelle: ${esc(lastSource.name)}` +
+      (lastSource.pub ? '<br><span class="warn">⚠ Dein API-Key läuft über einen Fremddienst – für eine öffentliche Seite Worker oder proxy.php nutzen.</span>' : "");
+  }
+  function setMonth(m){
+    month = m;
+    $("tabCur").classList.toggle("on", m === "current");
+    $("tabPrev").classList.toggle("on", m === "previous");
+    loadVoters();
+  }
+  function loadAll(){ loadVoters(); loadVotes(); loadDetail(); }
+  // Vote-Button: öffnet die Vote-Seite in einem kleinen Fenster (Popup), dort Steam oder Discord anklicken
+  function openVote(e){
+    e.preventDefault();
+    const w = 520, h = 760;
+    const left = Math.max(0, Math.round(window.screenX + (window.outerWidth  - w) / 2));
+    const top  = Math.max(0, Math.round(window.screenY + (window.outerHeight - h) / 2));
+    const win = window.open(VOTE_URL, "votefenster",
+      `popup=yes,width=${w},height=${h},left=${left},top=${top},resizable=yes,scrollbars=yes`);
+    if (!win){ window.open(VOTE_URL, "_blank", "noopener"); return; } // Popup blockiert → normaler neuer Tab
+    win.focus();
+    // Wird das Fenster geschlossen, die Listen kurz danach neu laden
+    const t = setInterval(() => { if (win.closed){ clearInterval(t); setTimeout(loadAll, 4000); } }, 700);
+  }
+  $("voteBtn").href = VOTE_URL;
+  $("voteBtn").addEventListener("click", openVote);
+  // Kommt der Besucher vom Voten zurück zum Tab, werden die Listen neu geladen
+  document.addEventListener("visibilitychange", () => { if (!document.hidden) loadAll(); });
+  loadAll();
+</script>
+</body>
+</html>
