@@ -121,6 +121,7 @@ const GUILD_ID = process.env.DISCORD_GUILD_ID || '1204906165004279889';
 const ADMIN_ROLES = (process.env.ADMIN_ROLE_IDS || process.env.ADMIN_ROLE_ID || process.env.DISCORD_ADMIN_ROLE_IDS || '1251121611130540063,1300216664113156116').split(',').map(s => s.trim()).filter(Boolean);
 const LIB_ROLES = (process.env.LIB_ROLE_IDS || process.env.LIB_ROLE_ID || process.env.DISCORD_LIB_ROLE_IDS || '1564874876236472470').split(',').map(s => s.trim()).filter(Boolean);
 const HEALER_ROLES = (process.env.HEALER_ROLE_IDS || process.env.HEALER_ROLE_ID || process.env.DISCORD_HEALER_ROLE_IDS || '1562596034243461150').split(',').map(s => s.trim()).filter(Boolean);
+const PLAYER_ROLES = (process.env.PLAYER_ROLE_IDS || process.env.PLAYER_ROLE_ID || process.env.DISCORD_PLAYER_ROLE_IDS || '1254552933157306418').split(',').map(s => s.trim()).filter(Boolean);
 const ALLOWED_ORIGINS = (process.env.ALLOWED_RETURN_ORIGINS ||
   'https://xxleynaxx.github.io,http://localhost:3000,http://127.0.0.1:3000')
   .split(',').map(s => s.trim().replace(/\/$/, '')).filter(Boolean);
@@ -470,20 +471,21 @@ async function handleAuth(req, res, url) {
       const admin = roles.some(r => ADMIN_ROLES.includes(r));
       const lib = admin || roles.some(r => LIB_ROLES.includes(r));
       const healer = admin || roles.some(r => HEALER_ROLES.includes(r));
-      oauthLog(requestId, 'role_validation', 'completed', memberStartedAt, { admin, lib, healer });
-      if (!admin && !lib && !healer) {
+      const player = admin || roles.some(r => PLAYER_ROLES.includes(r));
+      oauthLog(requestId, 'role_validation', 'completed', memberStartedAt, { admin, lib, healer, player });
+      if (!admin && !lib && !healer && !player) {
         oauthLog(requestId, 'role_validation', 'no_required_role', memberStartedAt);
-        return backWithError(res, ret, 'Dir fehlt die nötige Rolle (Admin, Bibliothek oder Heiler).');
+        return backWithError(res, ret, 'Dir fehlt die nötige Rolle (Spieler, Admin, Bibliothek oder Heiler).');
       }
       const token = sign({
         sub: user.id,
         name: m.nick || user.global_name || user.username || 'Discord',
         discordTag,
-        admin, lib, healer,
+        admin, lib, healer, player,
         exp: Date.now() + SESSION_MS
       });
       setSessionCookie(res, token);
-      oauthLog(requestId, 'callback', 'login_succeeded', callbackStartedAt, { status: 302, admin, lib, healer });
+      oauthLog(requestId, 'callback', 'login_succeeded', callbackStartedAt, { status: 302, admin, lib, healer, player });
       const separator = ret.includes('?') ? '&' : '?';
       return redirect(res, ret + separator + 'auth_done=1');
     } catch (e) {
@@ -529,10 +531,11 @@ async function handleAuth(req, res, url) {
     });
     return res.end(JSON.stringify(
       p
-        ? { ok: true, name: p.name, discord_id: p.sub, discord_tag: p.discordTag || '', admin: p.admin, lib: p.lib, healer: !!(p.admin || p.healer), exp: p.exp }
+        ? { ok: true, name: p.name, discord_id: p.sub, discord_tag: p.discordTag || '', admin: p.admin, lib: p.lib, healer: !!(p.admin || p.healer), player: !!(p.admin || p.player), exp: p.exp }
         : { ok: false }
     ));
   }
+
 
   res.writeHead(404); res.end('Not found');
 }
@@ -615,6 +618,142 @@ const server = http.createServer(async (req, res) => {
   }
 
   const url = new URL(req.url, 'http://localhost');
+
+  // ===== Tagebuch API =====
+  if (url.pathname === '/api/diary/mine' && req.method === 'GET') {
+    const p = sessionFromRequest(req);
+    if (!p || !(p.admin || p.player)) return sendJson(res, 401, { ok: false, error: 'Login erforderlich (Spieler-Rolle).' });
+    try {
+      const charId = String(url.searchParams.get('char_id') || '').trim();
+      const entries = await db.diaryListByDiscord(p.sub, charId || null);
+      return sendJson(res, 200, { ok: true, entries });
+    } catch (e) {
+      console.error('[DIARY] mine', e);
+      return sendJson(res, 500, { ok: false, error: e.message || 'Fehler' });
+    }
+  }
+
+  if (url.pathname === '/api/diary/entries' && req.method === 'POST') {
+    const p = sessionFromRequest(req);
+    if (!p || !(p.admin || p.player)) return sendJson(res, 401, { ok: false, error: 'Login erforderlich (Spieler-Rolle).' });
+    try {
+      const body = JSON.parse(await readBody(req) || '{}');
+      const entry = await db.diaryCreateEntry({
+        char_id: body.char_id,
+        discord_id: p.sub,
+        discord_name: p.name || '',
+        title: body.title || '',
+        text: body.text || '',
+        entry_date: body.entry_date || null
+      });
+      return sendJson(res, 200, { ok: true, entry });
+    } catch (e) {
+      console.error('[DIARY] create', e);
+      return sendJson(res, e.status || 500, { ok: false, error: e.message || 'Fehler' });
+    }
+  }
+
+  if (url.pathname.startsWith('/api/diary/entries/') && req.method === 'GET') {
+    const p = sessionFromRequest(req);
+    if (!p) return sendJson(res, 401, { ok: false, error: 'Login erforderlich' });
+    try {
+      const id = Number(url.pathname.split('/').pop());
+      const entry = await db.diaryGetEntry(id);
+      if (!entry) return sendJson(res, 404, { ok: false, error: 'Eintrag nicht gefunden' });
+      // Admin sieht alles; Spieler nur eigene
+      if (!p.admin && entry.discord_id !== p.sub) return sendJson(res, 403, { ok: false, error: 'Kein Zugriff' });
+      const comments = await db.diaryListComments(id);
+      return sendJson(res, 200, { ok: true, entry, comments });
+    } catch (e) {
+      console.error('[DIARY] get', e);
+      return sendJson(res, 500, { ok: false, error: e.message || 'Fehler' });
+    }
+  }
+
+  if (url.pathname === '/api/diary/admin/users' && req.method === 'GET') {
+    const p = sessionFromRequest(req);
+    if (!p || !p.admin) return sendJson(res, 401, { ok: false, error: 'Nur Admins' });
+    try {
+      const users = await db.diaryAdminUsers();
+      return sendJson(res, 200, { ok: true, users });
+    } catch (e) {
+      console.error('[DIARY] admin users', e);
+      return sendJson(res, 500, { ok: false, error: e.message || 'Fehler' });
+    }
+  }
+
+  if (url.pathname === '/api/diary/admin/entries' && req.method === 'GET') {
+    const p = sessionFromRequest(req);
+    if (!p || !p.admin) return sendJson(res, 401, { ok: false, error: 'Nur Admins' });
+    try {
+      const charId = String(url.searchParams.get('char_id') || '').trim();
+      if (!charId) return sendJson(res, 400, { ok: false, error: 'char_id fehlt' });
+      const entries = await db.diaryListByChar(charId);
+      return sendJson(res, 200, { ok: true, entries });
+    } catch (e) {
+      console.error('[DIARY] admin entries', e);
+      return sendJson(res, 500, { ok: false, error: e.message || 'Fehler' });
+    }
+  }
+
+  if (url.pathname === '/api/diary/comments' && req.method === 'POST') {
+    const p = sessionFromRequest(req);
+    if (!p || !p.admin) return sendJson(res, 401, { ok: false, error: 'Nur Admins' });
+    try {
+      const body = JSON.parse(await readBody(req) || '{}');
+      const comment = await db.diaryAddComment({
+        entry_id: body.entry_id,
+        discord_id: p.sub,
+        author_name: p.name || 'Admin',
+        text: body.text || ''
+      });
+      return sendJson(res, 200, { ok: true, comment });
+    } catch (e) {
+      console.error('[DIARY] comment', e);
+      return sendJson(res, e.status || 500, { ok: false, error: e.message || 'Fehler' });
+    }
+  }
+
+  if (url.pathname.startsWith('/api/diary/comments/') && req.method === 'PUT') {
+    const p = sessionFromRequest(req);
+    if (!p || !p.admin) return sendJson(res, 401, { ok: false, error: 'Nur Admins' });
+    try {
+      const id = Number(url.pathname.split('/').pop());
+      const body = JSON.parse(await readBody(req) || '{}');
+      await db.diaryUpdateComment(id, body.text || '', p.sub);
+      return sendJson(res, 200, { ok: true });
+    } catch (e) {
+      console.error('[DIARY] comment update', e);
+      return sendJson(res, e.status || 500, { ok: false, error: e.message || 'Fehler' });
+    }
+  }
+
+  if (url.pathname.startsWith('/api/diary/comments/') && req.method === 'DELETE') {
+    const p = sessionFromRequest(req);
+    if (!p || !p.admin) return sendJson(res, 401, { ok: false, error: 'Nur Admins' });
+    try {
+      const id = Number(url.pathname.split('/').pop());
+      await db.diaryDeleteComment(id);
+      return sendJson(res, 200, { ok: true });
+    } catch (e) {
+      console.error('[DIARY] comment delete', e);
+      return sendJson(res, e.status || 500, { ok: false, error: e.message || 'Fehler' });
+    }
+  }
+
+  if (url.pathname === '/api/diary/mark-read' && req.method === 'POST') {
+    const p = sessionFromRequest(req);
+    if (!p) return sendJson(res, 401, { ok: false, error: 'Login erforderlich' });
+    try {
+      const body = JSON.parse(await readBody(req) || '{}');
+      if (p.admin) await db.diaryMarkAdminRead(body.entry_id);
+      else await db.diaryMarkUserRead(body.entry_id, p.sub);
+      return sendJson(res, 200, { ok: true });
+    } catch (e) {
+      console.error('[DIARY] mark-read', e);
+      return sendJson(res, 500, { ok: false, error: e.message || 'Fehler' });
+    }
+  }
 
 
   // ===== Internes Admin-System (MySQL + Discord) =====

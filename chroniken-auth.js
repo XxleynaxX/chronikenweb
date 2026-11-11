@@ -12,6 +12,7 @@
   const ADMIN_KEY = "portal_admin_auth";
   const LIB_KEY = "portal_bibliothek_auth";
   const HEALER_KEY = "portal_heiler_auth";
+  const PLAYER_KEY = "portal_player_auth";
   const TOKEN_KEY = "chroniken_discord_token";
   const NAME_KEY = "chroniken_discord_name";
   const HANDOFF_KEY = "chroniken_auth_handoff";
@@ -35,7 +36,7 @@
 
   function clear() {
     try {
-      [ADMIN_KEY, LIB_KEY, HEALER_KEY, TOKEN_KEY, NAME_KEY,
+      [ADMIN_KEY, LIB_KEY, HEALER_KEY, PLAYER_KEY, TOKEN_KEY, NAME_KEY,
        "chroniken_discord_roles", "discord_roles", "discord_username", "portal_discord_user"
       ].forEach(function (k) { sessionStorage.removeItem(k); });
     } catch (e) {}
@@ -222,6 +223,7 @@
       if (info.admin) sessionStorage.setItem(ADMIN_KEY, "1"); else sessionStorage.removeItem(ADMIN_KEY);
       if (info.admin || info.lib) sessionStorage.setItem(LIB_KEY, "1"); else sessionStorage.removeItem(LIB_KEY);
       if (info.admin || info.healer) sessionStorage.setItem(HEALER_KEY, "1"); else sessionStorage.removeItem(HEALER_KEY);
+      if (info.admin || info.player) sessionStorage.setItem(PLAYER_KEY, "1"); else sessionStorage.removeItem(PLAYER_KEY);
       location.reload();
     } catch (e) {
       finishing = false;
@@ -376,6 +378,7 @@
         sessionStorage.removeItem(ADMIN_KEY);
         sessionStorage.removeItem(LIB_KEY);
         sessionStorage.removeItem(HEALER_KEY);
+        sessionStorage.removeItem(PLAYER_KEY);
         return false;
       }
       sessionStorage.removeItem(TOKEN_KEY);
@@ -383,13 +386,21 @@
       if (info.admin) sessionStorage.setItem(ADMIN_KEY, "1"); else sessionStorage.removeItem(ADMIN_KEY);
       if (info.admin || info.lib) sessionStorage.setItem(LIB_KEY, "1"); else sessionStorage.removeItem(LIB_KEY);
       if (info.admin || info.healer) sessionStorage.setItem(HEALER_KEY, "1"); else sessionStorage.removeItem(HEALER_KEY);
+      if (info.admin || info.player) sessionStorage.setItem(PLAYER_KEY, "1"); else sessionStorage.removeItem(PLAYER_KEY);
       return true;
     } catch (e) {
       return false;
     }
   }
 
-  global.ChronikenAuth = { syncAdminNav: syncAdminNav, login: login, clear: clear, logout: logout, name: name };
+  function isPlayer() {
+    try { return sessionStorage.getItem(PLAYER_KEY) === "1" || sessionStorage.getItem(ADMIN_KEY) === "1"; } catch (e) { return false; }
+  }
+  function isAdminFlag() {
+    try { return sessionStorage.getItem(ADMIN_KEY) === "1"; } catch (e) { return false; }
+  }
+
+  global.ChronikenAuth = { syncAdminNav: syncAdminNav, login: login, clear: clear, logout: logout, name: name, isPlayer: isPlayer, isAdmin: isAdminFlag, PLAYER_KEY: PLAYER_KEY };
   async function start() {
     if (handleReturn()) return;
     await restoreSession();

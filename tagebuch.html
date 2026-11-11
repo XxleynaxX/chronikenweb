@@ -1,0 +1,200 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Die Chroniken · Tagebuch</title>
+<link rel="stylesheet" href="style.css">
+<style>
+  .diary-wrap{max-width:860px;margin:2rem auto;padding:0 1rem 4rem}
+  .diary-panel{background:var(--bg-panel);border:1px solid var(--border);border-radius:14px;padding:1.4rem;margin-bottom:1.2rem;backdrop-filter:blur(8px)}
+  .diary-panel h1{font-size:1.4rem;margin-bottom:.4rem}
+  .muted{color:var(--text-muted)}
+  .locked-box{text-align:center;padding:3rem 1rem}
+  .form-row{display:grid;gap:.8rem;margin-bottom:1rem}
+  .form-row label{font-size:.82rem;color:var(--text-muted);font-weight:600}
+  .form-row input,.form-row textarea{width:100%;padding:.7rem .85rem;border-radius:8px;border:1px solid var(--border);background:var(--bg-input);color:var(--text);font:inherit}
+  .form-row textarea{min-height:140px;resize:vertical}
+  .actions{display:flex;gap:.6rem;justify-content:flex-end;flex-wrap:wrap}
+  .btn{display:inline-flex;align-items:center;gap:.4rem;padding:.65rem 1rem;border-radius:8px;border:1px solid var(--border);background:rgba(168,85,247,.15);color:var(--text);cursor:pointer;font:inherit}
+  .btn-primary{background:var(--accent);border-color:var(--accent);color:#fff}
+  .days{display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:12px}
+  .day{position:relative;background:rgba(18,12,28,.75);border:1px solid var(--border);border-radius:12px;padding:1rem;cursor:pointer;transition:.15s}
+  .day:hover{border-color:var(--accent-soft);transform:translateY(-2px)}
+  .day .date{font-size:.78rem;color:var(--accent-soft);font-weight:600}
+  .day .title{font-weight:650;margin:.25rem 0 .4rem}
+  .day .preview{font-size:.88rem;color:var(--text-muted);display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+  .badge-new{position:absolute;top:8px;right:8px;background:#f59e0b;color:#1a0b00;font-size:.68rem;font-weight:800;padding:2px 8px;border-radius:999px;letter-spacing:.04em}
+  .modal{position:fixed;inset:0;background:rgba(0,0,0,.7);display:none;align-items:center;justify-content:center;padding:1rem;z-index:200}
+  .modal.open{display:flex}
+  .modal-box{background:#160f24;border:1px solid #3b3157;border-radius:14px;max-width:560px;width:100%;max-height:90vh;overflow:auto;padding:1.2rem}
+  .comment{background:#110c1b;border:1px solid #302442;border-radius:8px;padding:.7rem .85rem;margin:.5rem 0}
+  .comment .meta{font-size:.75rem;color:#8f829f;margin-bottom:.25rem}
+  .toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%) translateY(80px);background:#1e1430;color:#fff;padding:.7rem 1.2rem;border-radius:999px;opacity:0;transition:.3s;z-index:300}
+  .toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+</style>
+</head>
+<body>
+<div class="bg-overlay"></div>
+<header class="site-header">
+  <div class="logo-wrap"><a href="index.html" style="color:var(--accent-soft);text-decoration:none;font-weight:700">Die Chroniken</a></div>
+</header>
+
+<main class="diary-wrap">
+  <section class="diary-panel" id="locked" hidden>
+    <div class="locked-box">
+      <h1>Tagebuch</h1>
+      <p class="muted">Nur für eingeloggte Spieler mit der Spieler-Rolle sichtbar.</p>
+      <p style="margin-top:1rem"><button class="btn btn-primary" data-discord-login><span>Mit Discord anmelden</span></button></p>
+    </div>
+  </section>
+
+  <div id="app" hidden>
+    <section class="diary-panel">
+      <h1>Mein Tagebuch</h1>
+      <p class="muted">Schreibe Einträge zu deiner Charakter-ID. Admins können lesen und kommentieren.</p>
+      <div class="form-row" style="margin-top:1rem">
+        <label>Charakter-ID (CH-xxxx) *</label>
+        <input id="charId" placeholder="CH-0001">
+      </div>
+      <div class="form-row">
+        <label>Titel</label>
+        <input id="title" placeholder="Kurzer Titel">
+      </div>
+      <div class="form-row">
+        <label>Eintrag *</label>
+        <textarea id="body" placeholder="Was ist heute passiert?"></textarea>
+      </div>
+      <div class="form-row">
+        <label>Datum</label>
+        <input type="date" id="entryDate">
+      </div>
+      <div class="actions">
+        <button class="btn btn-primary" onclick="saveEntry()">Eintrag speichern</button>
+      </div>
+    </section>
+
+    <section class="diary-panel">
+      <h2 style="font-size:1.05rem;margin-bottom:1rem">Deine Einträge</h2>
+      <div class="days" id="days"></div>
+    </section>
+  </div>
+</main>
+
+<div class="modal" id="modal">
+  <div class="modal-box">
+    <div class="muted" id="mDate"></div>
+    <h2 id="mTitle" style="margin:.2rem 0 1rem"></h2>
+    <div id="mBody" style="white-space:pre-wrap;line-height:1.65;margin-bottom:1.2rem"></div>
+    <h3 style="font-size:.9rem;color:var(--text-muted)">Admin-Kommentare</h3>
+    <div id="mComments"></div>
+    <div class="actions" style="margin-top:1rem">
+      <button class="btn" onclick="closeModal()">Schließen</button>
+    </div>
+  </div>
+</div>
+<div class="toast" id="toast"></div>
+
+<script src="chroniken-auth.js"></script>
+<script>
+(function(){
+  const PROXY = (window.CHRONIKEN_DISCORD_PROXY || localStorage.getItem('chroniken_discord_proxy_url') || 'https://chronikenweb-1.onrender.com').replace(/\/$/,'');
+
+  function toast(msg){const t=document.getElementById('toast');t.textContent=msg;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),2500)}
+
+  function isPlayer(){
+    try{return sessionStorage.getItem('portal_player_auth')==='1'||sessionStorage.getItem('portal_admin_auth')==='1'}catch(e){return false}
+  }
+
+  // Charakter-ID aus lokalem Bogen vorbelegen
+  try{
+    const c=JSON.parse(localStorage.getItem('chroniken_charakter')||'null');
+    if(c&&c.registryId) document.getElementById('charId').value=c.registryId;
+  }catch(e){}
+  document.getElementById('entryDate').valueAsDate=new Date();
+
+  async function api(path, opts){
+    const res=await fetch(PROXY+path,{credentials:'include',cache:'no-store',...opts,headers:{'Content-Type':'application/json',...(opts&&opts.headers||{})}});
+    const data=await res.json().catch(()=>({}));
+    if(!res.ok||data.ok===false) throw new Error(data.error||('Status '+res.status));
+    return data;
+  }
+
+  async function load(){
+    if(!isPlayer()){
+      document.getElementById('locked').hidden=false;
+      document.getElementById('app').hidden=true;
+      return;
+    }
+    document.getElementById('locked').hidden=true;
+    document.getElementById('app').hidden=false;
+    try{
+      const charId=document.getElementById('charId').value.trim();
+      const q=charId?('?char_id='+encodeURIComponent(charId)):'';
+      const data=await api('/api/diary/mine'+q);
+      renderDays(data.entries||[]);
+    }catch(e){
+      toast(e.message||'Laden fehlgeschlagen');
+    }
+  }
+
+  function renderDays(entries){
+    const box=document.getElementById('days');
+    if(!entries.length){box.innerHTML='<p class="muted">Noch keine Einträge.</p>';return}
+    box.innerHTML=entries.map(e=>`
+      <article class="day" data-id="${e.id}">
+        ${e.has_new_comments?'<span class="badge-new">NEW</span>':''}
+        <div class="date">${e.entry_date||''}</div>
+        <div class="title">${escapeHtml(e.title||'Ohne Titel')}</div>
+        <div class="preview">${escapeHtml(e.body||'')}</div>
+        <div class="muted" style="margin-top:.6rem;font-size:.78rem">${Number(e.comment_count)||0} Kommentar(e)</div>
+      </article>`).join('');
+    box.querySelectorAll('.day').forEach(el=>el.onclick=()=>openEntry(el.dataset.id));
+  }
+
+  function escapeHtml(s){const d=document.createElement('div');d.textContent=s;return d.innerHTML}
+
+  async function saveEntry(){
+    const char_id=document.getElementById('charId').value.trim();
+    const title=document.getElementById('title').value.trim();
+    const text=document.getElementById('body').value.trim();
+    const entry_date=document.getElementById('entryDate').value;
+    if(!char_id){toast('Charakter-ID ist Pflicht');return}
+    if(!text){toast('Text ist Pflicht');return}
+    try{
+      await api('/api/diary/entries',{method:'POST',body:JSON.stringify({char_id,title,text,entry_date})});
+      document.getElementById('title').value='';
+      document.getElementById('body').value='';
+      toast('Eintrag gespeichert');
+      load();
+    }catch(e){toast(e.message)}
+  }
+
+  async function openEntry(id){
+    try{
+      const data=await api('/api/diary/entries/'+id);
+      document.getElementById('mDate').textContent=data.entry.entry_date||'';
+      document.getElementById('mTitle').textContent=data.entry.title||'Ohne Titel';
+      document.getElementById('mBody').textContent=data.entry.body||'';
+      const list=document.getElementById('mComments');
+      if(!(data.comments||[]).length) list.innerHTML='<p class="muted">Keine Kommentare.</p>';
+      else list.innerHTML=data.comments.map(c=>`<div class="comment"><div class="meta"><b>${escapeHtml(c.author_name)}</b> · ${c.created_at||''}</div>${escapeHtml(c.body)}</div>`).join('');
+      document.getElementById('modal').classList.add('open');
+      await api('/api/diary/mark-read',{method:'POST',body:JSON.stringify({entry_id:Number(id)})}).catch(()=>{});
+      load();
+    }catch(e){toast(e.message)}
+  }
+
+  function closeModal(){document.getElementById('modal').classList.remove('open')}
+  document.getElementById('modal').addEventListener('click',e=>{if(e.target.id==='modal')closeModal()});
+
+  window.saveEntry=saveEntry;
+  window.closeModal=closeModal;
+
+  // warten bis Auth Session restored
+  setTimeout(load, 400);
+  document.getElementById('charId').addEventListener('change', load);
+})();
+</script>
+</body>
+</html>

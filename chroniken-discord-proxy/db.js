@@ -595,7 +595,217 @@ async function adminActivities(limit=100) {
   return rows;
 }
 
+
+
+/* ===== Tagebuch ===== */
+const DIARY_ENTRIES_SCHEMA = `
+CREATE TABLE IF NOT EXISTS diary_entries (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  char_id VARCHAR(32) NOT NULL,
+  discord_id VARCHAR(32) NOT NULL,
+  discord_name VARCHAR(255) NULL,
+  title VARCHAR(255) NOT NULL DEFAULT '',
+  body TEXT NOT NULL,
+  entry_date DATE NOT NULL,
+  admin_seen TINYINT(1) NOT NULL DEFAULT 0,
+  user_seen_comments TINYINT(1) NOT NULL DEFAULT 1,
+  created_at TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
+  updated_at TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3) ON UPDATE CURRENT_TIMESTAMP(3),
+  INDEX idx_diary_char(char_id),
+  INDEX idx_diary_discord(discord_id),
+  INDEX idx_diary_date(entry_date),
+  INDEX idx_diary_admin_seen(admin_seen)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci`;
+
+const DIARY_COMMENTS_SCHEMA = `
+CREATE TABLE IF NOT EXISTS diary_comments (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  entry_id INT NOT NULL,
+  discord_id VARCHAR(32) NOT NULL,
+  author_name VARCHAR(255) NOT NULL,
+  body TEXT NOT NULL,
+  created_at TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
+  updated_at TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3) ON UPDATE CURRENT_TIMESTAMP(3),
+  INDEX idx_diary_comments_entry(entry_id),
+  CONSTRAINT fk_diary_comment_entry FOREIGN KEY (entry_id) REFERENCES diary_entries(id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci`;
+
+let diarySchemaPromise = null;
+async function ensureDiarySchema() {
+  if (!diarySchemaPromise) {
+    diarySchemaPromise = (async () => {
+      await ensureSchema();
+      const p = getPool();
+      await p.query(DIARY_ENTRIES_SCHEMA);
+      await p.query(DIARY_COMMENTS_SCHEMA);
+    })();
+  }
+  return diarySchemaPromise;
+}
+
+function normalizeCharId(raw) {
+  let s = String(raw || '').trim().toUpperCase();
+  if (!s) return '';
+  if (/^\d+$/.test(s)) s = 'CH-' + s.padStart(4, '0');
+  if (/^CH\d+$/.test(s)) s = 'CH-' + s.slice(2).padStart(4, '0');
+  if (!/^CH-\d{1,8}$/.test(s)) {
+    const err = new Error('Ungültige Charakter-ID (Format: CH-0001)');
+    err.status = 400;
+    throw err;
+  }
+  // normalize padding to 4+
+  const num = s.slice(3);
+  return 'CH-' + num.padStart(Math.max(4, num.length), '0');
+}
+
+async function diaryCreateEntry(data) {
+  await ensureDiarySchema();
+  const charId = normalizeCharId(data.char_id);
+  const text = String(data.text || '').trim();
+  if (!text) {
+    const err = new Error('Eintragstext ist Pflicht');
+    err.status = 400;
+    throw err;
+  }
+  const title = String(data.title || '').trim().slice(0, 255);
+  let entryDate = data.entry_date ? String(data.entry_date).slice(0, 10) : new Date().toISOString().slice(0, 10);
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(entryDate)) entryDate = new Date().toISOString().slice(0, 10);
+  const [r] = await getPool().query(
+    'INSERT INTO diary_entries (char_id, discord_id, discord_name, title, body, entry_date, admin_seen, user_seen_comments) VALUES (?,?,?,?,?,?,0,1)',
+    [charId, String(data.discord_id), String(data.discord_name || '').slice(0, 255), title, text, entryDate]
+  );
+  return diaryGetEntry(r.insertId);
+}
+
+async function diaryGetEntry(id) {
+  await ensureDiarySchema();
+  const [rows] = await getPool().query('SELECT * FROM diary_entries WHERE id=?', [id]);
+  return rows[0] || null;
+}
+
+async function diaryListByDiscord(discordId, charId) {
+  await ensureDiarySchema();
+  let sql = `SELECT e.*,
+    (SELECT COUNT(*) FROM diary_comments c WHERE c.entry_id=e.id) AS comment_count,
+    (SELECT COUNT(*) FROM diary_comments c WHERE c.entry_id=e.id AND e.user_seen_comments=0) AS new_comment_flag
+    FROM diary_entries e WHERE e.discord_id=?`;
+  const params = [String(discordId)];
+  if (charId) {
+    sql += ' AND e.char_id=?';
+    params.push(normalizeCharId(charId));
+  }
+  sql += ' ORDER BY e.entry_date DESC, e.id DESC';
+  const [rows] = await getPool().query(sql, params);
+  return rows.map(r => ({
+    ...r,
+    comment_count: Number(r.comment_count) || 0,
+    has_new_comments: !r.user_seen_comments && (Number(r.comment_count) || 0) > 0
+  }));
+}
+
+async function diaryListByChar(charId) {
+  await ensureDiarySchema();
+  const id = normalizeCharId(charId);
+  const [rows] = await getPool().query(
+    `SELECT e.*,
+      (SELECT COUNT(*) FROM diary_comments c WHERE c.entry_id=e.id) AS comment_count
+     FROM diary_entries e WHERE e.char_id=?
+     ORDER BY e.entry_date DESC, e.id DESC`,
+    [id]
+  );
+  return rows.map(r => ({
+    ...r,
+    comment_count: Number(r.comment_count) || 0,
+    is_new: !r.admin_seen
+  }));
+}
+
+async function diaryAdminUsers() {
+  await ensureDiarySchema();
+  const [rows] = await getPool().query(
+    `SELECT char_id,
+            MAX(discord_name) AS discord_name,
+            MAX(discord_id) AS discord_id,
+            COUNT(*) AS entry_count,
+            SUM(CASE WHEN admin_seen=0 THEN 1 ELSE 0 END) AS new_count,
+            MAX(entry_date) AS last_date
+     FROM diary_entries
+     GROUP BY char_id
+     ORDER BY new_count DESC, last_date DESC, char_id ASC`
+  );
+  return rows.map(r => ({
+    ...r,
+    entry_count: Number(r.entry_count) || 0,
+    new_count: Number(r.new_count) || 0
+  }));
+}
+
+async function diaryListComments(entryId) {
+  await ensureDiarySchema();
+  const [rows] = await getPool().query(
+    'SELECT * FROM diary_comments WHERE entry_id=? ORDER BY created_at ASC',
+    [entryId]
+  );
+  return rows;
+}
+
+async function diaryAddComment(data) {
+  await ensureDiarySchema();
+  const entryId = Number(data.entry_id);
+  const text = String(data.text || '').trim();
+  if (!entryId || !text) {
+    const err = new Error('entry_id und text sind Pflicht');
+    err.status = 400;
+    throw err;
+  }
+  const entry = await diaryGetEntry(entryId);
+  if (!entry) {
+    const err = new Error('Eintrag nicht gefunden');
+    err.status = 404;
+    throw err;
+  }
+  const [r] = await getPool().query(
+    'INSERT INTO diary_comments (entry_id, discord_id, author_name, body) VALUES (?,?,?,?)',
+    [entryId, String(data.discord_id), String(data.author_name || 'Admin').slice(0, 255), text]
+  );
+  // User soll "New Kommentar" sehen
+  await getPool().query('UPDATE diary_entries SET user_seen_comments=0, admin_seen=1 WHERE id=?', [entryId]);
+  const [rows] = await getPool().query('SELECT * FROM diary_comments WHERE id=?', [r.insertId]);
+  return rows[0];
+}
+
+async function diaryUpdateComment(id, text, actorDiscordId) {
+  await ensureDiarySchema();
+  const body = String(text || '').trim();
+  if (!body) {
+    const err = new Error('Kommentar darf nicht leer sein');
+    err.status = 400;
+    throw err;
+  }
+  await getPool().query('UPDATE diary_comments SET body=?, updated_at=CURRENT_TIMESTAMP(3) WHERE id=?', [body, id]);
+}
+
+async function diaryDeleteComment(id) {
+  await ensureDiarySchema();
+  await getPool().query('DELETE FROM diary_comments WHERE id=?', [id]);
+}
+
+async function diaryMarkAdminRead(entryId) {
+  await ensureDiarySchema();
+  if (!entryId) return;
+  await getPool().query('UPDATE diary_entries SET admin_seen=1 WHERE id=?', [Number(entryId)]);
+}
+
+async function diaryMarkUserRead(entryId, discordId) {
+  await ensureDiarySchema();
+  await getPool().query(
+    'UPDATE diary_entries SET user_seen_comments=1 WHERE id=? AND discord_id=?',
+    [Number(entryId), String(discordId)]
+  );
+}
+
 module.exports = {
   KEYS, normalizeKey, canWrite, validValue,
-  configured, ensureSchema, getAll, getOne, setMany, claimNotificationKey, status, ensureAdminSchema, syncAdminKeys, adminSummary, adminTasks, adminTask, adminCreateTask, adminUpdateTask, adminDeleteTask, adminProjects, adminCreateProject, adminUpdateProject, adminDeleteProject, adminAddComment, adminActivities, adminBlacklist, adminBlacklistEntry, adminAddBlacklist, adminRemoveBlacklist, isSteamBlacklisted, isDiscordBlacklisted, adminChangelog
+  configured, ensureSchema, getAll, getOne, setMany, claimNotificationKey, status, ensureAdminSchema, syncAdminKeys, adminSummary, adminTasks, adminTask, adminCreateTask, adminUpdateTask, adminDeleteTask, adminProjects, adminCreateProject, adminUpdateProject, adminDeleteProject, adminAddComment, adminActivities, adminBlacklist, adminBlacklistEntry, adminAddBlacklist, adminRemoveBlacklist, isSteamBlacklisted, isDiscordBlacklisted, adminChangelog,
+  ensureDiarySchema, diaryCreateEntry, diaryGetEntry, diaryListByDiscord, diaryListByChar, diaryAdminUsers, diaryListComments, diaryAddComment, diaryUpdateComment, diaryDeleteComment, diaryMarkAdminRead, diaryMarkUserRead
 };

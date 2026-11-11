@@ -70,3 +70,35 @@ CREATE TABLE IF NOT EXISTS admin_blacklist (
   INDEX idx_admin_blacklist_discord(discord_id),
   INDEX idx_admin_blacklist_tag(discord_tag)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+
+-- Tagebuch
+CREATE TABLE IF NOT EXISTS diary_entries (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  char_id VARCHAR(32) NOT NULL,
+  discord_id VARCHAR(32) NOT NULL,
+  discord_name VARCHAR(255) NULL,
+  title VARCHAR(255) NOT NULL DEFAULT '',
+  body TEXT NOT NULL,
+  entry_date DATE NOT NULL,
+  admin_seen TINYINT(1) NOT NULL DEFAULT 0,
+  user_seen_comments TINYINT(1) NOT NULL DEFAULT 1,
+  created_at TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
+  updated_at TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3) ON UPDATE CURRENT_TIMESTAMP(3),
+  INDEX idx_diary_char(char_id),
+  INDEX idx_diary_discord(discord_id),
+  INDEX idx_diary_date(entry_date),
+  INDEX idx_diary_admin_seen(admin_seen)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS diary_comments (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  entry_id INT NOT NULL,
+  discord_id VARCHAR(32) NOT NULL,
+  author_name VARCHAR(255) NOT NULL,
+  body TEXT NOT NULL,
+  created_at TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
+  updated_at TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3) ON UPDATE CURRENT_TIMESTAMP(3),
+  INDEX idx_diary_comments_entry(entry_id),
+  CONSTRAINT fk_diary_comment_entry FOREIGN KEY (entry_id) REFERENCES diary_entries(id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
