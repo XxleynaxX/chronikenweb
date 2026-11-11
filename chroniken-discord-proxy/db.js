@@ -658,24 +658,69 @@ function normalizeCharId(raw) {
   return 'CH-' + num.padStart(Math.max(4, num.length), '0');
 }
 
-async function diaryCharacterForDiscord(discordId) {
+async function diaryCharacterForDiscord(discordId, discordTag) {
   await ensureDiarySchema();
-  const wanted = String(discordId || '').trim();
-  if (!wanted) return null;
+
+  // Die Discord-ID bleibt der sicherste Treffer. Der Discord-Tag wird nur
+  // zusätzlich als Fallback verwendet, damit auch ältere Charaktereinträge
+  // ohne gespeicherte Discord-ID gefunden werden können.
+  const wantedId = String(discordId || '').trim();
+  const normalizeDiscordName = value => String(value || '')
+    .trim()
+    .replace(/^@/, '')
+    .toLowerCase();
+
+  const wantedTag = normalizeDiscordName(discordTag);
+  if (!wantedId && !wantedTag) return null;
+
   const characters = await getOne('characters');
   const list = Array.isArray(characters) ? characters : [];
-  const keys = ['discord_id','discordId','discord_user_id','discordUserId','owner_id','ownerId','player_id','playerId','user_id','userId'];
-  for (const c of list) {
-    if (!c || typeof c !== 'object') continue;
-    const ids = keys.flatMap(k => {
-      const v = c[k];
-      if (Array.isArray(v)) return v.map(String);
-      return v == null ? [] : [String(v)];
-    });
-    if (ids.includes(wanted)) {
-      return c.char_id || c.charId || c.id || c.character_id || c.characterId || null;
+
+  const idKeys = [
+    'discord_id','discordId','discord_user_id','discordUserId',
+    'owner_id','ownerId','player_id','playerId','user_id','userId'
+  ];
+
+  const tagKeys = [
+    'discordName','discord_name','discordTag','discord_tag',
+    'discordUsername','discord_username'
+  ];
+
+  // 1. Zuerst immer über die eindeutige Discord-ID suchen.
+  if (wantedId) {
+    for (const c of list) {
+      if (!c || typeof c !== 'object') continue;
+
+      const ids = idKeys.flatMap(k => {
+        const v = c[k];
+        if (Array.isArray(v)) return v.map(String);
+        return v == null ? [] : [String(v)];
+      });
+
+      if (ids.includes(wantedId)) {
+        return c.char_id || c.charId || c.id || c.character_id || c.characterId || null;
+      }
     }
   }
+
+  // 2. Fallback für bestehende Charaktere, bei denen nur der Discord-Name
+  //    wie "kiyasha_x" gespeichert wurde.
+  if (wantedTag) {
+    for (const c of list) {
+      if (!c || typeof c !== 'object') continue;
+
+      const tags = tagKeys.flatMap(k => {
+        const v = c[k];
+        if (Array.isArray(v)) return v.map(normalizeDiscordName);
+        return v == null ? [] : [normalizeDiscordName(v)];
+      }).filter(Boolean);
+
+      if (tags.includes(wantedTag)) {
+        return c.char_id || c.charId || c.id || c.character_id || c.characterId || null;
+      }
+    }
+  }
+
   return null;
 }
 
