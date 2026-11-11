@@ -157,11 +157,15 @@ textarea{min-height:90px;resize:vertical}
   async function loadUsers(){
     const data=await api('/api/diary/admin/users');
     const users=data.users||[];
+    const orphanData=await api('/api/diary/admin/orphans').catch(()=>({entries:[]}));
+    const orphans=orphanData.entries||[];
     const box=document.getElementById('users');
-    if(!users.length){
+
+    if(!users.length&&!orphans.length){
       box.innerHTML='<p class="muted">Noch keine Tagebuch-Einträge vorhanden.</p>';
       return;
     }
+
     const groups=await Promise.all(users.map(async u=>{
       try{
         const result=await api('/api/diary/admin/entries?char_id='+encodeURIComponent(u.char_id));
@@ -170,6 +174,7 @@ textarea{min-height:90px;resize:vertical}
         return {...u,entries:[],loadError:err.message||'Beiträge konnten nicht geladen werden.'};
       }
     }));
+
     box.innerHTML=groups.map(u=>{
       const entries=u.entries||[];
       const totalComments=entries.reduce((sum,e)=>sum+(Number(e.comment_count)||0),0);
@@ -177,7 +182,7 @@ textarea{min-height:90px;resize:vertical}
         <article class="user-card">
           <div class="user-card-head">
             <div>
-              <b>[${esc(u.char_id)}]</b>
+              <b>[${esc(u.char_id||'OHNE-ID')}]</b>
               <small>Beiträge: ${entries.length} · Kommentare: ${totalComments}</small>
             </div>
             <small>${esc(u.discord_name||'–')}</small>
@@ -195,7 +200,30 @@ textarea{min-height:90px;resize:vertical}
           </div>
           ${u.loadError?'<div class="muted" style="margin-top:8px">'+esc(u.loadError)+'</div>':''}
         </article>`;
-    }).join('');
+    }).join('') + (orphans.length?`
+      <article class="user-card" style="border-color:#8f2f4a">
+        <div class="user-card-head">
+          <div>
+            <b>[OHNE CHAR-ID]</b>
+            <small>Fehlerhafte Beiträge: ${orphans.length} · Kommentare: ${orphans.reduce((sum,e)=>sum+(Number(e.comment_count)||0),0)}</small>
+          </div>
+          <small>Diese Einträge haben keine gültige Charakter-ID.</small>
+        </div>
+        <div class="diary-list">
+          ${orphans.map(e=>`
+            <div class="diary-row">
+              <div class="diary-main" data-open-id="${e.id}">
+                <div class="diary-date">Beitrag am ${esc(e.entry_date||'–')}</div>
+                <div class="diary-title">${esc(e.title||'Ohne Titel')}</div>
+                <div class="diary-comments">Kommentar: ${Number(e.comment_count)||0}</div>
+              </div>
+              <button class="btn btn-danger diary-delete" data-id="${e.id}">🗑 Löschen</button>
+            </div>`).join('')}
+        </div>
+        <div class="actions" style="justify-content:flex-start">
+          <button class="btn btn-danger" id="deleteOrphans">🗑 Alle fehlerhaften Einträge löschen</button>
+        </div>
+      </article>`:'');
     box.querySelectorAll('.diary-main').forEach(el=>el.onclick=()=>openEntry(el.dataset.openId));
     box.querySelectorAll('.diary-delete').forEach(btn=>btn.onclick=async e=>{
       e.stopPropagation();
@@ -205,6 +233,14 @@ textarea{min-height:90px;resize:vertical}
         await loadUsers();
       }catch(err){alert(err.message||'Löschen fehlgeschlagen')}
     });
+    const deleteOrphans=document.getElementById('deleteOrphans');
+    if(deleteOrphans) deleteOrphans.onclick=async()=>{
+      if(!confirm('Alle fehlerhaften Tagebuch-Einträge ohne Charakter-ID wirklich löschen?'))return;
+      try{
+        await api('/api/diary/admin/orphans',{method:'DELETE'});
+        await loadUsers();
+      }catch(err){alert(err.message||'Löschen fehlgeschlagen')}
+    };
   }
 
   async function openChar(charId){
