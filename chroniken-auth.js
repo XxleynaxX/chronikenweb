@@ -224,6 +224,7 @@
       sessionStorage.removeItem(TOKEN_KEY);
       sessionStorage.setItem(NAME_KEY, info.name || "");
       if (info.discord_username) sessionStorage.setItem(USERNAME_KEY, info.discord_username); else sessionStorage.removeItem(USERNAME_KEY);
+      if (info.discord_username) sessionStorage.setItem(USERNAME_KEY, info.discord_username); else sessionStorage.removeItem(USERNAME_KEY);
       if (info.admin) sessionStorage.setItem(ADMIN_KEY, "1"); else sessionStorage.removeItem(ADMIN_KEY);
       if (info.admin || info.lib) sessionStorage.setItem(LIB_KEY, "1"); else sessionStorage.removeItem(LIB_KEY);
       if (info.admin || info.healer) sessionStorage.setItem(HEALER_KEY, "1"); else sessionStorage.removeItem(HEALER_KEY);
