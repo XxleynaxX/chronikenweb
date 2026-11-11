@@ -624,7 +624,7 @@ const server = http.createServer(async (req, res) => {
     const p = sessionFromRequest(req);
     if (!p || !(p.admin || p.player)) return sendJson(res, 401, { ok: false, error: 'Login erforderlich (Spieler-Rolle).' });
     try {
-      const charId = p.admin ? String(url.searchParams.get('char_id') || '').trim() : await db.diaryCharacterForDiscord(p.sub);
+      const charId = p.admin ? String(url.searchParams.get('char_id') || '').trim() : await db.diaryCharacterForDiscord(p.sub, p.discordTag || p.name);
       if (!p.admin && !charId) return sendJson(res, 403, { ok: false, error: 'Dein Discord-Account ist noch keinem Charakter zugeordnet.' });
       const entries = await db.diaryListByDiscord(p.sub, charId || null);
       return sendJson(res, 200, {
