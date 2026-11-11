@@ -805,7 +805,7 @@ const server = http.createServer(async (req, res) => {
     try {
       const body = JSON.parse(await readBody(req) || '{}');
       if (p.admin) await db.diaryMarkAdminRead(body.entry_id);
-      else await db.diaryMarkUserRead(body.entry_id, p.sub);
+      else await db.diaryMarkUserRead(body.entry_id, p.discordUsername);
       return sendJson(res, 200, { ok: true });
     } catch (e) {
       console.error('[DIARY] mark-read', e);
