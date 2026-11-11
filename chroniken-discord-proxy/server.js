@@ -699,6 +699,30 @@ const server = http.createServer(async (req, res) => {
     }
   }
 
+  if (url.pathname === '/api/diary/admin/orphans' && req.method === 'GET') {
+    const p = sessionFromRequest(req);
+    if (!p || !p.admin) return sendJson(res, 401, { ok: false, error: 'Nur Admins' });
+    try {
+      const entries = await db.diaryListOrphanEntries();
+      return sendJson(res, 200, { ok: true, entries });
+    } catch (e) {
+      console.error('[DIARY] admin orphan entries', e);
+      return sendJson(res, 500, { ok: false, error: e.message || 'Fehler' });
+    }
+  }
+
+  if (url.pathname === '/api/diary/admin/orphans' && req.method === 'DELETE') {
+    const p = sessionFromRequest(req);
+    if (!p || !p.admin) return sendJson(res, 401, { ok: false, error: 'Nur Admins dürfen fehlerhafte Tagebuch-Einträge löschen.' });
+    try {
+      const deleted = await db.diaryDeleteOrphanEntries();
+      return sendJson(res, 200, { ok: true, deleted });
+    } catch (e) {
+      console.error('[DIARY] delete orphan entries', e);
+      return sendJson(res, 500, { ok: false, error: e.message || 'Fehler' });
+    }
+  }
+
   if (url.pathname === '/api/diary/admin/entries' && req.method === 'GET') {
     const p = sessionFromRequest(req);
     if (!p || !p.admin) return sendJson(res, 401, { ok: false, error: 'Nur Admins' });
