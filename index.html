@@ -9,93 +9,30 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Caveat:wght@400;500;600;700&family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;0,700;1,400;1,500&family=Great+Vibes&display=swap" rel="stylesheet">
   <style>
-    /* ===== DISCORD NEBEN DEN KACHELN ===== */
-    .portal-content-with-discord {
-      display: grid;
-      grid-template-columns: minmax(0, 1fr) 350px;
-      gap: 1.25rem;
-      align-items: start;
-      margin-top: 1.5rem;
-    }
-
-    .portal-content-with-discord .portal-gates {
-      margin-top: 0;
-      grid-template-columns: repeat(3, minmax(0, 1fr));
-    }
-
-    .discord-sidebar {
-      position: sticky;
-      top: 1rem;
-    }
-
-    .discord-widget-card {
-      padding: 0.8rem;
-      background: linear-gradient(145deg, rgba(168, 85, 247, 0.13), rgba(20, 12, 34, 0.78));
+    .chroniken-discord-button {
+      margin-left: auto;
+      display: inline-flex;
+      align-items: center;
+      gap: 0.45rem;
+      padding: 0.55rem 0.9rem;
       border: 1px solid var(--border);
-      border-radius: 16px;
-      backdrop-filter: blur(12px);
-      -webkit-backdrop-filter: blur(12px);
-      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.28);
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      overflow: hidden;
-    }
-
-    .discord-widget-heading {
-      width: 100%;
-      display: flex;
-      align-items: center;
-      gap: 0.5rem;
-      padding: 0.45rem 0.5rem 0.7rem;
-      color: var(--purple-bright);
-      font-weight: 700;
-      font-size: 0.9rem;
-    }
-
-    .discord-widget-card iframe {
-      width: 350px;
-      max-width: 100%;
-      height: 500px;
       border-radius: 10px;
-      display: block;
-      background: #111214;
-    }
-
-    .discord-server-button {
-      width: 100% !important;
-      min-width: 0;
-      margin-top: 0.8rem;
-      display: inline-flex !important;
-      justify-content: center;
+      background: rgba(88, 28, 135, 0.28);
+      color: var(--text);
       text-decoration: none;
+      font-weight: 700;
+      transition: 0.2s ease;
     }
-
-    @media (max-width: 900px) {
-      .portal-content-with-discord {
-        grid-template-columns: 1fr;
-      }
-
-      .portal-content-with-discord .portal-gates {
-        grid-template-columns: repeat(3, minmax(0, 1fr));
-      }
-
-      .discord-sidebar {
-        position: static;
-      }
-
-      .discord-widget-card iframe {
-        width: min(350px, 100%);
-      }
+    .chroniken-discord-button:hover {
+      transform: translateY(-1px);
+      border-color: var(--purple-bright);
+      background: rgba(124, 58, 237, 0.42);
+      color: #fff;
     }
-
-    @media (max-width: 600px) {
-      .portal-content-with-discord {
-        gap: 1rem;
-      }
-
-      .portal-content-with-discord .portal-gates {
-        grid-template-columns: 1fr;
+    @media (max-width: 700px) {
+      .chroniken-discord-button {
+        padding: 0.45rem 0.7rem;
+        font-size: 0.85rem;
       }
     }
 
@@ -830,6 +767,9 @@
   <header>
     <div class="logo-wrap">
       <div class="logo">Chroniken</div>
+      <a class="chroniken-discord-button" href="https://discord.com/channels/1204906165004279889" target="_blank" rel="noopener noreferrer" aria-label="Zum Discord-Server">
+        <span aria-hidden="true">💬</span> Discord
+      </a>
     </div>
     <nav>
       <a href="index.html" class="active">Start</a>
@@ -862,7 +802,6 @@
       <a href="news.html" class="news-more">Alle News ansehen →</a>
     </section>
 
-    <div class="portal-content-with-discord">
     <div class="portal-gates">
       <a href="events.html" class="gate">
         <span class="gate-icon">📅</span>
@@ -924,51 +863,7 @@
         <h2>Heilerakte</h2>
         <p>Medizinische RP-Akten · für Heiler &amp; Admins</p>
       </a>
-    </div>
-      <aside class="discord-sidebar" aria-label="Discord Server">
-        <div class="discord-widget-card">
-          <div class="discord-widget-heading"><span>✦</span><span>Discord live</span></div>
-          <iframe src="https://discord.com/widget?id=1204906165004279889&theme=dark" width="350" height="500" allowtransparency="true" frameborder="0" sandbox="allow-popups allow-popups-to-escape-sandbox allow-same-origin allow-scripts" title="Discord Server Widget von Die Chroniken"></iframe>
-          <a class="btn btn-discord discord-server-button" href="https://discord.com/channels/1204906165004279889" target="_blank" rel="noopener noreferrer">
-            <span aria-hidden="true" style="font-size:1.15rem;line-height:1;">💬</span>
-            Zum Discord-Server
-          </a>
-        </div>
-      </aside>
-    </div>
-  </main>
-
-  <footer>
-    <p>
-      © 2026 Kiyasha · Chroniken – Alle Rechte vorbehalten ·
-      <a href="#" class="legal-link" onclick="openLegalNotice(); return false;">Hinweis</a>
-      ·
-      </p>
-  </footer>
-
-
-
-  <!-- MAGISCHES LORE-BUCH -->
-  <div class="lore-modal" id="loreModal" aria-hidden="true">
-    <div class="lore-book" role="dialog" aria-modal="true" aria-labelledby="loreTitle">
-      <div class="lore-book-shell">
-        <div class="lore-pages">
-          <div class="lore-spread" id="loreSpread"></div>
-          <div class="lore-center"></div>
-          <div class="lore-particles" id="loreParticles" aria-hidden="true"></div>
-          <div class="lore-nav">
-            <button id="lorePrev" type="button">‹ Zurück</button>
-            <span class="lore-counter" id="loreCounter">Seite 1–2 / 4</span>
-            <button id="loreNext" type="button">Weiter ›</button>
-          </div>
-        </div>
-      </div>
-      <button class="lore-close" id="loreClose" title="Buch schließen" aria-label="Buch schließen">✕</button>
-    </div>
-    <div class="lore-source-pages" aria-hidden="true">
-      <article class="lore-page" data-page="0"><h2 id="loreTitle">Die Chroniken</h2><p class="lore-intro">Das Zeitalter der Asche</p><p class="lore-quote">„Hört zu.<br><br>Dies ist die Geschichte einer Welt, die ihre eigene Geschichte weiterschreibt.<br><br>„Die Zeit heilt nicht alle Wunden. Manche hinterlassen Narben in der Erde, andere in den Herzen derer, die sie überleben. Doch selbst aus den Trümmern einer vergangenen Welt kann etwas Neues entstehen.“</p><p><strong>Hundert Jahre Götterkrieg. Zweihundert Jahre Wiederaufbau. Und nun das Jahr 1400 – der Beginn des großen Erwachens.</strong></p><div class="lore-page-number">Seite 1 · Die Chroniken</div></article>
-      <article class="lore-page" data-page="1"><h3>Die Welt vor dem Krieg</h3><p>Vor langer Zeit war die Welt voller Leben. Mächtige Königreiche erstreckten sich über weite Gebiete, Städte blühten auf und zahlreiche Völker lebten nach ihren eigenen Traditionen, Gesetzen und Glaubensrichtungen. Handel, Magie und unterschiedliche Kulturen prägten das Zusammenleben.</p><p>Zwischen den Völkern bestanden Freundschaften und Bündnisse, aber auch Rivalitäten und alte Feindschaften. Die Götter waren ein fester Bestandteil dieser Welt. Ihre Namen wurden verehrt, ihre Geschichten weitergegeben und ihre Kräfte beeinflussten das Leben der Sterblichen.</p><p>Doch dieser Frieden sollte nicht ewig bestehen.</p><div class="lore-page-number">Seite 2 · Die Chroniken</div></article>
-      <article class="lore-page" data-page="2"><h3>Der Götterkrieg</h3><p>Ein Konflikt zwischen den göttlichen Mächten entwickelte sich zu einem Krieg, der die gesamte Welt erschütterte. Hundert Jahre lang tobten die Kämpfe. Götter und ihre Anhänger standen sich gegenüber, Königreiche wurden zerstört und ganze Völker in den Krieg hineingezogen.</p><p>Städte versanken in Trümmern, Wälder verbrannten und fruchtbare Landschaften wurden verwüstet. Magie geriet außer Kontrolle und viele Menschen verloren ihre Heimat, ihre Familien und ihr Leben.</p><div class="lore-page-number">Seite 3 · Die Chroniken</div></article>
+    </div>lle und viele Menschen verloren ihre Heimat, ihre Familien und ihr Leben.</p><div class="lore-page-number">Seite 3 · Die Chroniken</div></article>
       <article class="lore-page" data-page="3"><h3>Der Schleier</h3><p>Besonders schwerwiegend waren die Schäden an den Grenzen zwischen den Welten. Der Schleier, der die bekannte Welt von der geheimnisvollen Zwischenwelt trennte, wurde an zahlreichen Stellen aufgerissen. Fremde Kräfte und Wesen, die zuvor keinen Zugang zu dieser Welt hatten, konnten plötzlich hindurchgelangen.</p><p>Als deutlich wurde, dass der Krieg noch unzählige weitere Opfer fordern würde, suchten einige Mächte nach einer Möglichkeit, wenigstens einen Teil des Lebens zu bewahren.</p><h3>Der Ewige Schlaf</h3><p>So kam der Ewige Schlaf.</p><div class="lore-page-number">Seite 4 · Die Chroniken</div></article>
       <article class="lore-page" data-page="4"><h3>Die Schlafenden</h3><p>Während des Götterkrieges wurden Menschen und andere Wesen an geschützten Orten in den Ewigen Schlaf versetzt. Es war kein gewöhnlicher Schlaf und auch kein Tod. Ihre Körper sollten bewahrt und ihre Seelen geschützt werden, bis die Welt eines Tages wieder einen Ort bieten konnte, an dem sie leben konnten.</p><p>Die Schlafenden wurden an verschiedenen Orten untergebracht. Verborgene Kammern, alte Gewölbe und geschützte Ruhestätten sollten sie vor der Zerstörung bewahren.</p><div class="lore-page-number">Seite 5 · Die Chroniken</div></article>
       <article class="lore-page" data-page="5"><h3>Rabennest</h3><p>In Rabennest befinden sich beispielsweise unter dem Friedhof die alten Katakomben, in denen die Körper der Schlafenden bewahrt wurden. Ihre Seelen fanden an einem geheimen Ort Schutz.</p><p>Doch nicht jeder konnte gerettet werden. Viele starben während des Krieges, andere verschwanden und manche Völker mussten ihren eigenen Weg finden, um zu überleben.</p><div class="lore-page-number">Seite 6 · Die Chroniken</div></article>
