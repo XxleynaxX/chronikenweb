@@ -311,7 +311,7 @@
         linear-gradient(90deg,rgba(70,40,15,.12),transparent 8%,transparent 92%,rgba(60,35,12,.14)),
         linear-gradient(180deg,#e0c898 0%,#d4bc88 45%,#c9ae78 100%);
       padding:42px 46px 78px;overflow:hidden;
-      font-family:"Cormorant Garamond",Georgia,"Times New Roman",serif;
+      font-family:"Trinigan FG","Times New Roman",serif;
       box-sizing:border-box;
       color:#1a1008;
     }
@@ -346,7 +346,7 @@
     /* Titel – geschwungene Feder-Kalligrafie */
     .lore-face h2{
       margin:0 0 14px;text-align:center;
-      font-family:"Great Vibes",cursive;
+      font-family:"Trinigan FG","Times New Roman",serif;
       font-weight:400;
       font-size:clamp(2rem,3.2vw,2.7rem);
       color:#1a1008;
@@ -359,7 +359,7 @@
     /* Zwischenüberschriften – handgeschrieben */
     .lore-face h3{
       margin:20px 0 8px;
-      font-family:"Caveat",cursive;
+      font-family:"Trinigan FG","Times New Roman",serif;
       font-weight:600;
       font-size:1.35rem;
       color:#2a180c;
@@ -369,7 +369,7 @@
     /* Fließtext – alte Tinte, leichte Unregelmäßigkeit */
     .lore-face p{
       margin:0 0 11px;
-      font-family:"Cormorant Garamond",Georgia,serif;
+      font-family:"Trinigan FG","Times New Roman",serif;
       font-size:1.05rem;
       font-weight:500;
       line-height:1.68;
@@ -557,7 +557,7 @@
       border:1px solid #6a4a28;
       background:linear-gradient(180deg,#e8d4a8,#d4bc88);
       color:#2e1a0c;border-radius:4px;padding:8px 16px;
-      font-family:Georgia,serif;cursor:pointer;
+      font-family:"Trinigan FG","Times New Roman",serif;cursor:pointer;
       box-shadow:0 3px 10px rgba(0,0,0,.3),inset 0 1px 0 rgba(255,240,200,.3);
       transition:all .22s;
     }
@@ -569,7 +569,7 @@
     .lore-nav button:disabled{opacity:.4;cursor:default}
     .lore-counter{
       color:#d4bc8c;text-shadow:0 1px 4px #000;
-      font:13px Georgia,serif;min-width:80px;text-align:center;
+      font:13px "Trinigan FG","Times New Roman",serif;min-width:80px;text-align:center;
       letter-spacing:.04em;font-style:italic;
     }
 
@@ -692,7 +692,17 @@
       }
     }
   </style>
-</head>
+
+    <style>
+      @font-face {
+        font-family: "Trinigan FG";
+        src: url("fonts/trinigan.woff2") format("woff2");
+        font-style: normal;
+        font-weight: 400;
+        font-display: swap;
+      }
+    </style>
+  </head>
 <body>
   <div class="bg-overlay"></div>
   <div class="leaves-container" id="leavesContainer" aria-hidden="true"></div>
