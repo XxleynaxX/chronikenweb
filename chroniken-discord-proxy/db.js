@@ -658,6 +658,30 @@ function normalizeCharId(raw) {
   return 'CH-' + num.padStart(Math.max(4, num.length), '0');
 }
 
+async function diaryBindDiscordIdentity(characters, character, discordId, discordTags) {
+  if (!character || !character.id || !discordId) return;
+  const id = String(discordId).trim();
+  const tags = Array.isArray(discordTags) ? discordTags.map(v => String(v || '').trim()).filter(Boolean) : [];
+  const next = { ...character };
+  let changed = false;
+  if (!next.discord_id) { next.discord_id = id; changed = true; }
+  if (!next.discordUsername && tags[0]) { next.discordUsername = tags[0]; changed = true; }
+  if (!next.discordTag && tags[1]) { next.discordTag = tags[1]; changed = true; }
+  if (!changed) return;
+  const updated = characters.map(item => {
+    const itemId = item && (item.id || item.char_id || item.charId || item.character_id || item.characterId);
+    return String(itemId || '') === String(character.id) ? next : item;
+  });
+  try {
+    const conn = await getPool().getConnection();
+    try {
+      await conn.query('INSERT INTO chroniken_data (`key`, `value`, label, description) VALUES (?, CAST(? AS JSON), ?, ?) ON DUPLICATE KEY UPDATE `value` = VALUES(`value`)',
+        ['characters', JSON.stringify(updated), KEYS.characters.label, KEYS.characters.description]);
+    } finally { conn.release(); }
+  } catch (e) {
+    console.warn('[DIARY] Discord-Zuordnung konnte nicht in characters ergänzt werden:', e.message);
+  }
+}
 async function diaryCharacterForDiscord(discordId, discordTag) {
   await ensureDiarySchema();
 
@@ -718,8 +742,17 @@ async function diaryCharacterForDiscord(discordId, discordTag) {
         return v == null ? [] : [normalizeDiscordName(v)];
       }).filter(Boolean);
 
-      if (wantedTags.some(tag => tags.includes(tag))) {
-        return c.char_id || c.charId || c.id || c.character_id || c.characterId || null;
+      const nested = c.data && typeof c.data === 'object' ? c.data : null;
+      const nestedTags = nested ? tagKeys.flatMap(k => {
+        const v = nested[k];
+        if (Array.isArray(v)) return v.map(normalizeDiscordName);
+        return v == null ? [] : [normalizeDiscordName(v)];
+      }).filter(Boolean) : [];
+
+      if (wantedTags.some(tag => tags.includes(tag) || nestedTags.includes(tag))) {
+        const charId = c.char_id || c.charId || c.id || c.character_id || c.characterId || null;
+        await diaryBindDiscordIdentity(list, c, wantedId, discordTag);
+        return charId;
       }
     }
   }
