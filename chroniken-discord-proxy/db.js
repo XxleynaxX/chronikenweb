@@ -764,9 +764,7 @@ async function diaryCharacterForDiscord(identity) {
   const wantedId = String(identity?.discordId || '').trim();
   const wantedNames = [
     identity?.discordUsername,
-    identity?.discordTag,
-    identity?.displayName,
-    identity?.name
+    identity?.discordTag
   ].map(diaryNormalizeDiscordName).filter(Boolean);
 
   if (!wantedId && !wantedNames.length) return null;
@@ -808,8 +806,7 @@ async function diaryCharacterForDiscord(identity) {
     if (wantedId) {
       await diaryBindDiscordIdentity(list, character, wantedId, [
         identity?.discordUsername,
-        identity?.discordTag,
-        identity?.displayName
+        identity?.discordTag
       ]);
     }
     return charId;
@@ -1032,5 +1029,5 @@ async function diaryMarkUserRead(entryId, discordUsername) {
 module.exports = {
   KEYS, normalizeKey, canWrite, validValue,
   configured, ensureSchema, getAll, getOne, setMany, claimNotificationKey, status, ensureAdminSchema, syncAdminKeys, adminSummary, adminTasks, adminTask, adminCreateTask, adminUpdateTask, adminDeleteTask, adminProjects, adminCreateProject, adminUpdateProject, adminDeleteProject, adminAddComment, adminActivities, adminBlacklist, adminBlacklistEntry, adminAddBlacklist, adminRemoveBlacklist, isSteamBlacklisted, isDiscordBlacklisted, adminChangelog,
-  ensureDiarySchema, diaryCharacterForDiscord, diaryCreateEntry, diaryGetEntry, diaryDeleteEntry, diaryListByDiscord, diaryListByChar, diaryAdminUsers, diaryListOrphanEntries, diaryDeleteOrphanEntries, diaryListComments, diaryAddComment, diaryUpdateComment, diaryDeleteComment, diaryMarkAdminRead, diaryMarkUserRead
+  ensureDiarySchema, diaryCharacterForDiscord, diaryNormalizeDiscordName, diaryCreateEntry, diaryGetEntry, diaryDeleteEntry, diaryListByDiscord, diaryListByChar, diaryAdminUsers, diaryListOrphanEntries, diaryDeleteOrphanEntries, diaryListComments, diaryAddComment, diaryUpdateComment, diaryDeleteComment, diaryMarkAdminRead, diaryMarkUserRead
 };
