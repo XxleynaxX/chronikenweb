@@ -266,9 +266,14 @@
     catch(e){alert("Charaktere konnten nicht aus der Datenbank geladen werden – nichts wurde geändert.\n"+(e&&e.message||e));return null}
   }
   async function writeChars(list){
-    saveLocal(list);
     try{
+      // Erst zentral speichern. Der lokale Cache darf niemals so tun, als wäre
+      // die Änderung gespeichert, wenn MySQL den Schreibvorgang abgelehnt hat.
       await ChronikenStorage.save("characters",list);
+      ChronikenStorage.invalidate("characters");
+      const verified=await ChronikenStorage.load("characters");
+      if(!Array.isArray(verified)) throw new Error("Ungültige Antwort der Datenbank.");
+      saveLocal(verified);
       return true;
     }catch(e){
       console.error("Charaktere zentral speichern fehlgeschlagen:",e);
@@ -384,7 +389,7 @@
     get("charAdminEditId").value=c.id;get("charAdminId").value=c.id;get("charAdminName").value=c.name||"";
     get("charAdminPlayer").value=c.player||"";get("charAdminSteam").value=c.steamId||"";get("charAdminRace").value=c.race||"";
     get("charAdminWarnings").value=c.warnings??0;get("charAdminStatus").value=c.status||"aktiv";get("charAdminDiscord").value=c.discordName||"";get("charAdminHeiler").checked=!!c.heiler;get("charAdminBibliothek").checked=!!c.bibliothek;get("charAdminViolation").value=c.violationIds?.join(", ")||c.violation||"";updateViolationPreview();get("charAdminNotes").value=c.notes||"";
-    get("charAdminTitle").textContent="Charakter bearbeiten · "+c.id;get("charAdminSave").textContent="Aktualisieren";get("charAdminCancel").hidden=false;
+    get("charAdminTitle").textContent="Charakter bearbeiten · "+c.id;get("charAdminSave").textContent="Änderungen speichern";get("charAdminCancel").hidden=false;
     get("charAdminName").focus();
   }
   async function deleteChar(id){
