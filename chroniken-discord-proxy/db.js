@@ -824,13 +824,15 @@ async function diaryGetEntry(id) {
   return rows[0] || null;
 }
 
-async function diaryListByDiscord(discordId, charId) {
+async function diaryListByDiscord(discordUsername, charId) {
   await ensureDiarySchema();
+  const username = diaryNormalizeDiscordName(discordUsername);
   let sql = `SELECT e.*,
     (SELECT COUNT(*) FROM diary_comments c WHERE c.entry_id=e.id) AS comment_count,
     (SELECT COUNT(*) FROM diary_comments c WHERE c.entry_id=e.id AND e.user_seen_comments=0) AS new_comment_flag
-    FROM diary_entries e WHERE e.discord_id=?`;
-  const params = [String(discordId)];
+    FROM diary_entries e
+    WHERE LOWER(TRIM(REPLACE(e.discord_name, '@', ''))) = ?`;
+  const params = [username];
   if (charId) {
     sql += ' AND e.char_id=?';
     params.push(normalizeCharId(charId));
