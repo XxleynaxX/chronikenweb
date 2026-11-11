@@ -13,6 +13,8 @@
   const LIB_KEY = "portal_bibliothek_auth";
   const HEALER_KEY = "portal_heiler_auth";
   const PLAYER_KEY = "portal_player_auth";
+  // Spielerrolle auf Discord: 1254552933157306418
+  // Die eigentliche Rollenprüfung muss serverseitig im Discord-Proxy erfolgen.
   const TOKEN_KEY = "chroniken_discord_token";
   const NAME_KEY = "chroniken_discord_name";
   const HANDOFF_KEY = "chroniken_auth_handoff";
@@ -223,7 +225,7 @@
       if (info.admin) sessionStorage.setItem(ADMIN_KEY, "1"); else sessionStorage.removeItem(ADMIN_KEY);
       if (info.admin || info.lib) sessionStorage.setItem(LIB_KEY, "1"); else sessionStorage.removeItem(LIB_KEY);
       if (info.admin || info.healer) sessionStorage.setItem(HEALER_KEY, "1"); else sessionStorage.removeItem(HEALER_KEY);
-      if (info.admin || info.player) sessionStorage.setItem(PLAYER_KEY, "1"); else sessionStorage.removeItem(PLAYER_KEY);
+      if (info.admin || info.player || (Array.isArray(info.roles) && info.roles.map(String).includes("1254552933157306418"))) sessionStorage.setItem(PLAYER_KEY, "1"); else sessionStorage.removeItem(PLAYER_KEY);
       location.reload();
     } catch (e) {
       finishing = false;
@@ -318,7 +320,7 @@
     if (!(admin || lib || healer || token)) {
       box.innerHTML = '<button type="button" class="btn btn-discord nav-discord" data-discord-login>' + LOGO + '<span>Mit Discord anmelden</span></button>';
     } else {
-      const role = admin ? "Admin" : [healer && "Heiler", lib && "Bibliothek"].filter(Boolean).join(" · ") || "Mitglied";
+      const role = admin ? "Admin" : [player && "Spieler", healer && "Heiler", lib && "Bibliothek"].filter(Boolean).join(" · ") || "Mitglied";
       let links = "";
       if (admin) links += '<a href="admin/index.html">🛡️ Verwaltung</a><a href="wetter.html">🌦️ Wetter</a>';
       if (admin || healer) links += '<a href="heilerakte.html">🩺 Heilerakte</a>';
