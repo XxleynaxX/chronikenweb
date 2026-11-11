@@ -696,10 +696,29 @@
     <style>
       @font-face {
         font-family: "Trinigan FG";
-        src: url("fonts/trinigan.woff2") format("woff2");
+        src:
+          url("https://raw.githubusercontent.com/nadavborenstein/pixel-bw/40618b9119eec5f0fcb231d3abb6673e674bb7bb/pixel_datasets/fonts/fonts/trinigan.ttf") format("truetype");
         font-style: normal;
         font-weight: 400;
         font-display: swap;
+      }
+
+      /* Wirklich ALLES im Chroniken-Buch nutzt Trinigan FG */
+      .lore-book,
+      .lore-book *,
+      .lore-source-pages,
+      .lore-source-pages * {
+        font-family: "Trinigan FG", serif !important;
+      }
+
+      .lore-face .lore-intro,
+      .lore-face .lore-quote,
+      .lore-face .lore-page-number,
+      .lore-face h2,
+      .lore-face h3,
+      .lore-face p,
+      .lore-face strong {
+        font-family: "Trinigan FG", serif !important;
       }
     </style>
   </head>
