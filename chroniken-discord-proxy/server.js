@@ -624,7 +624,8 @@ const server = http.createServer(async (req, res) => {
     const p = sessionFromRequest(req);
     if (!p || !(p.admin || p.player)) return sendJson(res, 401, { ok: false, error: 'Login erforderlich (Spieler-Rolle).' });
     try {
-      const charId = String(url.searchParams.get('char_id') || '').trim();
+      const charId = p.admin ? String(url.searchParams.get('char_id') || '').trim() : await db.diaryCharacterForDiscord(p.sub);
+      if (!p.admin && !charId) return sendJson(res, 403, { ok: false, error: 'Dein Discord-Account ist noch keinem Charakter zugeordnet.' });
       const entries = await db.diaryListByDiscord(p.sub, charId || null);
       return sendJson(res, 200, { ok: true, entries });
     } catch (e) {
@@ -638,8 +639,10 @@ const server = http.createServer(async (req, res) => {
     if (!p || !(p.admin || p.player)) return sendJson(res, 401, { ok: false, error: 'Login erforderlich (Spieler-Rolle).' });
     try {
       const body = JSON.parse(await readBody(req) || '{}');
+      const resolvedCharId = p.admin ? body.char_id : await db.diaryCharacterForDiscord(p.sub);
+      if (!resolvedCharId) return sendJson(res, 403, { ok: false, error: 'Dein Discord-Account ist noch keinem Charakter zugeordnet.' });
       const entry = await db.diaryCreateEntry({
-        char_id: body.char_id,
+        char_id: resolvedCharId,
         discord_id: p.sub,
         discord_name: p.name || '',
         title: body.title || '',
@@ -649,6 +652,20 @@ const server = http.createServer(async (req, res) => {
       return sendJson(res, 200, { ok: true, entry });
     } catch (e) {
       console.error('[DIARY] create', e);
+      return sendJson(res, e.status || 500, { ok: false, error: e.message || 'Fehler' });
+    }
+  }
+
+  if (url.pathname.startsWith('/api/diary/entries/') && req.method === 'DELETE') {
+    const p = sessionFromRequest(req);
+    if (!p || !p.admin) return sendJson(res, 401, { ok: false, error: 'Nur Admins dürfen Tagebuch-Einträge löschen.' });
+    try {
+      const id = Number(url.pathname.split('/').pop());
+      if (!id) return sendJson(res, 400, { ok: false, error: 'Ungültige Eintrags-ID' });
+      await db.diaryDeleteEntry(id);
+      return sendJson(res, 200, { ok: true });
+    } catch (e) {
+      console.error('[DIARY] delete', e);
       return sendJson(res, e.status || 500, { ok: false, error: e.message || 'Fehler' });
     }
   }
