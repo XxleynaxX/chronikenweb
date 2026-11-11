@@ -756,32 +756,63 @@ async function diaryBindDiscordIdentity(characters, character, discordId, discor
   }
 }
 
-async function diaryCharacterForDiscord(discordUsername) {
+async function diaryCharacterForDiscord(identity) {
   await ensureDiarySchema();
 
-  // CH-Nummern sind hier nur eine interne Zuordnung fuer den Adminbereich.
-  // Spieler werden NICHT ueber eine CH-Nummer autorisiert.
-  // Die Zuordnung erfolgt ausschliesslich ueber den echten Discord-Benutzernamen.
-  const wantedName = diaryNormalizeDiscordName(discordUsername);
-  if (!wantedName) return null;
+  // Die Discord-ID ist die primaere Identitaet. Username/Tag sind nur
+  // Fallbacks fuer bereits vorhandene Charakterdaten, die noch keine ID haben.
+  const wantedId = String(identity?.discordId || '').trim();
+  const wantedNames = [
+    identity?.discordUsername,
+    identity?.discordTag,
+    identity?.displayName,
+    identity?.name
+  ].map(diaryNormalizeDiscordName).filter(Boolean);
+
+  if (!wantedId && !wantedNames.length) return null;
 
   const rawCharacters = await getOne('characters');
   const list = diaryCharacterList(rawCharacters);
 
+  const idKeys = [
+    'discord_id','discordId','discord_user_id','discordUserId',
+    'discord_user','discordUser','user_id','userId'
+  ];
+  const nameKeys = [
+    'discordName','discord_name','discordUsername','discord_username',
+    'discordTag','discord_tag','discordDisplayName','discord_display_name',
+    'discord'
+  ];
+
   for (const character of list) {
     if (!character || typeof character !== 'object') continue;
 
-    const names = diaryIdentityValues(character, [
-      'discordName',
-      'discord_name',
-      'discordUsername',
-      'discord_username'
-    ]).map(diaryNormalizeDiscordName).filter(Boolean);
+    const ids = diaryIdentityValues(character, idKeys)
+      .map(v => String(v == null ? '' : v).trim())
+      .filter(Boolean);
 
-    if (!names.includes(wantedName)) continue;
+    const names = diaryIdentityValues(character, nameKeys)
+      .map(diaryNormalizeDiscordName)
+      .filter(Boolean);
+
+    const idMatch = wantedId && ids.includes(wantedId);
+    const nameMatch = wantedNames.some(name => names.includes(name));
+
+    if (!idMatch && !nameMatch) continue;
 
     const charId = diaryFindCharId(character, normalizeCharId);
-    if (charId) return charId;
+    if (!charId) continue;
+
+    // Sobald ein Charakter ueber Username/Tag gefunden wurde, speichern wir
+    // die echte Discord-ID. Danach ist die ID der stabile Schluessel.
+    if (wantedId) {
+      await diaryBindDiscordIdentity(list, character, wantedId, [
+        identity?.discordUsername,
+        identity?.discordTag,
+        identity?.displayName
+      ]);
+    }
+    return charId;
   }
 
   return null;
@@ -824,21 +855,47 @@ async function diaryGetEntry(id) {
   return rows[0] || null;
 }
 
-async function diaryListByDiscord(discordUsername, charId) {
+async function diaryListByDiscord(identity, charId) {
   await ensureDiarySchema();
-  const username = diaryNormalizeDiscordName(discordUsername);
+
+  const discordId = String(identity?.discordId || '').trim();
+  const names = [
+    identity?.discordUsername,
+    identity?.discordTag,
+    identity?.displayName,
+    identity?.name
+  ].map(diaryNormalizeDiscordName).filter(Boolean);
+
+  if (!discordId && !names.length) return [];
+
+  const where = [];
+  const params = [];
+
+  if (discordId) {
+    where.push('e.discord_id = ?');
+    params.push(discordId);
+  }
+
+  if (names.length) {
+    const uniqueNames = [...new Set(names)];
+    where.push('LOWER(TRIM(REPLACE(e.discord_name, \'@\', \'\'))) IN (' +
+      uniqueNames.map(() => '?').join(',') + ')');
+    params.push(...uniqueNames);
+  }
+
   let sql = `SELECT e.*,
-    (SELECT COUNT(*) FROM diary_comments c WHERE c.entry_id=e.id) AS comment_count,
-    (SELECT COUNT(*) FROM diary_comments c WHERE c.entry_id=e.id AND e.user_seen_comments=0) AS new_comment_flag
+    (SELECT COUNT(*) FROM diary_comments c WHERE c.entry_id=e.id) AS comment_count
     FROM diary_entries e
-    WHERE LOWER(TRIM(REPLACE(e.discord_name, '@', ''))) = ?`;
-  const params = [username];
+    WHERE (${where.join(' OR ')})`;
+
   if (charId) {
     sql += ' AND e.char_id=?';
     params.push(normalizeCharId(charId));
   }
+
   sql += ' ORDER BY e.entry_date DESC, e.id DESC';
   const [rows] = await getPool().query(sql, params);
+
   return rows.map(r => ({
     ...r,
     comment_count: Number(r.comment_count) || 0,
