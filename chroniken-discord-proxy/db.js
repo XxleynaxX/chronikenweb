@@ -658,6 +658,27 @@ function normalizeCharId(raw) {
   return 'CH-' + num.padStart(Math.max(4, num.length), '0');
 }
 
+async function diaryCharacterForDiscord(discordId) {
+  await ensureDiarySchema();
+  const wanted = String(discordId || '').trim();
+  if (!wanted) return null;
+  const characters = await getOne('characters');
+  const list = Array.isArray(characters) ? characters : [];
+  const keys = ['discord_id','discordId','discord_user_id','discordUserId','owner_id','ownerId','player_id','playerId','user_id','userId'];
+  for (const c of list) {
+    if (!c || typeof c !== 'object') continue;
+    const ids = keys.flatMap(k => {
+      const v = c[k];
+      if (Array.isArray(v)) return v.map(String);
+      return v == null ? [] : [String(v)];
+    });
+    if (ids.includes(wanted)) {
+      return c.char_id || c.charId || c.id || c.character_id || c.characterId || null;
+    }
+  }
+  return null;
+}
+
 async function diaryCreateEntry(data) {
   await ensureDiarySchema();
   const charId = normalizeCharId(data.char_id);
@@ -675,6 +696,18 @@ async function diaryCreateEntry(data) {
     [charId, String(data.discord_id), String(data.discord_name || '').slice(0, 255), title, text, entryDate]
   );
   return diaryGetEntry(r.insertId);
+}
+
+async function diaryDeleteEntry(id) {
+  await ensureDiarySchema();
+  const entry = await diaryGetEntry(id);
+  if (!entry) {
+    const err = new Error('Eintrag nicht gefunden');
+    err.status = 404;
+    throw err;
+  }
+  await getPool().query('DELETE FROM diary_entries WHERE id=?', [Number(id)]);
+  return true;
 }
 
 async function diaryGetEntry(id) {
@@ -807,5 +840,5 @@ async function diaryMarkUserRead(entryId, discordId) {
 module.exports = {
   KEYS, normalizeKey, canWrite, validValue,
   configured, ensureSchema, getAll, getOne, setMany, claimNotificationKey, status, ensureAdminSchema, syncAdminKeys, adminSummary, adminTasks, adminTask, adminCreateTask, adminUpdateTask, adminDeleteTask, adminProjects, adminCreateProject, adminUpdateProject, adminDeleteProject, adminAddComment, adminActivities, adminBlacklist, adminBlacklistEntry, adminAddBlacklist, adminRemoveBlacklist, isSteamBlacklisted, isDiscordBlacklisted, adminChangelog,
-  ensureDiarySchema, diaryCreateEntry, diaryGetEntry, diaryListByDiscord, diaryListByChar, diaryAdminUsers, diaryListComments, diaryAddComment, diaryUpdateComment, diaryDeleteComment, diaryMarkAdminRead, diaryMarkUserRead
+  ensureDiarySchema, diaryCharacterForDiscord, diaryCreateEntry, diaryGetEntry, diaryDeleteEntry, diaryListByDiscord, diaryListByChar, diaryAdminUsers, diaryListComments, diaryAddComment, diaryUpdateComment, diaryDeleteComment, diaryMarkAdminRead, diaryMarkUserRead
 };
