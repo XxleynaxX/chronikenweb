@@ -9,6 +9,132 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Caveat:wght@400;500;600;700&family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;0,700;1,400;1,500&family=Great+Vibes&display=swap" rel="stylesheet">
   <style>
+    /* ===== DISCORD COMMUNITY ===== */
+    .discord-portal {
+      max-width: 1100px;
+      margin: 0 auto 2.5rem;
+      padding: 0 1.5rem;
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) 380px;
+      gap: 1.4rem;
+      align-items: stretch;
+    }
+    .discord-portal-main,
+    .discord-widget-card {
+      background: linear-gradient(145deg, rgba(168, 85, 247, 0.13), rgba(20, 12, 34, 0.78));
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.28);
+    }
+    .discord-portal-main {
+      min-height: 500px;
+      padding: 2rem;
+      display: flex;
+      align-items: center;
+      gap: 1.3rem;
+      position: relative;
+      overflow: hidden;
+    }
+    .discord-portal-main::before {
+      content: "";
+      position: absolute;
+      width: 280px;
+      height: 280px;
+      right: -100px;
+      top: -100px;
+      border-radius: 50%;
+      background: radial-gradient(circle, rgba(124, 58, 237, 0.3), transparent 68%);
+      pointer-events: none;
+    }
+    .discord-portal-icon {
+      width: 76px;
+      height: 76px;
+      flex: 0 0 76px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 22px;
+      background: rgba(88, 101, 242, 0.18);
+      border: 1px solid rgba(168, 85, 247, 0.4);
+      font-size: 2.3rem;
+      box-shadow: 0 0 25px rgba(124, 58, 237, 0.22);
+      position: relative;
+      z-index: 1;
+    }
+    .discord-portal-main > div:last-child { position: relative; z-index: 1; }
+    .discord-portal-kicker {
+      color: var(--purple-bright);
+      text-transform: uppercase;
+      letter-spacing: 0.12em;
+      font-size: 0.75rem;
+      font-weight: 700;
+      margin-bottom: 0.45rem;
+    }
+    .discord-portal-main h2 {
+      color: #fff;
+      font-size: clamp(1.6rem, 3vw, 2.2rem);
+      margin: 0 0 0.7rem;
+    }
+    .discord-portal-main p {
+      color: var(--text-muted);
+      line-height: 1.65;
+      max-width: 600px;
+      margin-bottom: 1.2rem;
+    }
+    .discord-server-button {
+      width: auto !important;
+      min-width: 230px;
+      display: inline-flex !important;
+      text-decoration: none;
+    }
+    .discord-widget-card {
+      padding: 0.8rem;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      overflow: hidden;
+    }
+    .discord-widget-heading {
+      width: 100%;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      padding: 0.45rem 0.5rem 0.7rem;
+      color: var(--purple-bright);
+      font-weight: 700;
+      font-size: 0.9rem;
+    }
+    .discord-widget-card iframe {
+      width: 350px;
+      max-width: 100%;
+      height: 500px;
+      border-radius: 10px;
+      display: block;
+      background: #111214;
+    }
+    @media (max-width: 900px) {
+      .discord-portal { grid-template-columns: 1fr; }
+      .discord-widget-card { width: 100%; }
+      .discord-widget-card iframe { width: min(350px, 100%); }
+    }
+    @media (max-width: 600px) {
+      .discord-portal { padding: 0 1rem; }
+      .discord-portal-main {
+        min-height: auto;
+        padding: 1.4rem;
+        flex-direction: column;
+        align-items: flex-start;
+      }
+      .discord-portal-icon {
+        width: 62px;
+        height: 62px;
+        flex-basis: 62px;
+      }
+      .discord-server-button { width: 100% !important; }
+    }
+
     .live-news {
       max-width: 1100px;
       margin: 0 auto 2.5rem;
@@ -764,6 +890,27 @@
     <section class="hero">
       <h1>Willkommen im Portal</h1>
       <p class="subtitle">Das Tor zu Wissen, Events, Berufen und den Mächten der Welt</p>
+    </section>
+
+    <section class="discord-portal" aria-label="Discord Server">
+      <div class="discord-portal-main">
+        <div class="discord-portal-icon" aria-hidden="true">💜</div>
+        <div>
+          <div class="discord-portal-kicker">Die Chroniken · Community</div>
+          <h2>Auf unseren Discord-Server</h2>
+          <p>Triff die Gemeinschaft von Die Chroniken, tausche dich aus und bleib über Neuigkeiten, Events und das Rollenspiel informiert.</p>
+          <a class="btn btn-discord discord-server-button" href="https://discord.com/channels/1204906165004279889" target="_blank" rel="noopener noreferrer">
+            <svg class="discord-logo" viewBox="0 0 24 24" aria-hidden="true">
+              <path fill="currentColor" d="M19.54 0c1.05 0 1.9.85 1.9 1.9v15.8c0 1.05-.85 1.9-1.9 1.9h-4.07l.94 2.35-1.89.88-1.72-3.23H11.2l-1.72 3.23-1.89-.88.94-2.35H4.46a1.9 1.9 0 0 1-1.9-1.9V1.9C2.56.85 3.41 0 4.46 0h15.08ZM8.8 11.78c-.93 0-1.69-.85-1.69-1.9s.76-1.9 1.69-1.9 1.69.85 1.69 1.9-.76 1.9-1.69 1.9Zm6.4 0c-.93 0-1.69-.85-1.69-1.9-1.69-1.9-.76-1.9-1.69-1.9Zm0 0c-.93 0-1.69-.85-1.69-1.9s.76-1.9 1.69-1.9 1.69.85 1.69 1.9-.76 1.9-1.69 1.9Z"/>
+            </svg>
+            Zum Discord-Server
+          </a>
+        </div>
+      </div>
+      <aside class="discord-widget-card">
+        <div class="discord-widget-heading"><span>✦</span><span>Discord live</span></div>
+        <iframe src="https://discord.com/widget?id=1204906165004279889&theme=dark" width="350" height="500" allowtransparency="true" frameborder="0" sandbox="allow-popups allow-popups-to-escape-sandbox allow-same-origin allow-scripts" title="Discord Server Widget von Die Chroniken"></iframe>
+      </aside>
     </section>
 
     <section class="live-news">
