@@ -789,6 +789,7 @@
       <a href="karte.html">Karte</a>
       <a href="charakterbogen.html">Charakterbogen</a>
       <a href="heilerakte.html">Heilerakte</a>
+      <a href="admin/tagebuch.html" id="navTagebuch" data-admin-only style="display:none;">Tagebuch</a>
       <a href="wetter.html" id="navWetter" data-admin-only style="display:none;">Wetter</a>
     </nav>
   </header>
@@ -971,6 +972,8 @@
         if (gate) gate.style.display = admin ? "" : "none";
         const wGate = document.getElementById("weatherGate");
         if (wGate) wGate.style.display = admin ? "" : "none";
+        const navT = document.getElementById("navTagebuch");
+        if (navT) navT.style.display = admin ? "" : "none";
         const navW = document.getElementById("navWetter");
         if (navW) navW.style.display = admin ? "" : "none";
         const navA = document.getElementById("navAdmin");
@@ -1077,6 +1080,7 @@
 
             <a href="admin/aufgaben.html" class="admin-tile"><span class="admin-tile-icon">📋</span><h3>Aufgaben</h3><p>Admin-Aufgaben erstellen, bearbeiten, zuweisen und verfolgen.</p></a>
             <a href="admin/projekte.html" class="admin-tile"><span class="admin-tile-icon">📁</span><h3>Projekte</h3><p>Projekte verwalten und den aktuellen Stand im Blick behalten.</p></a>
+            <a href="admin/tagebuch.html" class="admin-tile"><span class="admin-tile-icon">📓</span><h3>Tagebuch</h3><p>Spieler-Tagebücher nach Charakter-ID einsehen und verwalten.</p></a>
             <a href="admin/blacklist.html" class="admin-tile"><span class="admin-tile-icon">🚫</span><h3>Blacklist</h3><p>Steam-IDs verwalten und gesperrte Spieler kontrollieren.</p></a>
             <a href="admin/aktivitaeten.html" class="admin-tile"><span class="admin-tile-icon">📜</span><h3>Aktivitäten</h3><p>Änderungen und Aktionen der Administration nachvollziehen.</p></a>
 
