@@ -789,6 +789,7 @@
       <a href="karte.html">Karte</a>
       <a href="charakterbogen.html">Charakterbogen</a>
       <a href="heilerakte.html">Heilerakte</a>
+      <a href="tagebuch.html" id="navSpielerTagebuch" style="display:none;">📓 Mein Tagebuch</a>
       <a href="admin/tagebuch.html" id="navTagebuch" data-admin-only style="display:none;">Tagebuch</a>
       <a href="wetter.html" id="navWetter" data-admin-only style="display:none;">Wetter</a>
     </nav>
@@ -866,6 +867,11 @@
         <span class="gate-icon">🩺</span>
         <h2>Heilerakte</h2>
         <p>Medizinische RP-Akten · für Heiler &amp; Admins</p>
+      </a>
+      <a href="tagebuch.html" class="gate" id="playerDiaryGate" style="display:none;">
+        <span class="gate-icon">📓</span>
+        <h2>Mein Tagebuch</h2>
+        <p>Dein persönliches Charakter-Tagebuch · nur für Spieler</p>
       </a>
     </div>
 
@@ -967,11 +973,16 @@
         const admin = !logoutBlocked && isAdmin();
         const lib = !logoutBlocked && isLib();
         const heiler = !logoutBlocked && isHeiler();
-        const logged = admin || lib || heiler;
+        const player = !logoutBlocked && (()=>{ try { return sessionStorage.getItem("portal_player_auth") === "1"; } catch { return false; } })();
+        const logged = admin || lib || heiler || player;
         const gate = document.getElementById("adminGate");
         if (gate) gate.style.display = admin ? "" : "none";
         const wGate = document.getElementById("weatherGate");
         if (wGate) wGate.style.display = admin ? "" : "none";
+        const navPlayerDiary = document.getElementById("navSpielerTagebuch");
+        if (navPlayerDiary) navPlayerDiary.style.display = player ? "" : "none";
+        const playerDiaryGate = document.getElementById("playerDiaryGate");
+        if (playerDiaryGate) playerDiaryGate.style.display = player ? "" : "none";
         const navT = document.getElementById("navTagebuch");
         if (navT) navT.style.display = admin ? "" : "none";
         const navW = document.getElementById("navWetter");
