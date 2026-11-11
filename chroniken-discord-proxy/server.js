@@ -627,13 +627,9 @@ const server = http.createServer(async (req, res) => {
     try {
       const charId = p.admin
         ? String(url.searchParams.get('char_id') || '').trim()
-        : await db.diaryCharacterForDiscord(
-            p.sub,
-            [p.discordUsername, p.discordTag, p.name],
-            String(url.searchParams.get('char_id') || '').trim()
-          );
+        : await db.diaryCharacterForDiscord(p.discordUsername);
       if (!p.admin && !charId) return sendJson(res, 403, { ok: false, error: 'Dein Discord-Account ist noch keinem Charakter zugeordnet.' });
-      const entries = await db.diaryListByDiscord(p.sub, charId || null);
+      const entries = await db.diaryListByDiscord(p.discordUsername, charId || null);
       return sendJson(res, 200, {
         ok: true,
         discord_id: String(p.sub),
@@ -654,16 +650,12 @@ const server = http.createServer(async (req, res) => {
       const body = JSON.parse(await readBody(req) || '{}');
       const resolvedCharId = p.admin
         ? body.char_id
-        : await db.diaryCharacterForDiscord(
-            p.sub,
-            [p.discordUsername, p.discordTag, p.name],
-            String(body.char_id || '').trim()
-          );
+        : await db.diaryCharacterForDiscord(p.discordUsername);
       if (!resolvedCharId) return sendJson(res, 403, { ok: false, error: 'Dein Discord-Account ist noch keinem Charakter zugeordnet.' });
       const entry = await db.diaryCreateEntry({
         char_id: resolvedCharId,
         discord_id: p.sub,
-        discord_name: p.name || '',
+        discord_name: p.discordUsername || '',
         title: body.title || '',
         text: body.text || '',
         entry_date: body.entry_date || null
@@ -696,8 +688,14 @@ const server = http.createServer(async (req, res) => {
       const id = Number(url.pathname.split('/').pop());
       const entry = await db.diaryGetEntry(id);
       if (!entry) return sendJson(res, 404, { ok: false, error: 'Eintrag nicht gefunden' });
-      // Admin sieht alles; Spieler nur eigene
-      if (!p.admin && entry.discord_id !== p.sub) return sendJson(res, 403, { ok: false, error: 'Kein Zugriff' });
+      // Admin sieht alles; Spieler nur Eintraege seines Discord-Benutzernamens.
+      if (!p.admin) {
+        const ownName = String(p.discordUsername || '').trim().toLowerCase();
+        const entryName = String(entry.discord_name || '').trim().replace(/^@/, '').toLowerCase();
+        if (!ownName || entryName !== ownName) {
+          return sendJson(res, 403, { ok: false, error: 'Kein Zugriff' });
+        }
+      }
       const comments = await db.diaryListComments(id);
       return sendJson(res, 200, { ok: true, entry, comments });
     } catch (e) {
