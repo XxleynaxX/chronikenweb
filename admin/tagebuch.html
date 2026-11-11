@@ -6,12 +6,22 @@
 <title>Die Chroniken · Admin · Tagebuch</title>
 <link rel="stylesheet" href="admin.css">
 <style>
-.days{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:12px;margin-top:12px}
-.day,.user-card{position:relative;background:#110c1b;border:1px solid #302442;border-radius:12px;padding:14px;cursor:pointer;transition:.15s}
-.day:hover,.user-card:hover{border-color:#6e4ab4;transform:translateY(-1px)}
-.badge-new{position:absolute;top:8px;right:8px;background:#f59e0b;color:#1a0b00;font-size:11px;font-weight:800;padding:2px 8px;border-radius:999px}
-.user-card b{display:block;font-size:16px;color:#d8c7ff}
-.user-card small{color:#8f829f}
+.days{display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:16px;margin-top:12px}
+.user-card{position:relative;background:#110c1b;border:1px solid #302442;border-radius:12px;padding:16px;transition:.15s}
+.user-card:hover{border-color:#6e4ab4;transform:translateY(-1px)}
+.user-card-head{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;padding-bottom:10px;border-bottom:1px solid #302442}
+.user-card-head b{display:block;font-size:18px;color:#d8c7ff}
+.user-card-head small{display:block;color:#8f829f;margin-top:3px}
+.diary-list{display:flex;flex-direction:column;margin-top:8px}
+.diary-row{display:grid;grid-template-columns:1fr auto;gap:10px;align-items:center;padding:10px 0;border-bottom:1px solid rgba(48,36,66,.7)}
+.diary-row:last-child{border-bottom:0}
+.diary-main{min-width:0;cursor:pointer}
+.diary-main:hover .diary-title{color:#fff}
+.diary-date{font-size:12px;color:#c8b6ff}
+.diary-title{font-weight:700;color:#eee7ff;margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.diary-comments{font-size:12px;color:#8f829f;margin-top:3px}
+.diary-delete{white-space:nowrap}
+.badge-new{background:#f59e0b;color:#1a0b00;font-size:11px;font-weight:800;padding:2px 8px;border-radius:999px;margin-left:6px}
 .modal{position:fixed;inset:0;background:rgba(0,0,0,.82);display:none;align-items:center;justify-content:center;padding:1rem;z-index:10000}
 .modal.open{display:flex}
 .modal-box{background:#160f24;border:1px solid #3b3157;border-radius:12px;max-width:560px;width:100%;max-height:90vh;overflow:auto;padding:1.2rem}
@@ -67,13 +77,8 @@ textarea{min-height:90px;resize:vertical}
     </form>
   </section>
   <section class="panel" id="usersPanel">
-    <div class="panel-head"><h2>Charaktere mit Tagebuch</h2><span class="muted">Kacheln = CH-xxxx · New = ungelesene Einträge</span></div>
+    <div class="panel-head"><h2>Charakter-Tagebücher</h2><span class="muted">Jede Kachel zeigt alle Beiträge und die Anzahl der Kommentare.</span></div>
     <div class="days" id="users"></div>
-  </section>
-  <section class="panel" id="entriesPanel" hidden>
-    <button class="back" id="backBtn">← Zurück zu den Charakteren</button>
-    <div class="panel-head"><h2 id="charTitle">–</h2><span class="muted" id="charMeta"></span></div>
-    <div class="days" id="entries"></div>
   </section>
 </div>
 </main>
@@ -151,53 +156,62 @@ textarea{min-height:90px;resize:vertical}
 
   async function loadUsers(){
     const data=await api('/api/diary/admin/users');
+    const users=data.users||[];
     const box=document.getElementById('users');
-    if(!(data.users||[]).length){box.innerHTML='<p class="muted">Noch keine Tagebuch-Einträge vorhanden.</p>';return}
-    box.innerHTML=data.users.map(u=>`
-      <article class="user-card" data-id="${esc(u.char_id)}">
-        ${Number(u.new_count)>0?'<span class="badge-new">NEW</span>':''}
-        <b>${esc(u.char_id)}</b>
-        <small>${esc(u.discord_name||'–')} · ${Number(u.entry_count)||0} Einträge</small>
-        <small style="display:block;margin-top:4px">Zuletzt: ${esc(u.last_date||'–')}</small>
-      </article>`).join('');
-    box.querySelectorAll('.user-card').forEach(el=>el.onclick=()=>openChar(el.dataset.id));
-  }
-
-  async function openChar(charId){
-    currentChar=charId;
-    document.getElementById('usersPanel').hidden=true;
-    document.getElementById('entriesPanel').hidden=false;
-    document.getElementById('charTitle').textContent=charId;
-    const data=await api('/api/diary/admin/entries?char_id='+encodeURIComponent(charId));
-    document.getElementById('charMeta').textContent=(data.entries||[]).length+' Einträge';
-    const box=document.getElementById('entries');
-    box.innerHTML=(data.entries||[]).map(e=>`
-      <article class="day" data-id="${e.id}">
-        ${e.is_new?'<span class="badge-new">NEW</span>':''}
-        <div style="font-size:12px;color:#c8b6ff">${esc(e.entry_date||'')}</div>
-        <div style="font-weight:700;margin:4px 0">${esc(e.title||'Ohne Titel')}</div>
-        <div style="color:#8f829f;font-size:13px;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden">${esc(e.body||'')}</div>
-        <div style="margin-top:8px;font-size:12px;color:#8f829f">${Number(e.comment_count)||0} Kommentar(e)</div>
-        <button class="btn btn-danger diary-delete" data-id="${e.id}" style="margin-top:10px;width:100%">🗑 Eintrag löschen</button>
-      </article>`).join('')||'<p class="muted">Keine Einträge.</p>';
-    box.querySelectorAll('.day').forEach(el=>{
-      el.onclick=e=>{if(e.target.closest('.diary-delete'))return;openEntry(el.dataset.id)};
-    });
+    if(!users.length){
+      box.innerHTML='<p class="muted">Noch keine Tagebuch-Einträge vorhanden.</p>';
+      return;
+    }
+    const groups=await Promise.all(users.map(async u=>{
+      try{
+        const result=await api('/api/diary/admin/entries?char_id='+encodeURIComponent(u.char_id));
+        return {...u,entries:result.entries||[]};
+      }catch(err){
+        return {...u,entries:[],loadError:err.message||'Beiträge konnten nicht geladen werden.'};
+      }
+    }));
+    box.innerHTML=groups.map(u=>{
+      const entries=u.entries||[];
+      const totalComments=entries.reduce((sum,e)=>sum+(Number(e.comment_count)||0),0);
+      return `
+        <article class="user-card">
+          <div class="user-card-head">
+            <div>
+              <b>[${esc(u.char_id)}]</b>
+              <small>Beiträge: ${entries.length} · Kommentare: ${totalComments}</small>
+            </div>
+            <small>${esc(u.discord_name||'–')}</small>
+          </div>
+          <div class="diary-list">
+            ${entries.length?entries.map(e=>`
+              <div class="diary-row">
+                <div class="diary-main" data-open-id="${e.id}">
+                  <div class="diary-date">Beitrag am ${esc(e.entry_date||'–')}${e.is_new?'<span class="badge-new">NEU</span>':''}</div>
+                  <div class="diary-title">${esc(e.title||'Ohne Titel')}</div>
+                  <div class="diary-comments">Kommentar: ${Number(e.comment_count)||0}</div>
+                </div>
+                <button class="btn btn-danger diary-delete" data-id="${e.id}">🗑 Löschen</button>
+              </div>`).join(''):'<div class="muted" style="padding:10px 0">Keine Beiträge.</div>'}
+          </div>
+          ${u.loadError?'<div class="muted" style="margin-top:8px">'+esc(u.loadError)+'</div>':''}
+        </article>`;
+    }).join('');
+    box.querySelectorAll('.diary-main').forEach(el=>el.onclick=()=>openEntry(el.dataset.openId));
     box.querySelectorAll('.diary-delete').forEach(btn=>btn.onclick=async e=>{
       e.stopPropagation();
       if(!confirm('Diesen Tagebuch-Eintrag wirklich löschen?'))return;
       try{
         await api('/api/diary/entries/'+btn.dataset.id,{method:'DELETE'});
-        await openChar(currentChar);
+        await loadUsers();
       }catch(err){alert(err.message||'Löschen fehlgeschlagen')}
     });
   }
 
-  document.getElementById('backBtn').onclick=()=>{
-    document.getElementById('entriesPanel').hidden=true;
-    document.getElementById('usersPanel').hidden=false;
-    loadUsers();
-  };
+  async function openChar(charId){
+    const data=await api('/api/diary/admin/entries?char_id='+encodeURIComponent(charId));
+    const first=data.entries&&data.entries[0];
+    if(first) await openEntry(first.id);
+  }
 
   async function openEntry(id){
     currentEntryId=Number(id);
@@ -251,7 +265,7 @@ textarea{min-height:90px;resize:vertical}
     renderComments(data.comments||[]);
   };
   window.saveComment=saveComment;
-  window.closeModal=function(){document.getElementById('modal').classList.remove('open'); if(currentChar) openChar(currentChar)};
+  window.closeModal=function(){document.getElementById('modal').classList.remove('open'); loadUsers()};
   document.getElementById('modal').addEventListener('click',e=>{if(e.target.id==='modal') closeModal()});
 
   document.getElementById('adminDiaryForm').addEventListener('submit',createAdminEntry);
