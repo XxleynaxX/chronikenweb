@@ -102,3 +102,17 @@ CREATE TABLE IF NOT EXISTS diary_comments (
   INDEX idx_diary_comments_entry(entry_id),
   CONSTRAINT fk_diary_comment_entry FOREIGN KEY (entry_id) REFERENCES diary_entries(id) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+
+-- Zuordnung Discord-Account -> Charakter (CH-Nummer); wird beim Login automatisch gesetzt,
+-- Admins können sie im Admin-Tagebuch von Hand korrigieren (source = 'admin').
+CREATE TABLE IF NOT EXISTS diary_links (
+  discord_id VARCHAR(32) NOT NULL PRIMARY KEY,
+  char_id VARCHAR(32) NULL,
+  discord_name VARCHAR(255) NULL,
+  display_name VARCHAR(255) NULL,
+  source VARCHAR(16) NOT NULL DEFAULT 'auto',
+  created_at TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
+  updated_at TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3) ON UPDATE CURRENT_TIMESTAMP(3),
+  INDEX idx_diary_links_char(char_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;

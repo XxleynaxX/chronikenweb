@@ -395,7 +395,7 @@ textarea { min-height: 120px; resize: vertical; }
                 </div>
                 <div class="field">
                     <label>Discord-Name *</label>
-                    <input id="discordName" type="text" placeholder="Dein Discord-Name (z. B. Name#0000)">
+                    <input id="discordName" type="text" placeholder="Dein Discord-Benutzername (z. B. kiyasha)">
                 </div>
                 <div class="field">
                     <label>Steam-ID</label>
@@ -2387,5 +2387,20 @@ document.addEventListener("DOMContentLoaded", () => { renderDynamicRaceOptions()
 <script src="chroniken-storage.js?v=20261108-2"></script>
 <script src="chroniken-sync.js?v=20261108-2"></script>
 <script src="legal-notice.js"></script>
+<script>
+/* Discord-Benutzername aus dem Login vorbelegen: so passt die Zuordnung zum Tagebuch exakt. */
+(function(){
+  function fill(){
+    try{
+      const el=document.getElementById("discordName");
+      const u=sessionStorage.getItem("chroniken_discord_username");
+      if(el&&u&&!el.value.trim()){el.value=u;el.dispatchEvent(new Event("input",{bubbles:true}));}
+    }catch(e){}
+  }
+  window.addEventListener("load",function(){
+    if(window.ChronikenAuth&&ChronikenAuth.ready) ChronikenAuth.ready.then(fill); else setTimeout(fill,800);
+  });
+})();
+</script>
 </body>
 </html>

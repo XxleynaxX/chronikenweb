@@ -76,6 +76,16 @@ textarea{min-height:90px;resize:vertical}
       <div class="actions"><button class="btn btn-primary" type="submit" id="adminDiarySave">Eintrag speichern</button><span class="muted" id="adminDiaryMsg"></span></div>
     </form>
   </section>
+  <section class="panel" id="linksPanel">
+    <div class="panel-head"><h2>🔗 Discord ↔ Charakter</h2><span class="muted">Wird beim Login automatisch gesetzt. Hier korrigierst du es von Hand.</span></div>
+    <div id="links"></div>
+    <form id="linkForm" class="form-grid" style="display:grid;grid-template-columns:1fr 1fr auto;gap:12px;align-items:end;margin-top:12px">
+      <label>Discord-ID<input id="linkDiscordId" placeholder="18-stellige ID" inputmode="numeric"></label>
+      <label>Charakter-ID<input id="linkCharId" placeholder="CH-0001"></label>
+      <button class="btn btn-primary" type="submit">Verknüpfen</button>
+    </form>
+    <div class="muted" id="linkMsg" style="margin-top:8px"></div>
+  </section>
   <section class="panel" id="usersPanel">
     <div class="panel-head"><h2>Charakter-Tagebücher</h2><span class="muted">Jede Kachel zeigt alle Beiträge und die Anzahl der Kommentare.</span></div>
     <div class="days" id="users"></div>
@@ -127,6 +137,48 @@ textarea{min-height:90px;resize:vertical}
     document.getElementById('user').textContent='👤 '+(user.name||'Admin');
     document.getElementById('adminEntryDate').valueAsDate=new Date();
     loadUsers();
+    loadLinks();
+  }
+
+  async function loadLinks(){
+    const box=document.getElementById('links');
+    try{
+      const data=await api('/api/diary/admin/links');
+      const links=data.links||[];
+      if(!links.length){box.innerHTML='<p class="muted">Noch keine Spieler angemeldet.</p>';return}
+      box.innerHTML=links.map(l=>`
+        <div class="diary-row" style="grid-template-columns:minmax(0,1fr) auto auto">
+          <div class="diary-main" style="cursor:default">
+            <div class="diary-title">${esc(l.discord_name||l.display_name||'Unbekannt')} <small class="muted">(${esc(l.discord_id)})</small></div>
+            <div class="diary-comments">${l.char_id?'✓ '+esc(l.char_id)+(l.char_name?' · '+esc(l.char_name):'')+(l.source==='admin'?' · manuell':' · automatisch'):'⚠️ Kein Charakter gefunden'}</div>
+          </div>
+          <button class="btn link-fill" data-id="${esc(l.discord_id)}">Zuordnen</button>
+          ${l.char_id?`<button class="btn btn-danger link-del" data-id="${esc(l.discord_id)}">Lösen</button>`:'<span></span>'}
+        </div>`).join('');
+      box.querySelectorAll('.link-fill').forEach(b=>b.onclick=()=>{
+        document.getElementById('linkDiscordId').value=b.dataset.id;
+        document.getElementById('linkCharId').focus();
+      });
+      box.querySelectorAll('.link-del').forEach(b=>b.onclick=async()=>{
+        if(!confirm('Verknüpfung lösen? Sie wird beim nächsten Login neu gesucht.'))return;
+        try{await api('/api/diary/admin/link?discord_id='+encodeURIComponent(b.dataset.id),{method:'DELETE'});await loadLinks();await loadUsers();}
+        catch(err){alert(err.message||'Fehlgeschlagen')}
+      });
+    }catch(err){box.innerHTML='<p class="muted">'+esc(err.message||'Verknüpfungen nicht ladbar')+'</p>'}
+  }
+
+  async function saveLink(e){
+    e.preventDefault();
+    const msg=document.getElementById('linkMsg');
+    const discord_id=document.getElementById('linkDiscordId').value.trim();
+    const char_id=document.getElementById('linkCharId').value.trim();
+    if(!discord_id||!char_id){msg.textContent='Discord-ID und Charakter-ID eintragen.';return}
+    try{
+      const r=await api('/api/diary/admin/link',{method:'POST',body:JSON.stringify({discord_id,char_id})});
+      msg.textContent='✓ Verknüpft mit '+r.char_id;
+      document.getElementById('linkDiscordId').value='';document.getElementById('linkCharId').value='';
+      await loadLinks();await loadUsers();
+    }catch(err){msg.textContent='Fehlgeschlagen: '+(err.message||err)}
   }
 
   async function createAdminEntry(e){
@@ -182,10 +234,10 @@ textarea{min-height:90px;resize:vertical}
         <article class="user-card">
           <div class="user-card-head">
             <div>
-              <b>[${esc(u.char_id||'OHNE-ID')}]</b>
+              <b>${esc(u.char_id||'OHNE-ID')}${u.char_name?' · '+esc(u.char_name):''}</b>
               <small>Beiträge: ${entries.length} · Kommentare: ${totalComments}</small>
             </div>
-            <small>${esc(u.discord_name||'–')}</small>
+            <small>${u.discord_name?'💬 '+esc(u.discord_name):'–'}</small>
           </div>
           <div class="diary-list">
             ${entries.length?entries.map(e=>`
@@ -310,6 +362,7 @@ textarea{min-height:90px;resize:vertical}
   document.getElementById('modal').addEventListener('click',e=>{if(e.target.id==='modal') closeModal()});
 
   document.getElementById('adminDiaryForm').addEventListener('submit',createAdminEntry);
+  document.getElementById('linkForm').addEventListener('submit',saveLink);
   setTimeout(init, 200);
 })();
 </script>

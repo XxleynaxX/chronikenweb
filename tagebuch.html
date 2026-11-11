@@ -115,14 +115,23 @@
   </section>
 
   <div id="app" hidden>
-    <section class="diary-panel">
+    <section class="diary-panel" id="identityPanel">
       <h1>Mein Tagebuch</h1>
       <div class="diary-identity" id="diaryIdentity">
         <span class="discord-name" id="diaryDiscordName"></span>
         <span class="sep">·</span>
         <span class="char-id" id="diaryCharId">Charakter wird automatisch zugeordnet</span>
       </div>
-      <p class="muted">Dein Charakter wird automatisch über deinen Discord-Namen zugeordnet. Eine CH-Nummer musst du nicht eingeben.</p>
+      <p class="muted">Dein Charakter wird automatisch über deinen Discord-Namen aus dem Charakterbogen zugeordnet. Eine CH-Nummer musst du nicht eingeben.</p>
+    </section>
+
+    <section class="diary-panel" id="unlinkedBox" hidden>
+      <h2 style="font-size:1.05rem;margin-bottom:.6rem">Wir finden deinen Charakter noch nicht</h2>
+      <p class="muted">Im Charakterbogen muss dein <strong>Discord-Benutzername</strong> genau so stehen wie bei der Anmeldung (nicht der Anzeigename). Hast du den Bogen schon abgeschickt, melde dich beim Team mit deiner CH-Nummer – die Verknüpfung wird dann von Hand gesetzt.</p>
+      <p style="margin-top:1rem"><a class="btn btn-primary" href="charakterbogen.html">Zum Charakterbogen</a></p>
+    </section>
+
+    <section class="diary-panel" id="writePanel" hidden>
       <p class="muted">Schreibe Einträge für deinen Charakter. Admins können lesen und kommentieren.</p>
       <div class="lore-help">
         <strong>So kannst du die Lore schreiben:</strong><br>
@@ -155,7 +164,7 @@
       </div>
     </section>
 
-    <section class="diary-panel">
+    <section class="diary-panel" id="entriesPanel" hidden>
       <h2 style="font-size:1.05rem;margin-bottom:1rem">Deine Einträge</h2>
       <div class="days" id="days"></div>
     </section>
@@ -200,6 +209,7 @@
   }
 
   async function load(){
+    if(window.ChronikenAuth&&ChronikenAuth.ready) await ChronikenAuth.ready;
     if(!isPlayer()){
       document.getElementById('locked').hidden=false;
       document.getElementById('app').hidden=true;
@@ -209,26 +219,34 @@
     document.getElementById('app').hidden=false;
     try{
       const me=await api('/auth/me');
-      const discordName=document.getElementById('diaryDiscordName');
-      discordName.textContent=me.discord_username
-        ? 'Discord: '+me.discord_username
-        : (me.discord_tag ? 'Discord: '+me.discord_tag : 'Discord');
+      document.getElementById('diaryDiscordName').textContent=
+        'Discord: '+(me.discord_username||me.discord_tag||me.name||'angemeldet');
       await loadDiary();
     }catch(e){
       toast(e.message||'Laden fehlgeschlagen');
     }
   }
 
+  function setLinked(linked){
+    document.getElementById('writePanel').hidden=!linked;
+    document.getElementById('unlinkedBox').hidden=linked;
+    document.getElementById('entriesPanel').hidden=!linked;
+  }
+
   async function loadDiary(){
     try{
       const data=await api('/api/diary/mine');
-      document.getElementById('diaryCharId').textContent=data.char_id
-        ? 'Charakter: '+data.char_id
-        : 'Charakter wird automatisch zugeordnet';
-      renderDays(data.entries||[]);
+      const idEl=document.getElementById('diaryCharId');
+      if(data.char_id){
+        idEl.textContent='Charakter: '+data.char_id;
+        setLinked(true);
+        renderDays(data.entries||[]);
+      }else{
+        idEl.textContent='Noch kein Charakter zugeordnet';
+        setLinked(false);
+      }
     }catch(e){
-      document.getElementById('diaryCharId').textContent='Keine Charakter-Zuordnung gefunden';
-      renderDays([]);
+      document.getElementById('diaryCharId').textContent='Tagebuch nicht erreichbar';
       toast(e.message||'Tagebuch konnte nicht geladen werden');
     }
   }
@@ -251,20 +269,21 @@
 
   function formatLore(text){
     if(!text)return '';
-    const normalized=String(text).replace(/\\r\\n/g,'\n').replace(/\\r/g,'\n');
+    const normalized=String(text).replace(/\r\n/g,'\n').replace(/\r/g,'\n');
     const lines=normalized.split('\n');
     const parts=[];let listItems=[];
     const flushList=()=>{if(!listItems.length)return;parts.push('<ul class="lore-list">'+listItems.map(item=>'<li>'+escapeHtml(item)+'</li>').join('')+'</ul>');listItems=[]};
     lines.forEach(line=>{
       const trimmed=line.trim();
       if(!trimmed){flushList();return;}
-      const bullet=trimmed.match(/^(?:[-*•]|\\d+[.)])\\s+(.*)$/);
+      // Überschrift zuerst prüfen: "- Überschrift -" darf keine Aufzählung sein
+      const heading=trimmed.match(/^-+\s*(.+?)\s*-+$/);
+      if(heading){flushList();parts.push('<h4 class="lore-heading">'+escapeHtml(heading[1])+'</h4>');return;}
+      const markdownHeading=trimmed.match(/^#{1,4}\s+(.+)$/);
+      if(markdownHeading){flushList();parts.push('<h4 class="lore-heading">'+escapeHtml(markdownHeading[1])+'</h4>');return;}
+      const bullet=trimmed.match(/^(?:[-*•]|\d+[.)])\s+(.*)$/);
       if(bullet){listItems.push(bullet[1]);return;}
       flushList();
-      const heading=trimmed.match(/^-+\\s*(.+?)\\s*-+$/);
-      if(heading){parts.push('<h4 class="lore-heading">'+escapeHtml(heading[1])+'</h4>');return;}
-      const markdownHeading=trimmed.match(/^#{1,4}\\s+(.+)$/);
-      if(markdownHeading){parts.push('<h4 class="lore-heading">'+escapeHtml(markdownHeading[1])+'</h4>');return;}
       parts.push('<p class="lore-paragraph">'+escapeHtml(trimmed)+'</p>');
     });
     flushList();
@@ -305,8 +324,7 @@
 
   window.saveEntry=saveEntry;
   window.closeModal=closeModal;
-  // warten bis Auth Session restored
-  setTimeout(load, 400);
+  load();
 
 })();
 </script>

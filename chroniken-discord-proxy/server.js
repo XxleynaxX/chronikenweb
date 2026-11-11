@@ -601,6 +601,16 @@ function healerEmbed(body) {
   };
 }
 
+function diaryIdentity(p) {
+  return {
+    discordId: p.sub,
+    discordUsername: p.discordUsername,
+    discordTag: p.discordTag,
+    displayName: p.name,
+    name: p.name
+  };
+}
+
 const server = http.createServer(async (req, res) => {
   // CORS – damit die Website aufrufen darf
   const requestOrigin = String(req.headers.origin || '').replace(/\/$/, '');
@@ -625,22 +635,18 @@ const server = http.createServer(async (req, res) => {
     const p = sessionFromRequest(req);
     if (!p || !(p.admin || p.player)) return sendJson(res, 401, { ok: false, error: 'Login erforderlich (Spieler-Rolle).' });
     try {
-      const identity = {
-        discordId: p.sub,
-        discordUsername: p.discordUsername,
-        discordTag: p.discordTag,
-        displayName: p.name,
-        name: p.name
-      };
-      const charId = p.admin
-        ? String(url.searchParams.get('char_id') || '').trim()
+      const identity = diaryIdentity(p);
+      const charId = p.admin && url.searchParams.get('char_id')
+        ? String(url.searchParams.get('char_id')).trim()
         : await db.diaryCharacterForDiscord(identity);
-      if (!p.admin && !charId) return sendJson(res, 403, { ok: false, error: 'Dein Discord-Account ist noch keinem Charakter zugeordnet.' });
-      const entries = await db.diaryListByDiscord(identity, charId || null);
+      const entries = charId
+        ? await db.diaryListForPlayer(charId)
+        : await db.diaryListByDiscord(identity, null);
       return sendJson(res, 200, {
         ok: true,
+        linked: !!charId,
         discord_id: String(p.sub),
-        discord_name: String(p.name || ''),
+        discord_name: String(p.discordUsername || p.name || ''),
         char_id: charId || null,
         entries
       });
@@ -706,19 +712,17 @@ const server = http.createServer(async (req, res) => {
       // Die Discord-ID ist primaer. Der Namensvergleich bleibt als Fallback
       // fuer alte Tagebuch-Eintraege erhalten.
       if (!p.admin) {
+        // Zugriff: Eintrag gehört zur CH-Nummer des Spielers (auch Admin-Einträge),
+        // oder (Altdaten) zu seiner Discord-ID bzw. seinem Discord-Namen.
+        const ownChar = await db.diaryCharacterForDiscord(diaryIdentity(p));
         const ownId = String(p.sub || '').trim();
-        const ownNames = [
-          p.discordUsername,
-          p.discordTag,
-          p.name
-        ].map(db.diaryNormalizeDiscordName).filter(Boolean);
-
-        const entryId = String(entry.discord_id || '').trim();
+        const ownNames = [p.discordUsername, p.discordTag, p.name]
+          .map(db.diaryNormalizeDiscordName).filter(Boolean);
         const entryName = db.diaryNormalizeDiscordName(entry.discord_name);
-
-        if ((!ownId || entryId !== ownId) && (!entryName || !ownNames.includes(entryName))) {
-          return sendJson(res, 403, { ok: false, error: 'Kein Zugriff' });
-        }
+        const ok = (ownChar && entry.char_id === ownChar)
+          || (ownId && String(entry.discord_id || '').trim() === ownId)
+          || (entryName && ownNames.includes(entryName));
+        if (!ok) return sendJson(res, 403, { ok: false, error: 'Kein Zugriff' });
       }
       const comments = await db.diaryListComments(id);
       return sendJson(res, 200, { ok: true, entry, comments });
@@ -778,6 +782,42 @@ const server = http.createServer(async (req, res) => {
     }
   }
 
+  if (url.pathname === '/api/diary/admin/links' && req.method === 'GET') {
+    const p = sessionFromRequest(req);
+    if (!p || !p.admin) return sendJson(res, 401, { ok: false, error: 'Nur Admins' });
+    try {
+      return sendJson(res, 200, { ok: true, links: await db.diaryLinksList() });
+    } catch (e) {
+      console.error('[DIARY] admin links', e);
+      return sendJson(res, 500, { ok: false, error: e.message || 'Fehler' });
+    }
+  }
+
+  if (url.pathname === '/api/diary/admin/link' && req.method === 'POST') {
+    const p = sessionFromRequest(req);
+    if (!p || !p.admin) return sendJson(res, 401, { ok: false, error: 'Nur Admins' });
+    try {
+      const body = JSON.parse(await readBody(req) || '{}');
+      const charId = await db.diarySetLink(body.discord_id, body.char_id, body.discord_name);
+      return sendJson(res, 200, { ok: true, char_id: charId });
+    } catch (e) {
+      console.error('[DIARY] admin link', e);
+      return sendJson(res, e.status || 500, { ok: false, error: e.message || 'Fehler' });
+    }
+  }
+
+  if (url.pathname === '/api/diary/admin/link' && req.method === 'DELETE') {
+    const p = sessionFromRequest(req);
+    if (!p || !p.admin) return sendJson(res, 401, { ok: false, error: 'Nur Admins' });
+    try {
+      await db.diaryRemoveLink(url.searchParams.get('discord_id'));
+      return sendJson(res, 200, { ok: true });
+    } catch (e) {
+      console.error('[DIARY] admin unlink', e);
+      return sendJson(res, 500, { ok: false, error: e.message || 'Fehler' });
+    }
+  }
+
   if (url.pathname === '/api/diary/comments' && req.method === 'POST') {
     const p = sessionFromRequest(req);
     if (!p || !p.admin) return sendJson(res, 401, { ok: false, error: 'Nur Admins' });
@@ -829,7 +869,11 @@ const server = http.createServer(async (req, res) => {
     try {
       const body = JSON.parse(await readBody(req) || '{}');
       if (p.admin) await db.diaryMarkAdminRead(body.entry_id);
-      else await db.diaryMarkUserRead(body.entry_id, p.discordUsername);
+      else {
+        const identity = diaryIdentity(p);
+        const charId = await db.diaryCharacterForDiscord(identity);
+        await db.diaryMarkUserRead(body.entry_id, identity, charId);
+      }
       return sendJson(res, 200, { ok: true });
     } catch (e) {
       console.error('[DIARY] mark-read', e);

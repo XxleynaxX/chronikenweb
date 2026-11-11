@@ -630,6 +630,18 @@ CREATE TABLE IF NOT EXISTS diary_comments (
   CONSTRAINT fk_diary_comment_entry FOREIGN KEY (entry_id) REFERENCES diary_entries(id) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci`;
 
+const DIARY_LINKS_SCHEMA = `
+CREATE TABLE IF NOT EXISTS diary_links (
+  discord_id VARCHAR(32) NOT NULL PRIMARY KEY,
+  char_id VARCHAR(32) NULL,
+  discord_name VARCHAR(255) NULL,
+  display_name VARCHAR(255) NULL,
+  source VARCHAR(16) NOT NULL DEFAULT 'auto',
+  created_at TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
+  updated_at TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3) ON UPDATE CURRENT_TIMESTAMP(3),
+  INDEX idx_diary_links_char(char_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci`;
+
 let diarySchemaPromise = null;
 async function ensureDiarySchema() {
   if (!diarySchemaPromise) {
@@ -638,6 +650,7 @@ async function ensureDiarySchema() {
       const p = getPool();
       await p.query(DIARY_ENTRIES_SCHEMA);
       await p.query(DIARY_COMMENTS_SCHEMA);
+      await p.query(DIARY_LINKS_SCHEMA);
     })();
   }
   return diarySchemaPromise;
@@ -752,160 +765,180 @@ function diaryIdentityValues(character, keys) {
   return values;
 }
 
-async function diaryBindDiscordIdentity(characters, character, discordId, discordTags) {
-  if (!character || !discordId) return;
-  const id = String(discordId).trim();
-  const tags = Array.isArray(discordTags) ? discordTags.map(v => String(v || '').trim()).filter(Boolean) : [];
-  const next = { ...character };
-  let changed = false;
-  if (next.discord_id !== id) { next.discord_id = id; changed = true; }
-  if (!next.discordUsername && tags[0]) { next.discordUsername = tags[0]; changed = true; }
-  if (!next.discordTag && tags[1]) { next.discordTag = tags[1]; changed = true; }
-  if (!changed) return;
-  const index = characters.indexOf(character);
-  if (index < 0) return;
-  const updated = characters.slice();
-  updated[index] = next;
-  try {
-    const conn = await getPool().getConnection();
-    try {
-      await conn.query('INSERT INTO chroniken_data (`key`, `value`, label, description) VALUES (?, CAST(? AS JSON), ?, ?) ON DUPLICATE KEY UPDATE `value` = VALUES(`value`)',
-        ['characters', JSON.stringify(updated), KEYS.characters.label, KEYS.characters.description]);
-    } finally { conn.release(); }
-  } catch (e) {
-    console.warn('[DIARY] Discord-Zuordnung konnte nicht in characters ergänzt werden:', e.message);
+/* ---------- Zuordnung Discord-Account -> Charakter (CH-Nummer) ----------
+   Reihenfolge: 1. gespeicherte Verknüpfung (diary_links)
+                2. Discord-ID im Charakter/Bogen
+                3. Discord-Benutzername/Tag (eindeutig oder jüngster Charakter)
+                4. Anzeigename (nur wenn eindeutig)
+   Ein Treffer wird in diary_links gespeichert (kein Überschreiben des
+   characters-Eintrags mehr -> keine Race-Conditions mit dem Charakterbogen).
+   Admins können Verknüpfungen manuell setzen (source = 'admin'). */
+
+// Vergleichsschlüssel: klein, ohne @, ohne #0000, nur Buchstaben/Ziffern
+function diaryLooseKey(value) {
+  let s = String(value == null ? '' : value).trim().replace(/^@/, '').toLowerCase();
+  s = s.replace(/#\d{1,4}$/, '');
+  return s.replace(/[^\p{L}\p{N}]+/gu, '');
+}
+
+// "Kiya (Kiyasha)#0" -> mehrere mögliche Namen
+function diaryNameVariants(value) {
+  const raw = String(value == null ? '' : value).trim();
+  if (!raw) return [];
+  const out = new Set([raw, raw.replace(/\([^)]*\)/g, '')]);
+  raw.replace(/\(([^)]*)\)/g, (_, inner) => { out.add(inner); return ''; });
+  raw.split(/[\/|,;]+/).forEach(p => out.add(p));
+  return [...out].map(diaryLooseKey).filter(k => k.length >= 2);
+}
+
+const DIARY_ID_KEYS = [
+  'discord_id','discordId','discord_user_id','discordUserId','discordUser_id',
+  'user_id','userId','verifiedDiscordId','verified_discord_id'
+];
+const DIARY_NAME_KEYS = [
+  'discordName','discord_name','discordUsername','discord_username',
+  'discordTag','discord_tag','discordDisplayName','discord_display_name',
+  'discordNickname','discord_nickname','discordNick','discord_nick',
+  'discord','player','verifiedUsername','consentVerifiedUsername'
+];
+
+// Alle Charaktere (Register + Bögen) als Map CH-ID -> { name, ids, names, updated }
+async function diaryCandidates() {
+  const map = new Map();
+  const sources = [
+    diaryCharacterList(await getOne('characters')),
+    diaryCharacterList(await getOne('character_sheets'))
+  ];
+  for (const list of sources) {
+    for (const src of list) {
+      if (!src || typeof src !== 'object') continue;
+      const nested = src.data || src.characterData;
+      const combined = { ...(nested && typeof nested === 'object' ? nested : {}), ...src };
+      const charId = diaryFindCharId(combined, normalizeCharId);
+      if (!charId) continue;
+      const entry = map.get(charId) || { charId, name: '', ids: new Set(), names: new Set(), updated: 0 };
+      if (!entry.name) entry.name = String(combined.name || combined.characterName || '').trim();
+      diaryIdentityValues(combined, DIARY_ID_KEYS)
+        .map(v => String(v == null ? '' : v).trim())
+        .filter(v => /^\d{15,25}$/.test(v))
+        .forEach(v => entry.ids.add(v));
+      diaryIdentityValues(combined, DIARY_NAME_KEYS)
+        .flatMap(diaryNameVariants)
+        .forEach(v => entry.names.add(v));
+      const ts = Date.parse(src.updatedAt || src.completedAt || src.createdAt || '') || 0;
+      entry.updated = Math.max(entry.updated, ts);
+      map.set(charId, entry);
+    }
   }
+  return map;
+}
+
+async function diarySaveLink(discordId, charId, identity, source) {
+  await getPool().query(
+    `INSERT INTO diary_links (discord_id, char_id, discord_name, display_name, source)
+     VALUES (?,?,?,?,?)
+     ON DUPLICATE KEY UPDATE char_id=VALUES(char_id), discord_name=VALUES(discord_name),
+       display_name=VALUES(display_name), source=VALUES(source)`,
+    [discordId, charId, String(identity?.discordUsername || identity?.discordTag || '').slice(0, 255),
+     String(identity?.displayName || identity?.name || '').slice(0, 255), source]
+  );
 }
 
 async function diaryCharacterForDiscord(identity) {
   await ensureDiarySchema();
+  const discordId = String(identity?.discordId || '').trim();
+  if (!discordId) return null;
 
-  const wantedId = String(identity?.discordId || '').trim();
-  const wantedNames = [...new Set([
-    identity?.discordUsername,
-    identity?.discordTag,
-    identity?.displayName,
-    identity?.name
-  ].map(diaryNormalizeDiscordName).filter(Boolean))];
+  const pool = getPool();
+  const [linkRows] = await pool.query('SELECT * FROM diary_links WHERE discord_id=?', [discordId]);
+  const link = linkRows[0] || null;
 
-  if (!wantedId && !wantedNames.length) return null;
-
-  const idKeys = [
-    'discord_id','discordId','discord_user_id','discordUserId',
-    'discord_user','discordUser','user_id','userId'
-  ];
-  const nameKeys = [
-    'discordName','discord_name','discordUsername','discord_username',
-    'discordTag','discord_tag','discordDisplayName','discord_display_name',
-    'discordNickname','discord_nickname','discordNick','discord_nick',
-    'discord'
-  ];
-
-  function inspect(character) {
-    if (!character || typeof character !== 'object') return null;
-
-    const ids = [...new Set(diaryIdentityValues(character, idKeys)
-      .map(v => String(v == null ? '' : v).trim()).filter(Boolean))];
-
-    const names = [...new Set([
-      character.discordName,
-      character.discord_name,
-      character.discordUsername,
-      character.discord_username,
-      character.discordTag,
-      character.discord_tag,
-      character.discordDisplayName,
-      character.discord_display_name,
-      character.discordNickname,
-      character.discord_nickname,
-      ...diaryIdentityValues(character, nameKeys)
-    ].map(diaryNormalizeDiscordName).filter(Boolean))];
-
-    const idMatch = !!wantedId && ids.includes(wantedId);
-    const nameMatch = wantedNames.some(name => names.includes(name));
-    const charId = diaryFindCharId(character, normalizeCharId);
-
-    if (!charId) return null;
-    return { charId, idMatch, nameMatch, ids, names };
+  let cands = null;
+  try { cands = await diaryCandidates(); } catch (e) {
+    console.warn('[DIARY] Charakterliste nicht lesbar:', e.message);
+    if (link && link.char_id) return link.char_id; // lieber alte Zuordnung als gar keine
+    throw e;
   }
 
-  const rawCharacters = await getOne('characters');
-  const characters = diaryCharacterList(rawCharacters);
-  const inspected = characters.map(ch => ({ ch, info: inspect(ch) }))
-    .filter(x => x.info);
+  // 1. gespeicherte Verknüpfung (Admin-Verknüpfung gilt immer)
+  if (link && link.char_id && (link.source === 'admin' || cands.has(link.char_id))) {
+    return link.char_id;
+  }
 
-  // 1. Exakter Discord-ID-Treffer gewinnt immer.
-  const byId = inspected.find(x => x.info.idMatch);
-  if (byId) {
-    if (wantedId) {
-      await diaryBindDiscordIdentity(characters, byId.ch, wantedId, [
-        identity?.discordUsername,
-        identity?.discordTag
-      ]);
+  const found = (charId, source) => diarySaveLink(discordId, charId, identity, source).then(() => charId);
+  const all = [...cands.values()];
+
+  // 2. Discord-ID
+  const byId = all.filter(c => c.ids.has(discordId));
+  if (byId.length) {
+    byId.sort((a, b) => b.updated - a.updated);
+    return found(byId[0].charId, 'auto');
+  }
+
+  // 3. Benutzername / Tag (eindeutig pro Discord-Account -> jüngster Charakter)
+  const strong = new Set([identity?.discordUsername, identity?.discordTag].flatMap(diaryNameVariants));
+  if (strong.size) {
+    const hits = all.filter(c => [...strong].some(n => c.names.has(n)));
+    if (hits.length) {
+      hits.sort((a, b) => b.updated - a.updated);
+      return found(hits[0].charId, 'auto');
     }
-    return byId.info.charId;
   }
 
-  // 2. Falls ein alter Datensatz eine falsche/alte Discord-ID enthält,
-  // reparieren wir ihn über den aktuell eingetragenen Discord-Namen.
-  // Gibt es mehrere Charaktere mit demselben Namen, verweigern wir die
-  // automatische Zuordnung statt den falschen Charakter zu nehmen.
-  const byName = inspected.filter(x => x.info.nameMatch);
-  if (byName.length === 1) {
-    const hit = byName[0];
-    if (wantedId) {
-      await diaryBindDiscordIdentity(characters, hit.ch, wantedId, [
-        identity?.discordUsername,
-        identity?.discordTag
-      ]);
-    }
-    return hit.info.charId;
+  // 4. Anzeigename nur bei genau einem Treffer
+  const weak = new Set([identity?.displayName, identity?.name].flatMap(diaryNameVariants));
+  if (weak.size) {
+    const hits = all.filter(c => [...weak].some(n => c.names.has(n)));
+    if (hits.length === 1) return found(hits[0].charId, 'auto');
   }
 
-  // 3. Letzter Alt-Daten-Fallback: character_sheets.
-  const rawSheets = await getOne('character_sheets');
-  const sheets = diaryCharacterList(rawSheets);
-
-  const sheetHits = sheets.map(sheet => {
-    if (!sheet || typeof sheet !== 'object') return null;
-    const data = sheet.data || sheet.characterData || {};
-    const combined = {
-      ...sheet,
-      ...(data && typeof data === 'object' ? data : {})
-    };
-    const charId = diaryFindCharId(combined, normalizeCharId);
-    if (!charId) return null;
-
-    const names = [
-      combined.discordName,
-      combined.discord_name,
-      combined.discordUsername,
-      combined.discord_username,
-      combined.discordTag,
-      combined.discord_tag
-    ].map(diaryNormalizeDiscordName).filter(Boolean);
-
-    return wantedNames.some(name => names.includes(name))
-      ? { charId, combined }
-      : null;
-  }).filter(Boolean);
-
-  if (sheetHits.length === 1) {
-    const hit = sheetHits[0];
-    const target = characters.find(ch =>
-      diaryFindCharId(ch, normalizeCharId) === hit.charId
+  // Nicht gefunden: Account merken, damit Admins ihn im Tagebuch-Bereich verknüpfen können
+  if (!link || !link.char_id) {
+    await pool.query(
+      `INSERT INTO diary_links (discord_id, char_id, discord_name, display_name, source)
+       VALUES (?,NULL,?,?,'auto')
+       ON DUPLICATE KEY UPDATE discord_name=VALUES(discord_name), display_name=VALUES(display_name), updated_at=CURRENT_TIMESTAMP(3)`,
+      [discordId, String(identity?.discordUsername || identity?.discordTag || '').slice(0, 255),
+       String(identity?.displayName || identity?.name || '').slice(0, 255)]
     );
-    if (target && wantedId) {
-      await diaryBindDiscordIdentity(characters, target, wantedId, [
-        identity?.discordUsername,
-        identity?.discordTag
-      ]);
-    }
-    return hit.charId;
   }
-
   return null;
 }
+
+async function diaryLinksList() {
+  await ensureDiarySchema();
+  const [rows] = await getPool().query('SELECT * FROM diary_links ORDER BY (char_id IS NULL) DESC, updated_at DESC');
+  let cands = new Map();
+  try { cands = await diaryCandidates(); } catch {}
+  return rows.map(r => ({
+    discord_id: r.discord_id,
+    char_id: r.char_id || null,
+    char_name: r.char_id && cands.get(r.char_id) ? cands.get(r.char_id).name : '',
+    discord_name: r.discord_name || '',
+    display_name: r.display_name || '',
+    source: r.source,
+    updated_at: r.updated_at
+  }));
+}
+
+async function diarySetLink(discordId, charIdRaw, discordName) {
+  await ensureDiarySchema();
+  const id = String(discordId || '').trim();
+  if (!/^\d{15,25}$/.test(id)) {
+    const err = new Error('Ungültige Discord-ID (nur Ziffern)');
+    err.status = 400;
+    throw err;
+  }
+  const charId = normalizeCharId(charIdRaw);
+  await diarySaveLink(id, charId, { discordUsername: discordName || '' }, 'admin');
+  return charId;
+}
+
+async function diaryRemoveLink(discordId) {
+  await ensureDiarySchema();
+  await getPool().query('DELETE FROM diary_links WHERE discord_id=?', [String(discordId || '').trim()]);
+}
+
 async function diaryCreateEntry(data) {
   await ensureDiarySchema();
   const charId = normalizeCharId(data.char_id);
@@ -991,6 +1024,14 @@ async function diaryListByDiscord(identity, charId) {
   }));
 }
 
+async function diaryListForPlayer(charId) {
+  const rows = await diaryListByChar(charId);
+  return rows.map(r => ({
+    ...r,
+    has_new_comments: !r.user_seen_comments && (Number(r.comment_count) || 0) > 0
+  }));
+}
+
 async function diaryListByChar(charId) {
   await ensureDiarySchema();
   const id = normalizeCharId(charId);
@@ -1013,19 +1054,39 @@ async function diaryAdminUsers() {
   const [rows] = await getPool().query(
     `SELECT char_id,
             MAX(discord_name) AS discord_name,
-            MAX(discord_id) AS discord_id,
             COUNT(*) AS entry_count,
             SUM(CASE WHEN admin_seen=0 THEN 1 ELSE 0 END) AS new_count,
             MAX(entry_date) AS last_date
      FROM diary_entries
-     GROUP BY char_id
-     ORDER BY new_count DESC, last_date DESC, char_id ASC`
+     WHERE char_id IS NOT NULL AND TRIM(char_id) <> ''
+     GROUP BY char_id`
   );
-  return rows.map(r => ({
-    ...r,
-    entry_count: Number(r.entry_count) || 0,
-    new_count: Number(r.new_count) || 0
+  const [links] = await getPool().query('SELECT * FROM diary_links WHERE char_id IS NOT NULL');
+  let cands = new Map();
+  try { cands = await diaryCandidates(); } catch {}
+
+  const byChar = new Map();
+  for (const r of rows) {
+    byChar.set(r.char_id, {
+      char_id: r.char_id,
+      discord_name: r.discord_name || '',
+      entry_count: Number(r.entry_count) || 0,
+      new_count: Number(r.new_count) || 0,
+      last_date: r.last_date
+    });
+  }
+  // Charaktere, deren Spieler sich schon angemeldet hat, bekommen auch ohne Eintrag eine Kachel
+  for (const l of links) {
+    const cur = byChar.get(l.char_id) || { char_id: l.char_id, discord_name: '', entry_count: 0, new_count: 0, last_date: null };
+    cur.discord_name = l.discord_name || cur.discord_name;
+    byChar.set(l.char_id, cur);
+  }
+  const out = [...byChar.values()].map(u => ({
+    ...u,
+    char_name: cands.get(u.char_id)?.name || ''
   }));
+  out.sort((a, b) => b.new_count - a.new_count || String(b.last_date || '').localeCompare(String(a.last_date || '')) || a.char_id.localeCompare(b.char_id));
+  return out;
 }
 
 async function diaryListOrphanEntries() {
@@ -1109,16 +1170,16 @@ async function diaryMarkAdminRead(entryId) {
   await getPool().query('UPDATE diary_entries SET admin_seen=1 WHERE id=?', [Number(entryId)]);
 }
 
-async function diaryMarkUserRead(entryId, discordUsername) {
+async function diaryMarkUserRead(entryId, identity, charId) {
   await ensureDiarySchema();
   await getPool().query(
-    "UPDATE diary_entries SET user_seen_comments=1 WHERE id=? AND LOWER(TRIM(REPLACE(discord_name, '@', ''))) = ?",
-    [Number(entryId), diaryNormalizeDiscordName(discordUsername)]
+    'UPDATE diary_entries SET user_seen_comments=1 WHERE id=? AND (char_id=? OR discord_id=?)',
+    [Number(entryId), charId ? normalizeCharId(charId) : '', String(identity?.discordId || '')]
   );
 }
 
 module.exports = {
   KEYS, normalizeKey, canWrite, validValue,
   configured, ensureSchema, getAll, getOne, setMany, claimNotificationKey, status, ensureAdminSchema, syncAdminKeys, adminSummary, adminTasks, adminTask, adminCreateTask, adminUpdateTask, adminDeleteTask, adminProjects, adminCreateProject, adminUpdateProject, adminDeleteProject, adminAddComment, adminActivities, adminBlacklist, adminBlacklistEntry, adminAddBlacklist, adminRemoveBlacklist, isSteamBlacklisted, isDiscordBlacklisted, adminChangelog,
-  ensureDiarySchema, diaryCharacterForDiscord, diaryNormalizeDiscordName, diaryCreateEntry, diaryGetEntry, diaryDeleteEntry, diaryListByDiscord, diaryListByChar, diaryAdminUsers, diaryListOrphanEntries, diaryDeleteOrphanEntries, diaryListComments, diaryAddComment, diaryUpdateComment, diaryDeleteComment, diaryMarkAdminRead, diaryMarkUserRead
+  ensureDiarySchema, diaryCharacterForDiscord, diaryNormalizeDiscordName, diaryCreateEntry, diaryGetEntry, diaryDeleteEntry, diaryListByDiscord, diaryListByChar, diaryListForPlayer, diaryLinksList, diarySetLink, diaryRemoveLink, diaryAdminUsers, diaryListOrphanEntries, diaryDeleteOrphanEntries, diaryListComments, diaryAddComment, diaryUpdateComment, diaryDeleteComment, diaryMarkAdminRead, diaryMarkUserRead
 };

@@ -316,11 +316,12 @@
     const admin = logoutBlocked ? false : flag(ADMIN_KEY);
     const lib = logoutBlocked ? false : flag(LIB_KEY);
     const healer = logoutBlocked ? false : flag(HEALER_KEY);
+    const player = logoutBlocked ? false : flag(PLAYER_KEY);
     let token = "";
     try { token = logoutBlocked ? "" : (sessionStorage.getItem(TOKEN_KEY) || ""); } catch (e) {}
     const box = document.createElement("div");
     box.className = "nav-auth";
-    if (!(admin || lib || healer || token)) {
+    if (!(admin || lib || healer || player || token)) {
       box.innerHTML = '<button type="button" class="btn btn-discord nav-discord" data-discord-login>' + LOGO + '<span>Mit Discord anmelden</span></button>';
     } else {
       const role = admin ? "Admin" : [player && "Spieler", healer && "Heiler", lib && "Bibliothek"].filter(Boolean).join(" · ") || "Mitglied";
@@ -328,6 +329,7 @@
       if (admin) links += '<a href="admin/index.html">🛡️ Verwaltung</a><a href="wetter.html">🌦️ Wetter</a>';
       if (admin || healer) links += '<a href="heilerakte.html">🩺 Heilerakte</a>';
       if (admin || lib) links += '<a href="bibliothek.html">📚 Bibliothek</a>';
+      if (player || admin) links += '<a href="' + (location.pathname.indexOf("/admin/") >= 0 ? "../" : "") + 'tagebuch.html">📓 Mein Tagebuch</a>';
       box.innerHTML = '<button type="button" class="nav-user" aria-haspopup="true" aria-expanded="false">' + LOGO +
         '<span class="nav-user-name">' + escHtml(name() || "Angemeldet") + '</span><small>' + role + '</small><span class="nav-caret">▾</span></button>' +
         '<div class="nav-menu" hidden>' + links + '<button type="button" data-logout>🚪 Abmelden</button></div>';
@@ -343,9 +345,15 @@
 
   // Menüpunkte mit data-admin-only (Wetter, Admin) sind nur für Admins sichtbar
   function syncAdminNav() {
-    const admin = !isLogoutBlocked() && flag(ADMIN_KEY);
+    const blocked = isLogoutBlocked();
+    const admin = !blocked && flag(ADMIN_KEY);
+    const player = !blocked && (flag(PLAYER_KEY) || admin);
     document.querySelectorAll("[data-admin-only]").forEach(function (el) {
       el.style.display = admin ? "" : "none";
+    });
+    // „Mein Tagebuch“ erscheint für jeden angemeldeten Spieler (Discord-Spielerrolle)
+    document.querySelectorAll("#navSpielerTagebuch").forEach(function (el) {
+      el.style.display = player ? "" : "none";
     });
   }
 
@@ -388,6 +396,7 @@
       }
       sessionStorage.removeItem(TOKEN_KEY);
       sessionStorage.setItem(NAME_KEY, info.name || "");
+      if (info.discord_username) sessionStorage.setItem(USERNAME_KEY, info.discord_username); else sessionStorage.removeItem(USERNAME_KEY);
       if (info.admin) sessionStorage.setItem(ADMIN_KEY, "1"); else sessionStorage.removeItem(ADMIN_KEY);
       if (info.admin || info.lib) sessionStorage.setItem(LIB_KEY, "1"); else sessionStorage.removeItem(LIB_KEY);
       if (info.admin || info.healer) sessionStorage.setItem(HEALER_KEY, "1"); else sessionStorage.removeItem(HEALER_KEY);
@@ -405,13 +414,16 @@
     try { return sessionStorage.getItem(ADMIN_KEY) === "1"; } catch (e) { return false; }
   }
 
-  global.ChronikenAuth = { syncAdminNav: syncAdminNav, login: login, clear: clear, logout: logout, name: name, isPlayer: isPlayer, isAdmin: isAdminFlag, PLAYER_KEY: PLAYER_KEY };
+  let readyResolve;
+  const ready = new Promise(function (r) { readyResolve = r; });
+  global.ChronikenAuth = { ready: ready, syncAdminNav: syncAdminNav, login: login, clear: clear, logout: logout, name: name, isPlayer: isPlayer, isAdmin: isAdminFlag, PLAYER_KEY: PLAYER_KEY };
   async function start() {
-    if (handleReturn()) return;
+    if (handleReturn()) { readyResolve(false); return; }
     await restoreSession();
     syncAdminNav();
     navWidget();
     bind();
+    readyResolve(true);
     if (!isLogoutBlocked()) warmUp();
   }
   if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", start);
