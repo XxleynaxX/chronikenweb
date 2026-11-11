@@ -683,7 +683,8 @@ async function diaryCharacterForDiscord(discordId, discordTag) {
 
   const tagKeys = [
     'discordName','discord_name','discordTag','discord_tag',
-    'discordUsername','discord_username'
+    'discordUsername','discord_username','discordUser','discord_user',
+    'discordAccount','discord_account'
   ];
 
   // 1. Zuerst immer über die eindeutige Discord-ID suchen.
