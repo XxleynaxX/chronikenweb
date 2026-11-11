@@ -33,11 +33,64 @@
   .toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%) translateY(80px);background:#1e1430;color:#fff;padding:.7rem 1.2rem;border-radius:999px;opacity:0;transition:.3s;z-index:300}
   .toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
 </style>
+
+    <style>
+      .chroniken-discord-button {
+        position: absolute;
+        right: 1rem;
+        top: 50%;
+        transform: translateY(-50%);
+        display: inline-flex;
+        align-items: center;
+        gap: 0.45rem;
+        padding: 0.55rem 0.9rem;
+        border: 1px solid var(--border);
+        border-radius: 10px;
+        background: rgba(88, 28, 135, 0.28);
+        color: var(--text);
+        text-decoration: none;
+        font-weight: 700;
+        transition: 0.2s ease;
+      }
+      .chroniken-discord-button:hover {
+        transform: translateY(-50%) translateY(-1px);
+        border-color: var(--purple-bright);
+        background: rgba(124, 58, 237, 0.42);
+        color: #fff;
+      }
+      @media (max-width: 700px) {
+        .chroniken-discord-button { padding: 0.45rem 0.7rem; font-size: 0.85rem; }
+      }
+    </style>
 </head>
 <body>
 <div class="bg-overlay"></div>
-<header class="site-header">
-  <div class="logo-wrap"><a href="index.html" style="color:var(--accent-soft);text-decoration:none;font-weight:700">Die Chroniken</a></div>
+<header>
+  <div class="logo-wrap">
+    <div class="logo">Chroniken</div>
+    <a class="chroniken-discord-button" href="https://discord.com/channels/1204906165004279889" target="_blank" rel="noopener noreferrer" aria-label="Zum Discord-Server">
+      <span aria-hidden="true">💬</span> Discord
+    </a>
+  </div>
+  <nav>
+    <a href="index.html">Start</a>
+    <a href="news.html">News</a>
+    <a href="events.html">Events</a>
+    <a href="kalender.html">Kalender</a>
+    <a href="wiki.html">Wiki</a>
+    <a href="bibliothek.html">Bibliothek</a>
+    <a href="voelker.html">Völker</a>
+    <a href="berufe.html">Berufe</a>
+    <a href="kreaturen.html">Kreaturen</a>
+    <a href="regeln.html">Regeln</a>
+    <a href="goetter.html">Götter</a>
+    <a href="karte.html">Karte</a>
+    <a href="charakterbogen.html">Charakterbogen</a>
+    <a href="heilerakte.html">Heilerakte</a>
+    <a href="tagebuch.html" id="navSpielerTagebuch" class="active">📓 Mein Tagebuch</a>
+    <a href="admin/tagebuch.html" id="navTagebuch" data-admin-only style="display:none;">Tagebuch</a>
+    <a href="wetter.html" id="navWetter" data-admin-only style="display:none;">Wetter</a>
+  </nav>
 </header>
 
 <main class="diary-wrap">
@@ -52,7 +105,7 @@
   <div id="app" hidden>
     <section class="diary-panel">
       <h1>Mein Tagebuch</h1>
-      <p class="muted">Schreibe Einträge zu deiner Charakter-ID. Admins können lesen und kommentieren.</p>
+      <p class="muted">Schreibe Einträge für deinen Charakter. Admins können lesen und kommentieren.</p>
       <div class="form-row">
         <label>Titel</label>
         <input id="title" placeholder="Kurzer Titel">
@@ -183,7 +236,7 @@
 
   // Der Server muss für /api/diary/mine die Discord-ID und die Spielerrolle prüfen.\n  // Spielerrolle: 1254552933157306418\n\n  // warten bis Auth Session restored
   setTimeout(load, 400);
-  document.getElementById('charId').addEventListener('change', load);
+
 })();
 </script>
 </body>
