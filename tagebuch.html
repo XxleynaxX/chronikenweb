@@ -10,6 +10,10 @@
   .diary-panel{background:var(--bg-panel);border:1px solid var(--border);border-radius:14px;padding:1.4rem;margin-bottom:1.2rem;backdrop-filter:blur(8px)}
   .diary-panel h1{font-size:1.4rem;margin-bottom:.4rem}
   .muted{color:var(--text-muted)}
+  .diary-identity{display:flex;align-items:center;gap:.55rem;flex-wrap:wrap;margin:.2rem 0 1rem;padding:.7rem .85rem;border:1px solid var(--border);border-radius:10px;background:rgba(124,58,237,.08)}
+  .diary-identity .discord-name{font-weight:700;color:var(--text)}
+  .diary-identity .char-id{font-weight:800;color:var(--accent-soft)}
+  .diary-identity .sep{color:var(--text-muted)}
   .locked-box{text-align:center;padding:3rem 1rem}
   .form-row{display:grid;gap:.8rem;margin-bottom:1rem}
   .form-row label{font-size:.82rem;color:var(--text-muted);font-weight:600}
@@ -113,6 +117,11 @@
   <div id="app" hidden>
     <section class="diary-panel">
       <h1>Mein Tagebuch</h1>
+      <div class="diary-identity" id="diaryIdentity" hidden>
+        <span class="discord-name" id="diaryDiscordName"></span>
+        <span class="sep">·</span>
+        <span class="char-id" id="diaryCharId"></span>
+      </div>
       <p class="muted">Schreibe Einträge für deinen Charakter. Admins können lesen und kommentieren.</p>
       <div class="lore-help">
         <strong>So kannst du die Lore schreiben:</strong><br>
@@ -199,6 +208,16 @@
     document.getElementById('app').hidden=false;
     try{
       const data=await api('/api/diary/mine');
+      const identity=document.getElementById('diaryIdentity');
+      const discordName=document.getElementById('diaryDiscordName');
+      const charId=document.getElementById('diaryCharId');
+      if(data.discord_name || data.char_id){
+        discordName.textContent=data.discord_name ? 'Discord: '+data.discord_name : 'Discord';
+        charId.textContent=data.char_id ? data.char_id : 'Kein Charakter zugeordnet';
+        identity.hidden=false;
+      }else{
+        identity.hidden=true;
+      }
       renderDays(data.entries||[]);
     }catch(e){
       toast(e.message||'Laden fehlgeschlagen');
