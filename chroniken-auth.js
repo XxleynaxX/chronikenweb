@@ -17,6 +17,7 @@
   // Die eigentliche Rollenprüfung muss serverseitig im Discord-Proxy erfolgen.
   const TOKEN_KEY = "chroniken_discord_token";
   const NAME_KEY = "chroniken_discord_name";
+  const USERNAME_KEY = "chroniken_discord_username";
   const HANDOFF_KEY = "chroniken_auth_handoff";
   const POPUP_PARAM = "discord_popup";
   const DEFAULT_PROXY = "https://chronikenweb-1.onrender.com";
@@ -39,7 +40,7 @@
   function clear() {
     try {
       [ADMIN_KEY, LIB_KEY, HEALER_KEY, PLAYER_KEY, TOKEN_KEY, NAME_KEY,
-       "chroniken_discord_roles", "discord_roles", "discord_username", "portal_discord_user"
+       "chroniken_discord_roles", "discord_roles", "discord_username", "portal_discord_user", USERNAME_KEY
       ].forEach(function (k) { sessionStorage.removeItem(k); });
     } catch (e) {}
     try { localStorage.removeItem(HANDOFF_KEY); } catch (e) {}
@@ -222,6 +223,7 @@
       try { localStorage.removeItem(LOGOUT_KEY); } catch (e) {}
       sessionStorage.removeItem(TOKEN_KEY);
       sessionStorage.setItem(NAME_KEY, info.name || "");
+      if (info.discord_username) sessionStorage.setItem(USERNAME_KEY, info.discord_username); else sessionStorage.removeItem(USERNAME_KEY);
       if (info.admin) sessionStorage.setItem(ADMIN_KEY, "1"); else sessionStorage.removeItem(ADMIN_KEY);
       if (info.admin || info.lib) sessionStorage.setItem(LIB_KEY, "1"); else sessionStorage.removeItem(LIB_KEY);
       if (info.admin || info.healer) sessionStorage.setItem(HEALER_KEY, "1"); else sessionStorage.removeItem(HEALER_KEY);
