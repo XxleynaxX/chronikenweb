@@ -964,11 +964,11 @@ async function diaryMarkAdminRead(entryId) {
   await getPool().query('UPDATE diary_entries SET admin_seen=1 WHERE id=?', [Number(entryId)]);
 }
 
-async function diaryMarkUserRead(entryId, discordId) {
+async function diaryMarkUserRead(entryId, discordUsername) {
   await ensureDiarySchema();
   await getPool().query(
-    'UPDATE diary_entries SET user_seen_comments=1 WHERE id=? AND discord_id=?',
-    [Number(entryId), String(discordId)]
+    "UPDATE diary_entries SET user_seen_comments=1 WHERE id=? AND LOWER(TRIM(REPLACE(discord_name, '@', ''))) = ?",
+    [Number(entryId), diaryNormalizeDiscordName(discordUsername)]
   );
 }
 
