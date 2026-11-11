@@ -656,9 +656,7 @@ const server = http.createServer(async (req, res) => {
       const identity = {
         discordId: p.sub,
         discordUsername: p.discordUsername,
-        discordTag: p.discordTag,
-        displayName: p.name,
-        name: p.name
+        discordTag: p.discordTag
       };
       const resolvedCharId = p.admin
         ? body.char_id
