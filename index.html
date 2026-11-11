@@ -20,6 +20,7 @@
 
     .portal-content-with-discord .portal-gates {
       margin-top: 0;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
     }
 
     .discord-sidebar {
@@ -75,6 +76,10 @@
         grid-template-columns: 1fr;
       }
 
+      .portal-content-with-discord .portal-gates {
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+      }
+
       .discord-sidebar {
         position: static;
       }
@@ -87,6 +92,10 @@
     @media (max-width: 600px) {
       .portal-content-with-discord {
         gap: 1rem;
+      }
+
+      .portal-content-with-discord .portal-gates {
+        grid-template-columns: 1fr;
       }
     }
 
@@ -915,7 +924,7 @@
         <h2>Heilerakte</h2>
         <p>Medizinische RP-Akten · für Heiler &amp; Admins</p>
       </a>
-    </div
+    </div>
       <aside class="discord-sidebar" aria-label="Discord Server">
         <div class="discord-widget-card">
           <div class="discord-widget-heading"><span>✦</span><span>Discord live</span></div>
@@ -926,7 +935,7 @@
           </a>
         </div>
       </aside>
-    </div>>
+    </div>
   </main>
 
   <footer>
