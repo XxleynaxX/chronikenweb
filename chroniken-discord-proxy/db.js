@@ -773,6 +773,31 @@ async function diaryAdminUsers() {
   }));
 }
 
+async function diaryListOrphanEntries() {
+  await ensureDiarySchema();
+  const [rows] = await getPool().query(
+    `SELECT e.*,
+      (SELECT COUNT(*) FROM diary_comments c WHERE c.entry_id=e.id) AS comment_count
+     FROM diary_entries e
+     WHERE e.char_id IS NULL OR TRIM(e.char_id)=''
+     ORDER BY e.entry_date DESC, e.id DESC`
+  );
+  return rows.map(r => ({
+    ...r,
+    comment_count: Number(r.comment_count) || 0,
+    is_new: !r.admin_seen
+  }));
+}
+
+async function diaryDeleteOrphanEntries() {
+  await ensureDiarySchema();
+  const [r] = await getPool().query(
+    `DELETE FROM diary_entries
+     WHERE char_id IS NULL OR TRIM(char_id)=''`
+  );
+  return Number(r.affectedRows) || 0;
+}
+
 async function diaryListComments(entryId) {
   await ensureDiarySchema();
   const [rows] = await getPool().query(
@@ -840,5 +865,5 @@ async function diaryMarkUserRead(entryId, discordId) {
 module.exports = {
   KEYS, normalizeKey, canWrite, validValue,
   configured, ensureSchema, getAll, getOne, setMany, claimNotificationKey, status, ensureAdminSchema, syncAdminKeys, adminSummary, adminTasks, adminTask, adminCreateTask, adminUpdateTask, adminDeleteTask, adminProjects, adminCreateProject, adminUpdateProject, adminDeleteProject, adminAddComment, adminActivities, adminBlacklist, adminBlacklistEntry, adminAddBlacklist, adminRemoveBlacklist, isSteamBlacklisted, isDiscordBlacklisted, adminChangelog,
-  ensureDiarySchema, diaryCharacterForDiscord, diaryCreateEntry, diaryGetEntry, diaryDeleteEntry, diaryListByDiscord, diaryListByChar, diaryAdminUsers, diaryListComments, diaryAddComment, diaryUpdateComment, diaryDeleteComment, diaryMarkAdminRead, diaryMarkUserRead
+  ensureDiarySchema, diaryCharacterForDiscord, diaryCreateEntry, diaryGetEntry, diaryDeleteEntry, diaryListByDiscord, diaryListByChar, diaryAdminUsers, diaryListOrphanEntries, diaryDeleteOrphanEntries, diaryListComments, diaryAddComment, diaryUpdateComment, diaryDeleteComment, diaryMarkAdminRead, diaryMarkUserRead
 };
