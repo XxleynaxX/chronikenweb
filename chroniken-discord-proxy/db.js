@@ -707,14 +707,25 @@ async function diaryCharacterForDiscord(discordId, discordTag, requestedCharId =
     'discordUsername','discord_username','discordUser','discord_user',
     'discordAccount','discord_account'
   ];
-  const getCharId = c => c && (c.char_id || c.charId || c.id || c.character_id || c.characterId || '');
+  const getCharId = c => {
+    if (!c || typeof c !== 'object') return '';
+    const direct = c.char_id || c.charId || c.id || c.character_id || c.characterId || '';
+    if (direct) return String(direct).trim();
+    const nested = c.data && typeof c.data === 'object' ? c.data : null;
+    return nested
+      ? String(nested.char_id || nested.charId || nested.id || nested.character_id || nested.characterId || '').trim()
+      : '';
+  };
 
   // Wenn die CH-Nummer manuell eingegeben wurde, muss genau dieser
   // Charakter existieren und zum eingeloggten Discord-Konto gehören.
   if (requestedCharId) {
     const wantedChar = normalizeCharId(requestedCharId);
     for (const c of list) {
-      if (!c || typeof c !== 'object' || String(getCharId(c)).toUpperCase() !== wantedChar) continue;
+      if (!c || typeof c !== 'object') continue;
+      let actualCharId = '';
+      try { actualCharId = normalizeCharId(getCharId(c)); } catch { actualCharId = String(getCharId(c)).trim().toUpperCase(); }
+      if (actualCharId !== wantedChar) continue;
 
       const ids = idKeys.flatMap(k => {
         const v = c[k];
