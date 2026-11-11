@@ -53,10 +53,6 @@
     <section class="diary-panel">
       <h1>Mein Tagebuch</h1>
       <p class="muted">Schreibe Einträge zu deiner Charakter-ID. Admins können lesen und kommentieren.</p>
-      <div class="form-row" style="margin-top:1rem">
-        <label>Charakter-ID (CH-xxxx) *</label>
-        <input id="charId" placeholder="CH-0001">
-      </div>
       <div class="form-row">
         <label>Titel</label>
         <input id="title" placeholder="Kurzer Titel">
@@ -106,11 +102,9 @@
     try{return sessionStorage.getItem('portal_player_auth')==='1'||sessionStorage.getItem('portal_admin_auth')==='1'}catch(e){return false}
   }
 
-  // Charakter-ID aus lokalem Bogen vorbelegen
-  try{
-    const c=JSON.parse(localStorage.getItem('chroniken_charakter')||'null');
-    if(c&&c.registryId) document.getElementById('charId').value=c.registryId;
-  }catch(e){}
+  // Die Charakter-ID wird absichtlich NICHT vom Browser gewählt.
+  // Der Server ordnet Discord-Account -> Charakter-ID zu.
+  const PLAYER_ROLE_ID = "1254552933157306418";
   document.getElementById('entryDate').valueAsDate=new Date();
 
   async function api(path, opts){
@@ -129,9 +123,7 @@
     document.getElementById('locked').hidden=true;
     document.getElementById('app').hidden=false;
     try{
-      const charId=document.getElementById('charId').value.trim();
-      const q=charId?('?char_id='+encodeURIComponent(charId)):'';
-      const data=await api('/api/diary/mine'+q);
+      const data=await api('/api/diary/mine');
       renderDays(data.entries||[]);
     }catch(e){
       toast(e.message||'Laden fehlgeschlagen');
@@ -155,14 +147,12 @@
   function escapeHtml(s){const d=document.createElement('div');d.textContent=s;return d.innerHTML}
 
   async function saveEntry(){
-    const char_id=document.getElementById('charId').value.trim();
     const title=document.getElementById('title').value.trim();
     const text=document.getElementById('body').value.trim();
     const entry_date=document.getElementById('entryDate').value;
-    if(!char_id){toast('Charakter-ID ist Pflicht');return}
     if(!text){toast('Text ist Pflicht');return}
     try{
-      await api('/api/diary/entries',{method:'POST',body:JSON.stringify({char_id,title,text,entry_date})});
+      await api('/api/diary/entries',{method:'POST',body:JSON.stringify({title,text,entry_date})});
       document.getElementById('title').value='';
       document.getElementById('body').value='';
       toast('Eintrag gespeichert');
@@ -191,7 +181,7 @@
   window.saveEntry=saveEntry;
   window.closeModal=closeModal;
 
-  // warten bis Auth Session restored
+  // Der Server muss für /api/diary/mine die Discord-ID und die Spielerrolle prüfen.\n  // Spielerrolle: 1254552933157306418\n\n  // warten bis Auth Session restored
   setTimeout(load, 400);
   document.getElementById('charId').addEventListener('change', load);
 })();
