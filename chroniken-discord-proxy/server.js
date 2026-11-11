@@ -627,7 +627,13 @@ const server = http.createServer(async (req, res) => {
       const charId = p.admin ? String(url.searchParams.get('char_id') || '').trim() : await db.diaryCharacterForDiscord(p.sub);
       if (!p.admin && !charId) return sendJson(res, 403, { ok: false, error: 'Dein Discord-Account ist noch keinem Charakter zugeordnet.' });
       const entries = await db.diaryListByDiscord(p.sub, charId || null);
-      return sendJson(res, 200, { ok: true, entries });
+      return sendJson(res, 200, {
+        ok: true,
+        discord_id: String(p.sub),
+        discord_name: String(p.name || ''),
+        char_id: charId || null,
+        entries
+      });
     } catch (e) {
       console.error('[DIARY] mine', e);
       return sendJson(res, 500, { ok: false, error: e.message || 'Fehler' });
