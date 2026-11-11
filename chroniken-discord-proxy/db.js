@@ -756,104 +756,37 @@ async function diaryBindDiscordIdentity(characters, character, discordId, discor
   }
 }
 
-async function diaryCharacterForDiscord(discordId, discordTag, requestedCharId = '') {
+async function diaryCharacterForDiscord(discordUsername) {
   await ensureDiarySchema();
 
-  const wantedId = String(discordId || '').trim();
-  const rawTags = Array.isArray(discordTag) ? discordTag : [discordTag];
-  const wantedTags = rawTags.map(diaryNormalizeDiscordName).filter(Boolean);
+  // CH-Nummern sind hier nur eine interne Zuordnung fuer den Adminbereich.
+  // Spieler werden NICHT ueber eine CH-Nummer autorisiert.
+  // Die Zuordnung erfolgt ausschliesslich ueber den echten Discord-Benutzernamen.
+  const wantedName = diaryNormalizeDiscordName(discordUsername);
+  if (!wantedName) return null;
 
-  // WICHTIG: direkt den MySQL-Key "characters" lesen.
   const rawCharacters = await getOne('characters');
   const list = diaryCharacterList(rawCharacters);
 
-  const idKeys = [
-    'discord_id','discordId','discord_user_id','discordUserId',
-    'owner_id','ownerId','player_id','playerId','user_id','userId'
-  ];
-  const tagKeys = [
-    'discordName','discord_name','discordTag','discord_tag',
-    'discordUsername','discord_username','discordUser','discord_user',
-    'discordAccount','discord_account','discord_name_tag'
-  ];
+  for (const character of list) {
+    if (!character || typeof character !== 'object') continue;
 
-  const getCharId = c => diaryFindCharId(c, normalizeCharId);
+    const names = diaryIdentityValues(character, [
+      'discordName',
+      'discord_name',
+      'discordUsername',
+      'discord_username'
+    ]).map(diaryNormalizeDiscordName).filter(Boolean);
 
-  function matchesDiscord(c) {
-    if (!c || typeof c !== 'object') return { id:false, name:false };
+    if (!names.includes(wantedName)) continue;
 
-    const ids = diaryIdentityValues(c, idKeys).map(v => String(v).trim()).filter(Boolean);
-    const names = diaryIdentityValues(c, tagKeys).map(diaryNormalizeDiscordName).filter(Boolean);
-
-    // Zusaetzlich alle verschachtelten Felder durchsuchen. Damit funktionieren
-    // auch characters-Eintraege wie { data: { discordName: "kiyasha_x" } }.
-    const all = diaryDeepValues(c);
-    const deepNames = all.map(diaryNormalizeDiscordName).filter(Boolean);
-
-    return {
-      id: !!wantedId && ids.includes(wantedId),
-      name: wantedTags.some(tag => names.includes(tag) || deepNames.includes(tag))
-    };
-  }
-
-  // 1. Wenn die Seite eine CH-Nummer mitsendet, MUSS genau diese gefunden werden.
-  if (requestedCharId) {
-    const wantedChar = normalizeCharId(requestedCharId);
-    const candidates = list.filter(c => c && typeof c === 'object' && getCharId(c) === wantedChar);
-
-    if (!candidates.length) {
-      const err = new Error('CH ' + wantedChar + ' wurde im MySQL-Key "characters" nicht gefunden.');
-      err.status = 404;
-      throw err;
-    }
-
-    const hit = candidates.find(c => {
-      const m = matchesDiscord(c);
-      return m.id || m.name;
-    });
-
-    if (!hit) {
-      const err = new Error(
-        'CH ' + wantedChar + ' wurde gefunden, aber Discord "' +
-        (wantedTags[0] || wantedId || 'unbekannt') +
-        '" ist diesem Charakter nicht zugeordnet.'
-      );
-      err.status = 403;
-      throw err;
-    }
-
-    await diaryBindDiscordIdentity(list, hit, wantedId, rawTags);
-    return wantedChar;
-  }
-
-  // 2. Ohne CH-Nummer zuerst nach Discord-ID suchen.
-  if (wantedId) {
-    for (const c of list) {
-      if (!c || typeof c !== 'object') continue;
-      if (matchesDiscord(c).id) {
-        const charId = getCharId(c);
-        if (charId) {
-          await diaryBindDiscordIdentity(list, c, wantedId, rawTags);
-          return charId;
-        }
-      }
-    }
-  }
-
-  // 3. Danach Discord-Username / Tag suchen.
-  for (const c of list) {
-    if (!c || typeof c !== 'object') continue;
-    if (matchesDiscord(c).name) {
-      const charId = getCharId(c);
-      if (charId) {
-        await diaryBindDiscordIdentity(list, c, wantedId, rawTags);
-        return charId;
-      }
-    }
+    const charId = diaryFindCharId(character, normalizeCharId);
+    if (charId) return charId;
   }
 
   return null;
 }
+
 async function diaryCreateEntry(data) {
   await ensureDiarySchema();
   const charId = normalizeCharId(data.char_id);
