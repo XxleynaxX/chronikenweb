@@ -780,18 +780,17 @@ async function diaryBindDiscordIdentity(characters, character, discordId, discor
 async function diaryCharacterForDiscord(identity) {
   await ensureDiarySchema();
 
-  // Die Discord-ID ist die primaere Identitaet. Username/Tag sind nur
-  // Fallbacks fuer bereits vorhandene Charakterdaten, die noch keine ID haben.
+  // Discord-ID ist der sicherste Treffer. Für ältere Charaktere ohne ID
+  // prüfen wir zusätzlich Username, Tag und den Discord-Servernamen.
   const wantedId = String(identity?.discordId || '').trim();
   const wantedNames = [
     identity?.discordUsername,
-    identity?.discordTag
+    identity?.discordTag,
+    identity?.displayName,
+    identity?.name
   ].map(diaryNormalizeDiscordName).filter(Boolean);
 
   if (!wantedId && !wantedNames.length) return null;
-
-  const rawCharacters = await getOne('characters');
-  const list = diaryCharacterList(rawCharacters);
 
   const idKeys = [
     'discord_id','discordId','discord_user_id','discordUserId',
@@ -800,45 +799,120 @@ async function diaryCharacterForDiscord(identity) {
   const nameKeys = [
     'discordName','discord_name','discordUsername','discord_username',
     'discordTag','discord_tag','discordDisplayName','discord_display_name',
+    'discordNickname','discord_nickname','discordNick','discord_nick',
     'discord'
   ];
 
-  for (const character of list) {
-    if (!character || typeof character !== 'object') continue;
+  function matchCharacter(character) {
+    if (!character || typeof character !== 'object') return null;
+
+    // Das aktuelle Charakterregister benutzt vor allem:
+    // id = CH-xxxx und discordName = Discord-Benutzername.
+    const directNames = [
+      character.discordName,
+      character.discord_name,
+      character.discordUsername,
+      character.discord_username,
+      character.discordTag,
+      character.discord_tag,
+      character.discordDisplayName,
+      character.discord_display_name,
+      character.discordNickname,
+      character.discord_nickname
+    ].map(diaryNormalizeDiscordName).filter(Boolean);
 
     const ids = diaryIdentityValues(character, idKeys)
       .map(v => String(v == null ? '' : v).trim())
       .filter(Boolean);
 
-    const names = diaryIdentityValues(character, nameKeys)
-      .map(diaryNormalizeDiscordName)
-      .filter(Boolean);
+    const names = [
+      ...directNames,
+      ...diaryIdentityValues(character, nameKeys).map(diaryNormalizeDiscordName)
+    ].filter(Boolean);
 
-    // Hat der Charakter bereits eine Discord-ID, ist ausschließlich diese
-    // ID gültig. Username/Tag bleibt nur Fallback für alte Datensätze ohne ID.
-    const hasStoredDiscordId = ids.length > 0;
-    const idMatch = !!wantedId && ids.includes(wantedId);
-    const nameMatch = !hasStoredDiscordId && wantedNames.some(name => names.includes(name));
+    const uniqueIds = [...new Set(ids)];
+    const uniqueNames = [...new Set(names)];
 
-    if (!idMatch && !nameMatch) continue;
+    // Wenn eine Discord-ID gespeichert ist, muss diese exakt passen.
+    // Nur Datensätze ohne ID dürfen über den Namen gefunden werden.
+    const hasStoredDiscordId = uniqueIds.length > 0;
+    const idMatch = !!wantedId && uniqueIds.includes(wantedId);
+    const nameMatch = !hasStoredDiscordId &&
+      wantedNames.some(name => uniqueNames.includes(name));
 
+    if (!idMatch && !nameMatch) return null;
+
+    // Das Charakterregister verwendet "id". diaryFindCharId erkennt dieses
+    // Feld ebenfalls explizit.
     const charId = diaryFindCharId(character, normalizeCharId);
+    return charId || null;
+  }
+
+  // 1. Normales Charakterregister.
+  const rawCharacters = await getOne('characters');
+  const characters = diaryCharacterList(rawCharacters);
+
+  for (const character of characters) {
+    const charId = matchCharacter(character);
     if (!charId) continue;
 
-    // Sobald ein Charakter ueber Username/Tag gefunden wurde, speichern wir
-    // die echte Discord-ID. Danach ist die ID der stabile Schluessel.
     if (wantedId) {
-      await diaryBindDiscordIdentity(list, character, wantedId, [
+      await diaryBindDiscordIdentity(characters, character, wantedId, [
         identity?.discordUsername,
-        identity?.discordTag
+        identity?.discordTag || identity?.displayName || identity?.name
       ]);
     }
     return charId;
   }
 
+  // 2. Fallback: ältere Charakterbögen können die Discord-Zuordnung
+  // ausschließlich unter character_sheets.data.discordName besitzen.
+  const rawSheets = await getOne('character_sheets');
+  const sheets = diaryCharacterList(rawSheets);
+
+  for (const sheet of sheets) {
+    if (!sheet || typeof sheet !== 'object') continue;
+
+    const sheetData = sheet.data || sheet.characterData || {};
+    const combined = {
+      ...sheet,
+      ...(sheetData && typeof sheetData === 'object' ? sheetData : {})
+    };
+
+    const charId = diaryFindCharId(combined, normalizeCharId);
+    if (!charId) continue;
+
+    const names = [
+      combined.discordName,
+      combined.discord_name,
+      combined.discordUsername,
+      combined.discord_username,
+      combined.discordTag,
+      combined.discord_tag
+    ].map(diaryNormalizeDiscordName).filter(Boolean);
+
+    if (!wantedNames.some(name => names.includes(name))) continue;
+
+    // Der Charakterbogen ist nur ein Fallback für alte Daten.
+    // Der echte Charakterdatensatz wird danach ebenfalls mit der Discord-ID
+    // verknüpft, sofern er vorhanden ist.
+    if (wantedId) {
+      const target = characters.find(ch =>
+        diaryFindCharId(ch, normalizeCharId) === charId
+      );
+      if (target) {
+        await diaryBindDiscordIdentity(characters, target, wantedId, [
+          identity?.discordUsername,
+          identity?.discordTag || identity?.displayName || identity?.name
+        ]);
+      }
+    }
+
+    return charId;
+  }
+
   return null;
 }
-
 async function diaryCreateEntry(data) {
   await ensureDiarySchema();
   const charId = normalizeCharId(data.char_id);
