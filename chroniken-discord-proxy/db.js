@@ -670,8 +670,10 @@ async function diaryCharacterForDiscord(discordId, discordTag) {
     .replace(/^@/, '')
     .toLowerCase();
 
-  const wantedTag = normalizeDiscordName(discordTag);
-  if (!wantedId && !wantedTag) return null;
+  const wantedTags = (Array.isArray(discordTag) ? discordTag : [discordTag])
+    .map(normalizeDiscordName)
+    .filter(Boolean);
+  if (!wantedId && !wantedTags.length) return null;
 
   const characters = await getOne('characters');
   const list = Array.isArray(characters) ? characters : [];
@@ -706,7 +708,7 @@ async function diaryCharacterForDiscord(discordId, discordTag) {
 
   // 2. Fallback für bestehende Charaktere, bei denen nur der Discord-Name
   //    wie "kiyasha_x" gespeichert wurde.
-  if (wantedTag) {
+  if (wantedTags.length) {
     for (const c of list) {
       if (!c || typeof c !== 'object') continue;
 
@@ -716,7 +718,7 @@ async function diaryCharacterForDiscord(discordId, discordTag) {
         return v == null ? [] : [normalizeDiscordName(v)];
       }).filter(Boolean);
 
-      if (tags.includes(wantedTag)) {
+      if (wantedTags.some(tag => tags.includes(tag))) {
         return c.char_id || c.charId || c.id || c.character_id || c.characterId || null;
       }
     }
