@@ -741,6 +741,7 @@ function diaryIdentityValues(character, keys) {
     for (const [key, child] of Object.entries(value)) {
       if (wanted.has(String(key).toLowerCase())) {
         if (Array.isArray(child)) values.push(...child);
+        else if (child && typeof child === 'object') values.push(...diaryDeepValues(child));
         else if (child != null) values.push(child);
       }
       if (child && typeof child === 'object') walk(child);
