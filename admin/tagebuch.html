@@ -195,7 +195,7 @@ textarea{min-height:90px;resize:vertical}
                   <div class="diary-title">${esc(e.title||'Ohne Titel')}</div>
                   <div class="diary-comments">Kommentar: ${Number(e.comment_count)||0}</div>
                 </div>
-                <button class="btn btn-danger diary-delete" data-id="${e.id}">🗑 Löschen</button>
+                <button class="btn btn-primary diary-comment" data-id="${e.id}">💬 Kommentar</button><button class="btn btn-primary diary-comment" data-id="${e.id}">💬 Kommentar</button><button class="btn btn-danger diary-delete" data-id="${e.id}">🗑 Löschen</button>
               </div>`).join(''):'<div class="muted" style="padding:10px 0">Keine Beiträge.</div>'}
           </div>
           ${u.loadError?'<div class="muted" style="margin-top:8px">'+esc(u.loadError)+'</div>':''}
@@ -225,6 +225,11 @@ textarea{min-height:90px;resize:vertical}
         </div>
       </article>`:'');
     box.querySelectorAll('.diary-main').forEach(el=>el.onclick=()=>openEntry(el.dataset.openId));
+    box.querySelectorAll('.diary-comment').forEach(btn=>btn.onclick=async e=>{
+      e.stopPropagation();
+      await openEntry(btn.dataset.id);
+      document.getElementById('commentInput').focus();
+    });
     box.querySelectorAll('.diary-delete').forEach(btn=>btn.onclick=async e=>{
       e.stopPropagation();
       if(!confirm('Diesen Tagebuch-Eintrag wirklich löschen?'))return;
