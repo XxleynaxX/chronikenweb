@@ -682,12 +682,9 @@ async function diaryBindDiscordIdentity(characters, character, discordId, discor
     console.warn('[DIARY] Discord-Zuordnung konnte nicht in characters ergänzt werden:', e.message);
   }
 }
-async function diaryCharacterForDiscord(discordId, discordTag) {
+async function diaryCharacterForDiscord(discordId, discordTag, requestedCharId = '') {
   await ensureDiarySchema();
 
-  // Die Discord-ID bleibt der sicherste Treffer. Der Discord-Tag wird nur
-  // zusätzlich als Fallback verwendet, damit auch ältere Charaktereinträge
-  // ohne gespeicherte Discord-ID gefunden werden können.
   const wantedId = String(discordId || '').trim();
   const normalizeDiscordName = value => String(value || '')
     .trim()
@@ -697,7 +694,6 @@ async function diaryCharacterForDiscord(discordId, discordTag) {
   const wantedTags = (Array.isArray(discordTag) ? discordTag : [discordTag])
     .map(normalizeDiscordName)
     .filter(Boolean);
-  if (!wantedId && !wantedTags.length) return null;
 
   const characters = await getOne('characters');
   const list = Array.isArray(characters) ? characters : [];
@@ -706,51 +702,76 @@ async function diaryCharacterForDiscord(discordId, discordTag) {
     'discord_id','discordId','discord_user_id','discordUserId',
     'owner_id','ownerId','player_id','playerId','user_id','userId'
   ];
-
   const tagKeys = [
     'discordName','discord_name','discordTag','discord_tag',
     'discordUsername','discord_username','discordUser','discord_user',
     'discordAccount','discord_account'
   ];
+  const getCharId = c => c && (c.char_id || c.charId || c.id || c.character_id || c.characterId || '');
 
-  // 1. Zuerst immer über die eindeutige Discord-ID suchen.
-  if (wantedId) {
+  // Wenn die CH-Nummer manuell eingegeben wurde, muss genau dieser
+  // Charakter existieren und zum eingeloggten Discord-Konto gehören.
+  if (requestedCharId) {
+    const wantedChar = normalizeCharId(requestedCharId);
     for (const c of list) {
-      if (!c || typeof c !== 'object') continue;
+      if (!c || typeof c !== 'object' || String(getCharId(c)).toUpperCase() !== wantedChar) continue;
 
       const ids = idKeys.flatMap(k => {
         const v = c[k];
-        if (Array.isArray(v)) return v.map(String);
-        return v == null ? [] : [String(v)];
+        return Array.isArray(v) ? v.map(String) : (v == null ? [] : [String(v)]);
       });
-
-      if (ids.includes(wantedId)) {
-        return c.char_id || c.charId || c.id || c.character_id || c.characterId || null;
-      }
-    }
-  }
-
-  // 2. Fallback für bestehende Charaktere, bei denen nur der Discord-Name
-  //    wie "kiyasha_x" gespeichert wurde.
-  if (wantedTags.length) {
-    for (const c of list) {
-      if (!c || typeof c !== 'object') continue;
-
       const tags = tagKeys.flatMap(k => {
         const v = c[k];
-        if (Array.isArray(v)) return v.map(normalizeDiscordName);
-        return v == null ? [] : [normalizeDiscordName(v)];
+        return Array.isArray(v) ? v.map(normalizeDiscordName) : (v == null ? [] : [normalizeDiscordName(v)]);
       }).filter(Boolean);
-
       const nested = c.data && typeof c.data === 'object' ? c.data : null;
       const nestedTags = nested ? tagKeys.flatMap(k => {
         const v = nested[k];
-        if (Array.isArray(v)) return v.map(normalizeDiscordName);
-        return v == null ? [] : [normalizeDiscordName(v)];
+        return Array.isArray(v) ? v.map(normalizeDiscordName) : (v == null ? [] : [normalizeDiscordName(v)]);
       }).filter(Boolean) : [];
 
+      if ((wantedId && ids.includes(wantedId)) ||
+          wantedTags.some(tag => tags.includes(tag) || nestedTags.includes(tag))) {
+        await diaryBindDiscordIdentity(list, c, wantedId, discordTag);
+        return wantedChar;
+      }
+
+      const err = new Error('Diese CH-Nummer gehört nicht zu deinem Discord-Konto.');
+      err.status = 403;
+      throw err;
+    }
+    const err = new Error('Charakter ' + wantedChar + ' wurde in der Datenbank nicht gefunden.');
+    err.status = 404;
+    throw err;
+  }
+
+  if (!wantedId && !wantedTags.length) return null;
+
+  if (wantedId) {
+    for (const c of list) {
+      if (!c || typeof c !== 'object') continue;
+      const ids = idKeys.flatMap(k => {
+        const v = c[k];
+        return Array.isArray(v) ? v.map(String) : (v == null ? [] : [String(v)]);
+      });
+      if (ids.includes(wantedId)) return getCharId(c) || null;
+    }
+  }
+
+  if (wantedTags.length) {
+    for (const c of list) {
+      if (!c || typeof c !== 'object') continue;
+      const tags = tagKeys.flatMap(k => {
+        const v = c[k];
+        return Array.isArray(v) ? v.map(normalizeDiscordName) : (v == null ? [] : [normalizeDiscordName(v)]);
+      }).filter(Boolean);
+      const nested = c.data && typeof c.data === 'object' ? c.data : null;
+      const nestedTags = nested ? tagKeys.flatMap(k => {
+        const v = nested[k];
+        return Array.isArray(v) ? v.map(normalizeDiscordName) : (v == null ? [] : [normalizeDiscordName(v)]);
+      }).filter(Boolean) : [];
       if (wantedTags.some(tag => tags.includes(tag) || nestedTags.includes(tag))) {
-        const charId = c.char_id || c.charId || c.id || c.character_id || c.characterId || null;
+        const charId = getCharId(c) || null;
         await diaryBindDiscordIdentity(list, c, wantedId, discordTag);
         return charId;
       }
