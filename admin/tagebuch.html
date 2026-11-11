@@ -178,8 +178,19 @@ textarea{min-height:90px;resize:vertical}
         <div style="font-weight:700;margin:4px 0">${esc(e.title||'Ohne Titel')}</div>
         <div style="color:#8f829f;font-size:13px;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden">${esc(e.body||'')}</div>
         <div style="margin-top:8px;font-size:12px;color:#8f829f">${Number(e.comment_count)||0} Kommentar(e)</div>
+        <button class="btn btn-danger diary-delete" data-id="${e.id}" style="margin-top:10px;width:100%">🗑 Eintrag löschen</button>
       </article>`).join('')||'<p class="muted">Keine Einträge.</p>';
-    box.querySelectorAll('.day').forEach(el=>el.onclick=()=>openEntry(el.dataset.id));
+    box.querySelectorAll('.day').forEach(el=>{
+      el.onclick=e=>{if(e.target.closest('.diary-delete'))return;openEntry(el.dataset.id)};
+    });
+    box.querySelectorAll('.diary-delete').forEach(btn=>btn.onclick=async e=>{
+      e.stopPropagation();
+      if(!confirm('Diesen Tagebuch-Eintrag wirklich löschen?'))return;
+      try{
+        await api('/api/diary/entries/'+btn.dataset.id,{method:'DELETE'});
+        await openChar(currentChar);
+      }catch(err){alert(err.message||'Löschen fehlgeschlagen')}
+    });
   }
 
   document.getElementById('backBtn').onclick=()=>{
