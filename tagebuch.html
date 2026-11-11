@@ -18,6 +18,14 @@
   .actions{display:flex;gap:.6rem;justify-content:flex-end;flex-wrap:wrap}
   .btn{display:inline-flex;align-items:center;gap:.4rem;padding:.65rem 1rem;border-radius:8px;border:1px solid var(--border);background:rgba(168,85,247,.15);color:var(--text);cursor:pointer;font:inherit}
   .btn-primary{background:var(--accent);border-color:var(--accent);color:#fff}
+  .lore-help{margin:0 0 1rem;padding:.9rem 1rem;border:1px solid var(--border);border-radius:10px;background:rgba(124,58,237,.08);color:var(--text);line-height:1.6;font-size:.9rem}
+  .lore-help strong{color:var(--accent-soft)}
+  .lore-help code{padding:.12rem .35rem;border-radius:5px;background:rgba(0,0,0,.22);color:var(--accent-soft)}
+  .lore-heading{color:var(--accent-soft);font-size:1.05rem;font-weight:700;margin:1.1rem 0 .45rem}
+  .lore-heading:first-child{margin-top:0}
+  .lore-paragraph{margin:0 0 .85rem}
+  .lore-list{margin:.35rem 0 1rem 1.4rem;padding:0}
+  .lore-list li{margin-bottom:.3rem}
   .days{display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:12px}
   .day{position:relative;background:rgba(18,12,28,.75);border:1px solid var(--border);border-radius:12px;padding:1rem;cursor:pointer;transition:.15s}
   .day:hover{border-color:var(--accent-soft);transform:translateY(-2px)}
@@ -106,6 +114,20 @@
     <section class="diary-panel">
       <h1>Mein Tagebuch</h1>
       <p class="muted">Schreibe Einträge für deinen Charakter. Admins können lesen und kommentieren.</p>
+      <div class="lore-help">
+        <strong>So kannst du die Lore schreiben:</strong><br>
+        Leerzeilen erzeugen neue Absätze. Überschriften kannst du einfach mit
+        <code>- Überschrift -</code> oder <code>## Überschrift</code> schreiben.
+        Aufzählungen funktionieren mit <code>- Punkt</code>, <code>• Punkt</code>,
+        <code>* Punkt</code> oder <code>1. Punkt</code>. Du musst kein HTML schreiben.
+        <br><br>
+        <strong>Beispiel:</strong><br>
+        <code>- Die Macht des Blutgedächtnisses -</code><br>
+        Eine kurze Beschreibung der Fähigkeit und ihrer Bedeutung.<br><br>
+        <code>- Fähigkeiten -</code><br>
+        <code>- Erinnerungen wahrnehmen</code><br>
+        <code>- Gefühle im Blut erkennen</code>
+      </div>
       <div class="form-row">
         <label>Titel</label>
         <input id="title" placeholder="Kurzer Titel">
@@ -134,7 +156,7 @@
   <div class="modal-box">
     <div class="muted" id="mDate"></div>
     <h2 id="mTitle" style="margin:.2rem 0 1rem"></h2>
-    <div id="mBody" style="white-space:pre-wrap;line-height:1.65;margin-bottom:1.2rem"></div>
+    <div id="mBody" style="line-height:1.65;margin-bottom:1.2rem"></div>
     <h3 style="font-size:.9rem;color:var(--text-muted)">Admin-Kommentare</h3>
     <div id="mComments"></div>
     <div class="actions" style="margin-top:1rem">
@@ -199,6 +221,28 @@
 
   function escapeHtml(s){const d=document.createElement('div');d.textContent=s;return d.innerHTML}
 
+  function formatLore(text){
+    if(!text)return '';
+    const normalized=String(text).replace(/\\r\\n/g,'\n').replace(/\\r/g,'\n');
+    const lines=normalized.split('\n');
+    const parts=[];let listItems=[];
+    const flushList=()=>{if(!listItems.length)return;parts.push('<ul class="lore-list">'+listItems.map(item=>'<li>'+escapeHtml(item)+'</li>').join('')+'</ul>');listItems=[]};
+    lines.forEach(line=>{
+      const trimmed=line.trim();
+      if(!trimmed){flushList();return;}
+      const bullet=trimmed.match(/^(?:[-*•]|\\d+[.)])\\s+(.*)$/);
+      if(bullet){listItems.push(bullet[1]);return;}
+      flushList();
+      const heading=trimmed.match(/^-+\\s*(.+?)\\s*-+$/);
+      if(heading){parts.push('<h4 class="lore-heading">'+escapeHtml(heading[1])+'</h4>');return;}
+      const markdownHeading=trimmed.match(/^#{1,4}\\s+(.+)$/);
+      if(markdownHeading){parts.push('<h4 class="lore-heading">'+escapeHtml(markdownHeading[1])+'</h4>');return;}
+      parts.push('<p class="lore-paragraph">'+escapeHtml(trimmed)+'</p>');
+    });
+    flushList();
+    return parts.join('');
+  }
+
   async function saveEntry(){
     const title=document.getElementById('title').value.trim();
     const text=document.getElementById('body').value.trim();
@@ -218,7 +262,7 @@
       const data=await api('/api/diary/entries/'+id);
       document.getElementById('mDate').textContent=data.entry.entry_date||'';
       document.getElementById('mTitle').textContent=data.entry.title||'Ohne Titel';
-      document.getElementById('mBody').textContent=data.entry.body||'';
+      document.getElementById('mBody').innerHTML=formatLore(data.entry.body||'');
       const list=document.getElementById('mComments');
       if(!(data.comments||[]).length) list.innerHTML='<p class="muted">Keine Kommentare.</p>';
       else list.innerHTML=data.comments.map(c=>`<div class="comment"><div class="meta"><b>${escapeHtml(c.author_name)}</b> · ${c.created_at||''}</div>${escapeHtml(c.body)}</div>`).join('');
