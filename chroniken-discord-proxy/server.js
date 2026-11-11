@@ -643,7 +643,7 @@ const server = http.createServer(async (req, res) => {
       });
     } catch (e) {
       console.error('[DIARY] mine', e);
-      return sendJson(res, 500, { ok: false, error: e.message || 'Fehler' });
+      return sendJson(res, e.status || 500, { ok: false, error: e.message || 'Fehler' });
     }
   }
 
