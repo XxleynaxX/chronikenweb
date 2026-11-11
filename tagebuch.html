@@ -120,13 +120,9 @@
       <div class="diary-identity" id="diaryIdentity">
         <span class="discord-name" id="diaryDiscordName"></span>
         <span class="sep">·</span>
-        <span class="char-id" id="diaryCharId">Bitte CH-Nummer eingeben</span>
+        <span class="char-id" id="diaryCharId">Charakter wird automatisch zugeordnet</span>
       </div>
-      <div class="form-row">
-        <label>Charakter-ID *</label>
-        <input id="charId" placeholder="CH-0001" maxlength="11" autocomplete="off" spellcheck="false">
-        <small class="muted">Deine Discord-Verbindung bleibt bestehen. Die CH-Nummer muss einmal manuell eingetragen werden.</small>
-      </div>
+      <p class="muted">Dein Charakter wird automatisch über deinen Discord-Namen zugeordnet. Eine CH-Nummer musst du nicht eingeben.</p>
       <p class="muted">Schreibe Einträge für deinen Charakter. Admins können lesen und kommentieren.</p>
       <div class="lore-help">
         <strong>So kannst du die Lore schreiben:</strong><br>
@@ -141,11 +137,6 @@
         <code>- Fähigkeiten -</code><br>
         <code>- Erinnerungen wahrnehmen</code><br>
         <code>- Gefühle im Blut erkennen</code>
-      </div>
-      <div class="form-row">
-        <div class="actions" style="justify-content:flex-start">
-          <button class="btn btn-primary" type="button" onclick="loadDiaryForChar()">Charakter laden</button>
-        </div>
       </div>
       <div class="form-row">
         <label>Titel</label>
@@ -196,8 +187,8 @@
     try{return sessionStorage.getItem('portal_player_auth')==='1'||sessionStorage.getItem('portal_admin_auth')==='1'}catch(e){return false}
   }
 
-  // Discord bleibt für die Anmeldung zuständig. Die Charakter-ID wird
-  // bewusst manuell als CH-XXXX eingegeben und serverseitig geprüft.
+  // Discord-Login ist die einzige Zuordnung für Spieler.
+  // Die CH-Nummer ist nur eine interne Kennung für den Adminbereich.
   const PLAYER_ROLE_ID = "1254552933157306418";
   document.getElementById('entryDate').valueAsDate=new Date();
 
@@ -222,36 +213,23 @@
       discordName.textContent=me.discord_username
         ? 'Discord: '+me.discord_username
         : (me.discord_tag ? 'Discord: '+me.discord_tag : 'Discord');
-      const saved=(()=>{try{return sessionStorage.getItem('chroniken_diary_char_id')||''}catch(e){return ''}})();
-      const input=document.getElementById('charId');
-      if(saved && !input.value) input.value=saved;
-      if(input.value.trim()) await loadDiaryForChar();
-      else{
-        document.getElementById('diaryCharId').textContent='Bitte CH-Nummer eingeben';
-        renderDays([]);
-      }
+      await loadDiary();
     }catch(e){
       toast(e.message||'Laden fehlgeschlagen');
     }
   }
 
-  async function loadDiaryForChar(){
-    const input=document.getElementById('charId');
-    const raw=input.value.trim();
-    if(!/^CH-?\\d{1,8}$/i.test(raw) && !/^\\d{1,8}$/.test(raw)){
-      toast('Bitte eine gültige Charakter-ID wie CH-0001 eingeben.');
-      input.focus();
-      return;
-    }
+  async function loadDiary(){
     try{
-      const data=await api('/api/diary/mine?char_id='+encodeURIComponent(raw));
-      document.getElementById('diaryCharId').textContent=data.char_id||raw.toUpperCase();
-      try{sessionStorage.setItem('chroniken_diary_char_id',data.char_id||raw.toUpperCase())}catch(e){}
+      const data=await api('/api/diary/mine');
+      document.getElementById('diaryCharId').textContent=data.char_id
+        ? 'Charakter: '+data.char_id
+        : 'Charakter wird automatisch zugeordnet';
       renderDays(data.entries||[]);
     }catch(e){
-      document.getElementById('diaryCharId').textContent='CH-Nummer prüfen';
+      document.getElementById('diaryCharId').textContent='Keine Charakter-Zuordnung gefunden';
       renderDays([]);
-      toast(e.message||'Charakter konnte nicht geladen werden');
+      toast(e.message||'Tagebuch konnte nicht geladen werden');
     }
   }
 
@@ -299,9 +277,7 @@
     const entry_date=document.getElementById('entryDate').value;
     if(!text){toast('Text ist Pflicht');return}
     try{
-      const char_id=document.getElementById('charId').value.trim();
-      if(!char_id){toast('Bitte zuerst deine CH-Nummer eingeben.');document.getElementById('charId').focus();return}
-      await api('/api/diary/entries',{method:'POST',body:JSON.stringify({char_id,title,text,entry_date})});
+      await api('/api/diary/entries',{method:'POST',body:JSON.stringify({title,text,entry_date})});
       document.getElementById('title').value='';
       document.getElementById('body').value='';
       toast('Eintrag gespeichert');
@@ -329,13 +305,7 @@
 
   window.saveEntry=saveEntry;
   window.closeModal=closeModal;
-  window.loadDiaryForChar=loadDiaryForChar;
-
-  document.getElementById('charId').addEventListener('keydown',e=>{
-    if(e.key==='Enter'){e.preventDefault();loadDiaryForChar();}
-  });
-
-  // Der Server muss für /api/diary/mine die Discord-ID und die Spielerrolle prüfen.\n  // Spielerrolle: 1254552933157306418\n\n  // warten bis Auth Session restored
+  // warten bis Auth Session restored
   setTimeout(load, 400);
 
 })();
