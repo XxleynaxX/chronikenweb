@@ -25,6 +25,8 @@ textarea{min-height:90px;resize:vertical}
 .btn-primary{background:#6e4ab4;border-color:#6e4ab4}
 .btn-danger{background:#8f2f4a;border-color:#8f2f4a}
 .back{background:none;border:0;color:#b9aacd;cursor:pointer;font-size:14px;margin-bottom:10px}
+.form-grid label{display:block;color:#b9aacd;font-size:13px;font-weight:700}.form-grid input,.form-grid textarea{display:block;margin-top:6px}.form-grid textarea{min-height:140px}
+@media(max-width:700px){.form-grid{grid-template-columns:1fr!important}.form-grid label{grid-column:auto!important}}
 </style>
 </head>
 <body>
@@ -52,6 +54,18 @@ textarea{min-height:90px;resize:vertical}
 <header class="top"><div><h1>UserTage</h1><p>Tagebücher der Spieler nach Charakter-ID</p></div><div class="user" id="user">Lade Anmeldung …</div></header>
 <section id="locked" class="panel locked" hidden><h2>🔒 Nur für Admins</h2><p>Dieser Bereich benötigt die Discord-Adminrolle.</p></section>
 <div id="app" hidden>
+  <section class="panel" id="createPanel">
+    <div class="panel-head"><h2>✍️ Admin-Tagebuch erstellen</h2><span class="muted">Eintrag direkt für eine Charakter-ID anlegen</span></div>
+    <form id="adminDiaryForm">
+      <div class="form-grid" style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+        <label>Charakter-ID *<input id="adminCharId" placeholder="CH-0001" required></label>
+        <label>Datum<input id="adminEntryDate" type="date"></label>
+        <label style="grid-column:1/-1">Titel<input id="adminEntryTitle" placeholder="Kurzer Titel"></label>
+        <label style="grid-column:1/-1">Eintrag *<textarea id="adminEntryBody" placeholder="Was soll im Tagebuch stehen?" required></textarea></label>
+      </div>
+      <div class="actions"><button class="btn btn-primary" type="submit" id="adminDiarySave">Eintrag speichern</button><span class="muted" id="adminDiaryMsg"></span></div>
+    </form>
+  </section>
   <section class="panel" id="usersPanel">
     <div class="panel-head"><h2>Charaktere mit Tagebuch</h2><span class="muted">Kacheln = CH-xxxx · New = ungelesene Einträge</span></div>
     <div class="days" id="users"></div>
@@ -82,13 +96,12 @@ textarea{min-height:90px;resize:vertical}
   </div>
 </div>
 
-<script src="../chroniken-auth.js"></script>
+<script src="admin.js?v=20261111-1"></script>
 <script>
 (function(){
   const PROXY=(window.CHRONIKEN_DISCORD_PROXY||localStorage.getItem('chroniken_discord_proxy_url')||'https://chronikenweb-1.onrender.com').replace(/\/$/,'');
   let currentChar=null, currentEntryId=null;
 
-  function isAdmin(){try{return sessionStorage.getItem('portal_admin_auth')==='1'}catch(e){return false}}
   async function api(path, opts){
     const res=await fetch(PROXY+path,{credentials:'include',cache:'no-store',...opts,headers:{'Content-Type':'application/json',...(opts&&opts.headers||{})}});
     const data=await res.json().catch(()=>({}));
@@ -98,15 +111,42 @@ textarea{min-height:90px;resize:vertical}
   function esc(s){const d=document.createElement('div');d.textContent=s||'';return d.innerHTML}
 
   async function init(){
-    document.getElementById('user').textContent=(window.ChronikenAuth&&ChronikenAuth.name&&ChronikenAuth.name())||'Admin';
-    if(!isAdmin()){
+    const user=await guard();
+    if(!user){
       document.getElementById('locked').hidden=false;
       document.getElementById('app').hidden=true;
       return;
     }
     document.getElementById('locked').hidden=true;
     document.getElementById('app').hidden=false;
+    document.getElementById('user').textContent='👤 '+(user.name||'Admin');
+    document.getElementById('adminEntryDate').valueAsDate=new Date();
     loadUsers();
+  }
+
+  async function createAdminEntry(e){
+    e.preventDefault();
+    const char_id=document.getElementById('adminCharId').value.trim();
+    const title=document.getElementById('adminEntryTitle').value.trim();
+    const text=document.getElementById('adminEntryBody').value.trim();
+    const entry_date=document.getElementById('adminEntryDate').value;
+    const msg=document.getElementById('adminDiaryMsg');
+    if(!char_id||!text){msg.textContent='Charakter-ID und Eintrag sind Pflicht.';return;}
+    const button=document.getElementById('adminDiarySave');
+    button.disabled=true; msg.textContent='Speichere …';
+    try{
+      try{
+        await api('/api/diary/entries',{method:'POST',body:JSON.stringify({char_id,title,text,entry_date})});
+      }catch(first){
+        await api('/api/diary/admin/entries',{method:'POST',body:JSON.stringify({char_id,title,text,entry_date})});
+      }
+      document.getElementById('adminEntryTitle').value='';
+      document.getElementById('adminEntryBody').value='';
+      msg.textContent='✓ Eintrag gespeichert.';
+      await loadUsers();
+    }catch(err){
+      msg.textContent='Speichern fehlgeschlagen: '+(err.message||err);
+    }finally{button.disabled=false;}
   }
 
   async function loadUsers(){
@@ -203,7 +243,8 @@ textarea{min-height:90px;resize:vertical}
   window.closeModal=function(){document.getElementById('modal').classList.remove('open'); if(currentChar) openChar(currentChar)};
   document.getElementById('modal').addEventListener('click',e=>{if(e.target.id==='modal') closeModal()});
 
-  setTimeout(init, 400);
+  document.getElementById('adminDiaryForm').addEventListener('submit',createAdminEntry);
+  setTimeout(init, 200);
 })();
 </script>
 </body>
