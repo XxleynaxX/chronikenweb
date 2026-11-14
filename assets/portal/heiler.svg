@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 220" role="img" aria-hidden="true">
+<defs>
+<linearGradient id="bg" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#3b0764" stop-opacity=".92"/><stop offset=".55" stop-color="#170b28" stop-opacity=".98"/><stop offset="1" stop-color="#09050f"/></linearGradient>
+<radialGradient id="glow"><stop offset="0" stop-color="#a7f3d0" stop-opacity=".55"/><stop offset="1" stop-color="#a7f3d0" stop-opacity="0"/></radialGradient>
+<filter id="blur"><feGaussianBlur stdDeviation="18"/></filter>
+</defs>
+<rect width="640" height="220" rx="22" fill="url(#bg)"/><circle cx="520" cy="80" r="115" fill="url(#glow)" filter="url(#blur)"/><circle cx="115" cy="170" r="75" fill="url(#glow)" opacity=".28" filter="url(#blur)"/>
+<g fill="none" stroke="#a7f3d0" stroke-opacity=".18"><circle cx="520" cy="105" r="82"/><circle cx="520" cy="105" r="60"/><path d="M440 105h160M520 25v160"/></g>
+<g stroke="#a7f3d0" stroke-width="7" stroke-linecap="round" stroke-linejoin="round"><path d="M275 65h90M292 65v30l-38 65c-8 14 3 28 18 28h66c15 0 26-14 18-28l-38-65V65" fill="#10251f"/><path d="M320 110v38M301 129h38" stroke="#34d399" stroke-width="10"/></g><path d="M470 65v58M441 94h58" stroke="#c084fc" stroke-width="8" stroke-linecap="round"/>
+<g fill="#fff" opacity=".65"><circle cx="62" cy="42" r="2"/><circle cx="92" cy="78" r="1.5"/><circle cx="180" cy="38" r="1.5"/><circle cx="580" cy="42" r="1.5"/><circle cx="602" cy="155" r="2"/><circle cx="360" cy="34" r="1.2"/></g>
+</svg>
