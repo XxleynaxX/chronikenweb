@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 900 520">
+<defs>
+ <filter id="rough"><feTurbulence type="fractalNoise" baseFrequency=".018" numOctaves="2" seed="7"/><feDisplacementMap in="SourceGraphic" scale="2"/></filter>
+ <linearGradient id="paper" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#e8d7ae"/><stop offset=".5" stop-color="#d8c294"/><stop offset="1" stop-color="#c9ad78"/></linearGradient>
+</defs>
+<rect width="900" height="520" rx="22" fill="url(#paper)"/>
+<rect x="22" y="22" width="856" height="476" rx="16" fill="none" stroke="#4a321d" stroke-width="7" opacity=".72"/>
+<path d="M45 65 Q220 38 390 62 T855 55 M48 460 Q240 480 420 458 T850 465" fill="none" stroke="#6b4b2c" stroke-width="3" opacity=".4"/>
+<g fill="none" stroke="#302317" stroke-width="8" stroke-linecap="round" stroke-linejoin="round" filter="url(#rough)">
+<path d="M275 105 h300 l55 55 v270 H275z" fill="#eadbb9"/>
+<path d="M575 105 v65 h55" />
+<path d="M330 175 h240 M330 235 h240 M330 295 h240 M330 355 h190" />
+<circle cx="310" cy="175" r="12" fill="#302317"/><circle cx="310" cy="235" r="12" fill="#302317"/><circle cx="310" cy="295" r="12" fill="#302317"/><circle cx="310" cy="355" r="12" fill="#302317"/>
+<path d="M310 187 v36 M310 247 v36 M310 307 v36" />
+<path d="M700 115 q35 35 0 70 q-35 35 0 70 q35 35 0 70 q-35 35 0 70" />
+<path d="M685 105 l30 10 -20 25" />
+</g><g fill="#302317" font-family="Georgia,serif" font-size="30" opacity=".72"><text x="450" y="470" text-anchor="middle">DIE CHRONIKEN</text></g></svg>
