@@ -661,11 +661,21 @@
       border-color: var(--purple);
       background: var(--bg-hover);
     }
-    .admin-tile-icon {
+    .admin-tile-card {
       display: block;
-      font-size: 2rem;
-      margin-bottom: .55rem;
+      width: calc(100% + 2.4rem);
+      height: 180px;
+      margin: -1.2rem -1.2rem 1rem;
+      object-fit: cover;
+      border-radius: 14px 14px 0 0;
+      border-bottom: 1px solid var(--border);
+      transition: transform .2s ease, filter .2s ease;
     }
+    .admin-tile:hover .admin-tile-card {
+      transform: scale(1.015);
+      filter: brightness(1.05);
+    }
+
     .admin-tile h3 {
       margin: 0 0 .3rem;
       color: var(--purple-bright);
@@ -843,10 +853,8 @@
       <a href="heilerakte.html" class="gate gate--illustrated" aria-label="Heilerakte – Medizinische RP-Akten für Heiler und Admins">
         <img class="gate-card" src="assets/portal/heiler-full.png" alt="Heilerakte" loading="lazy" decoding="async">
       </a>
-      <a href="tagebuch.html" class="gate" id="playerDiaryGate" style="display:none;">
-        <span class="gate-icon">📓</span>
-        <h2>Mein Tagebuch</h2>
-        <p>Dein persönliches Charakter-Tagebuch · nur für Spieler</p>
+      <a href="tagebuch.html" class="gate gate--illustrated" id="playerDiaryGate" style="display:none;" aria-label="Mein Tagebuch – persönliches Charakter-Tagebuch">
+        <img class="gate-card" src="assets/portal/tagebuch-full.svg" alt="Mein Tagebuch" loading="lazy" decoding="async">
       </a>
     </div>
 
@@ -1049,7 +1057,7 @@
         weatherGate.className = "gate admin-gate";
         weatherGate.id = "weatherGate";
         weatherGate.innerHTML = `
-          <span class="gate-icon" id="weatherGateIcon">🌦️</span>
+          <img class="gate-card" src="assets/portal/wetter-full.svg" alt="Fantasy-Wetter" loading="lazy" decoding="async">
           <h2>Wetter · <span id="weatherGateName">…</span></h2>
           <p><span id="weatherGateDesc"></span><br><small>Nächster Wechsel in <strong id="weatherGateCountdown">--:--:--</strong> · verwalten</small></p>`;
         portalGates.appendChild(weatherGate);
@@ -1064,11 +1072,11 @@
           <p class="admin-section-subtitle">Nur für Mitglieder mit Admin-Rechten sichtbar.</p>
           <div class="admin-tiles">
 
-            <a href="admin/aufgaben.html" class="admin-tile"><span class="admin-tile-icon">📋</span><h3>Aufgaben</h3><p>Admin-Aufgaben erstellen, bearbeiten, zuweisen und verfolgen.</p></a>
-            <a href="admin/projekte.html" class="admin-tile"><span class="admin-tile-icon">📁</span><h3>Projekte</h3><p>Projekte verwalten und den aktuellen Stand im Blick behalten.</p></a>
-            <a href="admin/tagebuch.html" class="admin-tile"><span class="admin-tile-icon">📓</span><h3>Tagebuch</h3><p>Spieler-Tagebücher nach Charakter-ID einsehen und verwalten.</p></a>
-            <a href="admin/blacklist.html" class="admin-tile"><span class="admin-tile-icon">🚫</span><h3>Blacklist</h3><p>Steam-IDs verwalten und gesperrte Spieler kontrollieren.</p></a>
-            <a href="admin/aktivitaeten.html" class="admin-tile"><span class="admin-tile-icon">📜</span><h3>Aktivitäten</h3><p>Änderungen und Aktionen der Administration nachvollziehen.</p></a>
+            <a href="admin/aufgaben.html" class="admin-tile"><img class="admin-tile-card" src="assets/portal/aufgaben-full.svg" alt="Aufgaben" loading="lazy" decoding="async"><h3>Aufgaben</h3><p>Admin-Aufgaben erstellen, bearbeiten, zuweisen und verfolgen.</p></a>
+            <a href="admin/projekte.html" class="admin-tile"><img class="admin-tile-card" src="assets/portal/projekte-full.svg" alt="Projekte" loading="lazy" decoding="async"><h3>Projekte</h3><p>Projekte verwalten und den aktuellen Stand im Blick behalten.</p></a>
+            <a href="admin/tagebuch.html" class="admin-tile"><img class="admin-tile-card" src="assets/portal/admin-tagebuch-full.svg" alt="Tagebuch Verwaltung" loading="lazy" decoding="async"><h3>Tagebuch</h3><p>Spieler-Tagebücher nach Charakter-ID einsehen und verwalten.</p></a>
+            <a href="admin/blacklist.html" class="admin-tile"><img class="admin-tile-card" src="assets/portal/blacklist-full.svg" alt="Blacklist" loading="lazy" decoding="async"><h3>Blacklist</h3><p>Steam-IDs verwalten und gesperrte Spieler kontrollieren.</p></a>
+            <a href="admin/aktivitaeten.html" class="admin-tile"><img class="admin-tile-card" src="assets/portal/aktivitaeten-full.svg" alt="Aktivitäten" loading="lazy" decoding="async"><h3>Aktivitäten</h3><p>Änderungen und Aktionen der Administration nachvollziehen.</p></a>
 
           </div>`;
         section.hidden = false;
