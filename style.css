@@ -1023,3 +1023,11 @@ nav .nav-menu button[data-logout] { color: #fda4af; border-top: 1px solid var(--
   nav .nav-auth + a { border-left: 0; }
   .nav-menu { left: 50%; transform: translateX(-50%); }
 }
+
+/* Internet-Fantasy-Art für die Portal-Kacheln */
+.portal-gates .gate{overflow:hidden;position:relative;}
+.portal-gates .gate-art{display:block;height:132px;margin:-.8rem -.8rem .9rem;border-radius:12px 12px 4px 4px;overflow:hidden;position:relative;background:#12091e;}
+.portal-gates .gate-art::after{content:"";position:absolute;inset:0;background:linear-gradient(180deg,rgba(10,4,18,.08),rgba(18,7,31,.72) 88%,rgba(18,7,31,.95));pointer-events:none;}
+.portal-gates .gate-art img{width:100%;height:100%;display:block;object-fit:cover;object-position:center;filter:saturate(.88) contrast(1.05) brightness(.78);transition:transform .45s ease,filter .45s ease;}
+.portal-gates .gate:hover .gate-art img{transform:scale(1.06);filter:saturate(1) contrast(1.08) brightness(.9);}
+.portal-gates .gate h2,.portal-gates .gate p{position:relative;z-index:2;}
