@@ -1182,13 +1182,5 @@ server.listen(PORT, () => {
   }
   weather.start(PUBLIC_URL);
 
-  // Mod-Watcher direkt im bestehenden Render-Service starten.
-  // Dadurch wird kein zweiter Render-Service benötigt.
-  try {
-    require('./mod-watcher');
-    console.log('Mod-Watcher eingebunden (mod-watcher/index.js).');
-  } catch (e) {
-    console.error('Mod-Watcher konnte nicht gestartet werden:', e.message);
-  }
 });
 
