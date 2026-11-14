@@ -1032,75 +1032,65 @@ nav .nav-menu button[data-logout] { color: #fda4af; border-top: 1px solid var(--
 .portal-gates .gate:hover .gate-art img{transform:scale(1.06);filter:saturate(1) contrast(1.08) brightness(.9);}
 .portal-gates .gate h2,.portal-gates .gate p{position:relative;z-index:2;}
 
-/* Cohesive fantasy photography layer: jede Portal-Kachel bekommt ein eigenes Motiv */
+/* ===== Portal-Kacheln: einheitlicher handgezeichneter Skizzen-Look ===== */
 .portal-gates .gate .gate-art{
+  position:relative;
+  overflow:hidden;
+  isolation:isolate;
+  background:#e7dfcf;
+}
+.portal-gates .gate .gate-art::before{
+  content:"";
+  position:absolute;
+  inset:-2px;
+  z-index:0;
+  background-image:inherit;
   background-size:cover;
-  background-repeat:no-repeat;
-  background-position:center;
+  background-position:inherit;
+  filter:
+    grayscale(1)
+    sepia(.08)
+    contrast(1.45)
+    brightness(1.12);
+  transform:scale(1.015);
+  opacity:.94;
+}
+/* feine Papier-/Bleistiftstruktur */
+.portal-gates .gate .gate-art::after{
+  content:"";
+  position:absolute;
+  inset:0;
+  z-index:1;
+  pointer-events:none;
+  background:
+    repeating-linear-gradient(0deg,rgba(45,31,22,.045) 0 1px,transparent 1px 4px),
+    repeating-linear-gradient(90deg,rgba(45,31,22,.025) 0 1px,transparent 1px 5px),
+    linear-gradient(180deg,rgba(255,255,255,.08),rgba(30,18,12,.28));
+  mix-blend-mode:multiply;
 }
 .portal-gates .gate .gate-art img{
   opacity:0;
   position:absolute;
   inset:0;
 }
+.portal-gates .gate:hover .gate-art::before{
+  transform:scale(1.055);
+  filter:grayscale(1) sepia(.08) contrast(1.6) brightness(1.08);
+}
 
-/* 01 Events – nächtliche Szene am Lagerfeuer */
-.portal-gates .gate:nth-child(1) .gate-art{
-  background-image:url("https://images.unsplash.com/photo-1773216344304-0e9abb597827?auto=format&fit=crop&q=82&w=1200");
-  background-position:center 48%;
-}
-/* 02 Kalender – altes Fantasy-Buch / Chronik */
-.portal-gates .gate:nth-child(2) .gate-art{
-  background-image:url("https://images.unsplash.com/photo-1782602379511-49ec8a5c482c?auto=format&fit=crop&q=82&w=1200");
-  background-position:center 45%;
-}
-/* 03 Wiki – geöffnetes Buch */
-.portal-gates .gate:nth-child(3) .gate-art{
-  background-image:url("https://images.unsplash.com/photo-1722605165802-ce803e7af8f6?auto=format&fit=crop&q=82&w=1200");
-  background-position:center 50%;
-}
-/* 04 Bibliothek – alte Bücherregale */
-.portal-gates .gate:nth-child(4) .gate-art{
-  background-image:url("https://images.unsplash.com/photo-1776090147394-61cbf7e1668a?auto=format&fit=crop&q=82&w=1200");
-  background-position:center 50%;
-}
-/* 05 Berufe & Handwerk – Schmiede */
-.portal-gates .gate:nth-child(5) .gate-art{
-  background-image:url("https://images.unsplash.com/photo-1778376644866-c5d946d43f28?auto=format&fit=crop&q=82&w=1200");
-  background-position:center 45%;
-}
-/* 06 Kreaturen – Drache */
-.portal-gates .gate:nth-child(6) .gate-art{
-  background-image:url("https://images.unsplash.com/photo-1780537014257-95b8f02440c2?auto=format&fit=crop&q=82&w=1200");
-  background-position:center 35%;
-}
-/* 07 Regeln – Gerechtigkeit und Ausgleich */
-.portal-gates .gate:nth-child(7) .gate-art{
-  background-image:url("https://images.unsplash.com/photo-1764113697577-b5899b9a339d?auto=format&fit=crop&q=82&w=1200");
-  background-position:center 42%;
-}
-/* 08 Götter & Kulte – mystische Statue */
-.portal-gates .gate:nth-child(8) .gate-art{
-  background-image:url("https://images.unsplash.com/photo-1769647011521-29b67312a686?auto=format&fit=crop&q=82&w=1200");
-  background-position:center 40%;
-}
-/* 09 Weltkarte – alte Karte */
-.portal-gates .gate:nth-child(9) .gate-art{
-  background-image:url("https://images.unsplash.com/photo-1775344553933-ad328a8a0076?auto=format&fit=crop&q=82&w=1200");
-  background-position:center 50%;
-}
-/* 10 Völker & Rassen – mehrere Personen */
-.portal-gates .gate:nth-child(10) .gate-art{
-  background-image:url("https://images.unsplash.com/photo-1689009547635-28ceb51c0639?auto=format&fit=crop&q=82&w=1200");
-  background-position:center 42%;
-}
-/* 11 Charakterbogen – Fantasy-Porträt */
-.portal-gates .gate:nth-child(11) .gate-art{
-  background-image:url("https://images.unsplash.com/photo-1762765018958-61a707ed5b2f?auto=format&fit=crop&q=82&w=1200");
-  background-position:center 42%;
-}
-/* 12 Heilerakte – alte Apotheke */
-.portal-gates .gate:nth-child(12) .gate-art{
+/* Jedes Motiv bleibt eigenständig, aber alle sehen wie dieselbe Skizzenserie aus. */
+.portal-gates .gate:nth-child(1) .gate-art{background-image:url("https://images.unsplash.com/photo-1773216344304-0e9abb597827?auto=format&fit=crop&q=82&w=1200");background-position:center 48%;}
+.portal-gates .gate:nth-child(2) .gate-art{background-image:url("https://images.unsplash.com/photo-1782602379511-49ec8a5c482c?auto=format&fit=crop&q=82&w=1200");background-position:center 45%;}
+.portal-gates .gate:nth-child(3) .gate-art{background-image:url("https://images.unsplash.com/photo-1722605165802-ce803e7af8f6?auto=format&fit=crop&q=82&w=1200");background-position:center 50%;}
+.portal-gates .gate:nth-child(4) .gate-art{background-image:url("https://images.unsplash.com/photo-1776090147394-61cbf7e1668a?auto=format&fit=crop&q=82&w=1200");background-position:center 50%;}
+.portal-gates .gate:nth-child(5) .gate-art{background-image:url("https://images.unsplash.com/photo-1778376644866-c5d946d43f28?auto=format&fit=crop&q=82&w=1200");background-position:center 45%;}
+.portal-gates .gate:nth-child(6) .gate-art{background-image:url("https://images.unsplash.com/photo-1780537014257-95b8f02440c2?auto=format&fit=crop&q=82&w=1200");background-position:center 35%;}
+.portal-gates .gate:nth-child(7) .gate-art{background-image:url("https://images.unsplash.com/photo-1764113697577-b5899b9a339d?auto=format&fit=crop&q=82&w=1200");background-position:center 42%;}
+.portal-gates .gate:nth-child(8) .gate-art{background-image:url("https://images.unsplash.com/photo-1769647011521-29b67312a686?auto=format&fit=crop&q=82&w=1200");background-position:center 40%;}
+.portal-gates .gate:nth-child(9) .gate-art{background-image:url("https://images.unsplash.com/photo-1775344553933-ad328a8a0076?auto=format&fit=crop&q=82&w=1200");background-position:center 50%;}
+.portal-gates .gate:nth-child(10) .gate-art{background-image:url("https://images.unsplash.com/photo-1689009547635-28ceb51c0639?auto=format&fit=crop&q=82&w=1200");background-position:center 42%;}
+.portal-gates .gate:nth-child(11) .gate-art{background-image:url("https://images.unsplash.com/photo-1762765018958-61a707ed5b2f?auto=format&fit=crop&q=82&w=1200");background-position:center 42%;}
+.portal-gates .gate:nth-child(12) .gate-art{background-image:url("https://images.unsplash.com/photo-1752738534033-9dd5b4d0148c?auto=format&fit=crop&q=82&w=1200");background-position:center 45%;}
   background-image:url("https://images.unsplash.com/photo-1752738534033-9dd5b4d0148c?auto=format&fit=crop&q=82&w=1200");
   background-position:center 45%;
 }
