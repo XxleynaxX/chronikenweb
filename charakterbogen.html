@@ -738,7 +738,8 @@ textarea { min-height: 120px; resize: vertical; }
                 <input type="checkbox" id="adminInfoConfirm">
                 Ich bestätige, dass Charaktername und Discord-Name korrekt sind und die Infos in der Charakterverwaltung gespeichert werden dürfen.
             </label>
-            <button type="button" class="main-button" onclick="preCheckCharacter()">
+            <div id="characterSubmissionClosed" style="display:none;margin-top:12px;padding:14px 16px;border:1px solid #6b4c8a;border-radius:10px;background:rgba(124,58,237,.12);color:#e4cfff;text-align:center;">🔒 <strong>Die Whitelist ist zu.</strong><br>Warte bitte, bis sie wieder geöffnet wird.</div>
+                <button type="button" class="main-button" onclick="preCheckCharacter()">
                 📜 Charakter fertigstellen & als Bild speichern
             </button>
         </div>
@@ -1458,6 +1459,41 @@ function cancelConsentModal() {
     consentAccepted = false;
 }
 
+let characterSubmissionCache = { value: null, time: 0 };
+let characterSubmitBusy = false;
+const CHARACTER_SUBMISSION_CACHE_MS = 15000;
+
+async function getCharacterSubmissionOpen(force){
+    const now = Date.now();
+    if(!force && characterSubmissionCache.value !== null && now - characterSubmissionCache.time < CHARACTER_SUBMISSION_CACHE_MS){
+        return characterSubmissionCache.value;
+    }
+    try{
+        if(!window.ChronikenStorage) return true;
+        const value = await ChronikenStorage.load("characterSubmission");
+        const open = !(value && value.open === false);
+        characterSubmissionCache = { value: open, time: now };
+        const closed=document.getElementById("characterSubmissionClosed");
+        const btn=document.querySelector('button[onclick="preCheckCharacter()"]');
+        if(closed) closed.style.display=open ? "none" : "block";
+        if(btn) btn.style.display=open ? "block" : "none";
+        return open;
+    }catch(e){
+        console.warn("[Charakterbogen] Einsendestatus konnte nicht geladen werden:",e);
+        return true;
+    }
+}
+
+async function ensureCharacterSubmissionOpen(){
+    const open=await getCharacterSubmissionOpen(true);
+    if(!open){
+        const closed=document.getElementById("characterSubmissionClosed");
+        if(closed) closed.style.display="block";
+        return false;
+    }
+    return true;
+}
+
 /* ===================== GRÖSSEN-CHECK ===================== */
 function parseSizeToMeters(sizeStr) {
     if (!sizeStr) return null;
@@ -1466,7 +1502,12 @@ function parseSizeToMeters(sizeStr) {
     return isNaN(num) ? null : num;
 }
 
-function preCheckCharacter() {
+async function preCheckCharacter() {
+    if (!(await ensureCharacterSubmissionOpen())) return;
+    if (characterSubmitBusy) return;
+    characterSubmitBusy = true;
+    const submitBtn=document.querySelector('button[onclick="preCheckCharacter()"]');
+    if(submitBtn){ submitBtn.disabled=true; submitBtn.textContent="⏳ Wird geprüft …"; }
     const name = document.getElementById("name").value.trim();
     const discordName = document.getElementById("discordName")?.value.trim() || "";
     const race = document.getElementById("race").value;
@@ -1474,10 +1515,10 @@ function preCheckCharacter() {
     const sizeInput = document.getElementById("size").value.trim();
     const adminInfoOk = document.getElementById("adminInfoConfirm")?.checked;
 
-    if (!name) { alert("Bitte gib einen Charaktername ein."); return; }
-    if (!discordName) { alert("Bitte gib deinen Discord-Name ein."); return; }
-    if (!adminInfoOk) { alert("Bitte bestätige den Hinweis zur Charakterverwaltung (Charaktername & Discord-Name)."); return; }
-    if (!race) { alert("Bitte wähle ein Volk / eine Rasse aus."); return; }
+    if (!name) { characterSubmitBusy=false; if(submitBtn){submitBtn.disabled=false;submitBtn.textContent="📜 Charakter fertigstellen & als Bild speichern";} alert("Bitte gib einen Charaktername ein."); return; }
+    if (!discordName) { characterSubmitBusy=false; if(submitBtn){submitBtn.disabled=false;submitBtn.textContent="📜 Charakter fertigstellen & als Bild speichern";} alert("Bitte gib deinen Discord-Name ein."); return; }
+    if (!adminInfoOk) { characterSubmitBusy=false; if(submitBtn){submitBtn.disabled=false;submitBtn.textContent="📜 Charakter fertigstellen & als Bild speichern";} alert("Bitte bestätige den Hinweis zur Charakterverwaltung (Charaktername & Discord-Name)."); return; }
+    if (!race) { characterSubmitBusy=false; if(submitBtn){submitBtn.disabled=false;submitBtn.textContent="📜 Charakter fertigstellen & als Bild speichern";} alert("Bitte wähle ein Volk / eine Rasse aus."); return; }
 
     const hasMagic = document.getElementById("hasMagic").checked;
     if (hasMagic && !magicRulesAccepted) {
@@ -1881,6 +1922,7 @@ function renderPortrait() {
 })();
 
 async function createPNG(name) {
+    if (!(await ensureCharacterSubmissionOpen())) { characterSubmitBusy=false; return; }
     const steamId = (document.getElementById("steamId")?.value || "").trim();
     if (steamId) {
         try {
@@ -1948,6 +1990,9 @@ async function createPNG(name) {
             }
         }
         document.getElementById("success").style.display = "block";
+        characterSubmitBusy=false;
+        const submitBtn=document.querySelector('button[onclick="preCheckCharacter()"]');
+        if(submitBtn){submitBtn.disabled=false;submitBtn.textContent="📜 Charakter fertigstellen & als Bild speichern";}
         document.getElementById("success").scrollIntoView({ behavior: "smooth" });
     });
 }
