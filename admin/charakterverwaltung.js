@@ -409,10 +409,44 @@
     body.innerHTML=html||'<p class="muted">Der Bogen enthält keine Angaben.</p>';get("charAdminSheetText").value=txt;
   }
 
+  async function loadCharacterSubmissionStatus(){
+    try{
+      const value=await ChronikenStorage.load("characterSubmission");
+      return !(value && value.open === false);
+    }catch(e){
+      console.warn("[Charakter-Einsendung] Status konnte nicht geladen werden:",e);
+      return true;
+    }
+  }
+
+  async function setCharacterSubmissionStatus(open){
+    const toggle=get("charSubmissionToggle"), label=get("charSubmissionToggleLabel"), status=get("charSubmissionStatus");
+    if(toggle) toggle.disabled=true;
+    try{
+      await ChronikenStorage.save("characterSubmission",{open:!!open,updatedAt:new Date().toISOString()});
+      if(label) label.textContent=open ? "Einsendung geöffnet" : "Whitelist ist geschlossen";
+      if(status) status.textContent=open ? "🟢 Spieler können Charakterbögen normal einsenden." : "🔴 Einsendung geschlossen. Spieler sehen eine Wartemeldung.";
+    }catch(e){
+      if(toggle) toggle.checked=!open;
+      alert("Der Einsendestatus konnte nicht gespeichert werden: "+(e?.message||e));
+    }finally{
+      if(toggle) toggle.disabled=false;
+    }
+  }
+
   async function init(){
     if(!get("charAdmin"))return;
     const user=await guard();if(!user)return;
     try{sessionStorage.setItem("portal_admin_auth","1")}catch{}
+    const submissionToggle=get("charSubmissionToggle");
+    if(submissionToggle){
+      const open=await loadCharacterSubmissionStatus();
+      submissionToggle.checked=open;
+      const label=get("charSubmissionToggleLabel"),status=get("charSubmissionStatus");
+      if(label) label.textContent=open ? "Einsendung geöffnet" : "Whitelist ist geschlossen";
+      if(status) status.textContent=open ? "🟢 Spieler können Charakterbögen normal einsenden." : "🔴 Einsendung geschlossen. Spieler sehen eine Wartemeldung.";
+      submissionToggle.onchange=()=>setCharacterSubmissionStatus(submissionToggle.checked);
+    }
     get("charAdminForm").onsubmit=async e=>{
       e.preventDefault();const name=get("charAdminName").value.trim();if(!name)return;
       const list=await remoteCharsOrAlert();if(!list)return;
