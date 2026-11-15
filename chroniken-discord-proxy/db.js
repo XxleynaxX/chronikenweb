@@ -45,7 +45,8 @@ const KEYS = {
   admin_task_comments:  { label: 'Admin · Kommentare',      description: 'Kommentare zu Admin-Aufgaben',                     type: 'array', write: 'admin' },
   admin_activity:       { label: 'Admin · Aktivitäten',     description: 'Aktivitäten und Aktionen der Administration',       type: 'array', write: 'admin' },
   admin_blacklist:      { label: 'Admin · Blacklist',       description: 'Gesperrte Steam-IDs und Spieler',                    type: 'array', write: 'admin' },
-  admin_changelog:      { label: 'Admin · Changelog',       description: 'Änderungen am Admin-System',                         type: 'array', write: 'admin' }
+  admin_changelog:      { label: 'Admin · Changelog',       description: 'Änderungen am Admin-System',                         type: 'array', write: 'admin' },
+  character_submission: { label: 'Charakterbogen-Einsendung', description: 'Steuert, ob neue Charakterbögen eingesendet werden dürfen', type: 'object', write: 'admin' }
 };
 
 // Alte camelCase-Namen (aus früheren Versionen) → aktuelle Schlüssel
