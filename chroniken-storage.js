@@ -29,7 +29,7 @@
     news:"news", events:"events", characterEvents:"character_events",
     birthdays:"birthdays", calendar:"calendar", disabledHolidays:"disabled_holidays",
     weather:"weather", moon:"moon", characters:"characters",
-    characterSheets:"character_sheets", heiler:"healer_records", map:"map"
+    characterSheets:"character_sheets", heiler:"healer_records", map:"map", characterSubmission:"character_submission"
   };
 
   const OBJECT_KEYS = new Set(["weather", "moon"]);
