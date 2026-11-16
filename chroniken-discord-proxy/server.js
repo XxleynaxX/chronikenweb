@@ -1155,14 +1155,40 @@ const server = http.createServer(async (req, res) => {
 
     try {
       const payload = JSON.parse(body || '{}');
+      if (!payload || typeof payload !== 'object') {
+        res.writeHead(400, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ ok: false, error: 'Ungültige Charakter-Daten.' }));
+        return;
+      }
+
+      console.log('[CHAR] Discord-Nachricht wird gesendet:', JSON.stringify({
+        charakterId: payload?.embeds?.[0]?.fields?.find(f => f.name === 'Charakter-ID')?.value || null,
+        title: payload?.embeds?.[0]?.title || null
+      }));
+
       const r = await discordFetch(CHAR_WEBHOOK, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload)
       });
+
+      const responseText = await r.clone().text().catch(() => '');
+      const safeResponse = responseText.length > 500 ? responseText.slice(0, 500) + '…' : responseText;
+
+      console.log('[CHAR] Discord-Antwort:', JSON.stringify({
+        status: r.status,
+        ok: r.ok,
+        response: safeResponse || null
+      }));
+
       res.writeHead(r.ok ? 200 : 502, { 'Content-Type': 'application/json' });
-      res.end(JSON.stringify({ ok: r.ok }));
+      res.end(JSON.stringify({
+        ok: r.ok,
+        status: r.status,
+        error: r.ok ? null : (safeResponse || 'Discord-Webhooksendung fehlgeschlagen.')
+      }));
     } catch (e) {
+      console.error('[CHAR] Discord-Versand fehlgeschlagen:', e);
       res.writeHead(500, { 'Content-Type': 'application/json' });
       res.end(JSON.stringify({ ok: false, error: String(e.message) }));
     }
