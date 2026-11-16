@@ -106,16 +106,28 @@
     const dbKey = toDbKey(name);
     if (Object.prototype.hasOwnProperty.call(cache, dbKey)) return cache[dbKey];
 
-    const all = await fetchAll();
-    if (!Object.prototype.hasOwnProperty.call(all, dbKey)) {
-      const empty = emptyValue(name);
-      cache[dbKey] = empty;
-      return empty;
-    }
-
-    const value = normalize(name, all[dbKey]);
+    // Einzelnen Schlüssel laden statt beim ersten Zugriff die komplette
+    // Datenbank zu übertragen. Das ist besonders wichtig für Admin-Seiten
+    // und Charakterbögen, da dort meist nur wenige Bereiche benötigt werden.
+    const body = await request("/data/" + encodeURIComponent(dbKey));
+    const value = normalize(name, body && body.value);
     cache[dbKey] = value;
     return value;
+  }
+
+  async function loadMany(names) {
+    const unique = [...new Set((names || []).map(toDbKey))];
+    const missing = unique.filter(k => !Object.prototype.hasOwnProperty.call(cache, k));
+    if (missing.length) {
+      const values = await Promise.all(missing.map(async dbKey => {
+        const body = await request("/data/" + encodeURIComponent(dbKey));
+        return [dbKey, normalize(dbKey, body && body.value)];
+      }));
+      values.forEach(([dbKey, value]) => { cache[dbKey] = value; });
+    }
+    const out = {};
+    unique.forEach(dbKey => { out[dbKey] = cache[dbKey]; });
+    return out;
   }
 
   async function save(name, value) {
@@ -153,28 +165,25 @@
   }
 
   async function ensureMain() {
-    const all = await fetchAll();
+    const all = await loadMany(["wiki","bibliothek","voelker","berufe","goetter","kreaturen","regeln","news"]);
     return {
-      wiki:normalize("wiki",all.wiki), bibliothek:normalize("bibliothek",all.library),
-      voelker:normalize("voelker",all.races), berufe:normalize("berufe",all.professions),
-      goetter:normalize("goetter",all.gods), kreaturen:normalize("kreaturen",all.creatures),
-      regeln:normalize("regeln",all.rules), news:normalize("news",all.news)
+      wiki:all.wiki, bibliothek:all.library, voelker:all.races, berufe:all.professions,
+      goetter:all.gods, kreaturen:all.creatures, regeln:all.rules, news:all.news
     };
   }
 
   async function ensureEvents() {
-    const all = await fetchAll();
+    const all = await loadMany(["events","characterEvents","birthdays","calendar","disabledHolidays","weather","moon"]);
     return {
-      events:normalize("events",all.events), characterEvents:normalize("characterEvents",all.character_events),
-      birthdays:normalize("birthdays",all.birthdays), calendar:normalize("calendar",all.calendar),
-      disabledHolidays:normalize("disabledHolidays",all.disabled_holidays),
-      weather:normalize("weather",all.weather), moon:normalize("moon",all.moon)
+      events:all.events, characterEvents:all.character_events, birthdays:all.birthdays,
+      calendar:all.calendar, disabledHolidays:all.disabled_holidays,
+      weather:all.weather, moon:all.moon
     };
   }
 
   async function ensureChars() {
-    const all = await fetchAll();
-    return { characters:normalize("characters",all.characters), characterSheets:normalize("characterSheets",all.character_sheets) };
+    const all = await loadMany(["characters","characterSheets"]);
+    return { characters:all.characters, characterSheets:all.character_sheets };
   }
 
   async function ensureHealer() { return { heiler: await load("heiler") }; }
@@ -225,7 +234,7 @@
   }
 
   global.ChronikenStorage = {
-    load, save, refresh, invalidate, fetchAll, ensureMain, ensureEvents, ensureChars,
+    load, loadMany, save, refresh, invalidate, fetchAll, ensureMain, ensureEvents, ensureChars,
     ensureHealer, ensureMap, ensureNamed:load, ensureCache:ensureMain,
     importLocalStorage, DB_KEY, API_BASE:apiBase
   };
