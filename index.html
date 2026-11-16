@@ -720,6 +720,55 @@
       .admin-section { padding-left: 1rem; padding-right: 1rem; }
     }
 
+
+    /* ===== KLEINER COOKIE-HINWEIS ===== */
+    .cookie-notice {
+      position: fixed;
+      left: 16px;
+      bottom: 16px;
+      z-index: 3000;
+      max-width: 430px;
+      padding: 10px 14px;
+      border: 1px solid rgba(167, 139, 250, 0.35);
+      border-radius: 10px;
+      background: rgba(20, 10, 35, 0.94);
+      color: var(--text);
+      box-shadow: 0 8px 28px rgba(0,0,0,.35);
+      backdrop-filter: blur(10px);
+      -webkit-backdrop-filter: blur(10px);
+      font-size: .78rem;
+      line-height: 1.4;
+      display: none;
+      align-items: center;
+      gap: 10px;
+    }
+    .cookie-notice.show { display: flex; }
+    .cookie-notice-text { flex: 1; }
+    .cookie-notice strong { color: var(--purple-bright); }
+    .cookie-notice button {
+      flex-shrink: 0;
+      border: 1px solid var(--purple);
+      border-radius: 7px;
+      background: rgba(88, 28, 135, .35);
+      color: var(--text);
+      padding: 5px 9px;
+      cursor: pointer;
+      font: inherit;
+    }
+    .cookie-notice button:hover {
+      background: rgba(124, 58, 237, .5);
+      color: #fff;
+    }
+    @media (max-width: 600px) {
+      .cookie-notice {
+        left: 10px;
+        right: 10px;
+        bottom: 10px;
+        max-width: none;
+        font-size: .75rem;
+      }
+    }
+
     .footer-admin-login {
       display: inline-flex;
       align-items: center;
@@ -790,6 +839,12 @@
 <body>
   <div class="bg-overlay"></div>
   <div class="leaves-container" id="leavesContainer" aria-hidden="true"></div>
+  <div class="cookie-notice" id="cookieNotice" role="status" aria-label="Cookie-Hinweis">
+    <div class="cookie-notice-text">
+      <strong>🍪 Hinweis:</strong> Für die Anmeldung wird ein technisch notwendiges Cookie verwendet. Keine Tracking- oder Werbe-Cookies.
+    </div>
+    <button type="button" id="cookieNoticeOk">Verstanden</button>
+  </div>
 
   <!-- Ambient Nature Sound Panel (Wind + Laub + Uhu + Lautstärke) -->
   <div class="ambient-panel" id="ambientPanel">
@@ -943,6 +998,21 @@
     <div class="emoji" id="vampEmoji" title="Vampir!">🧛</div>
   </div>
 
+  <script>
+    // Kleiner Hinweis zur technisch notwendigen Login-Session
+    (function () {
+      const notice = document.getElementById("cookieNotice");
+      const ok = document.getElementById("cookieNoticeOk");
+      if (!notice || !ok) return;
+      let seen = false;
+      try { seen = localStorage.getItem("chroniken_cookie_notice") === "1"; } catch (e) {}
+      if (!seen) notice.classList.add("show");
+      ok.addEventListener("click", function () {
+        notice.classList.remove("show");
+        try { localStorage.setItem("chroniken_cookie_notice", "1"); } catch (e) {}
+      });
+    })();
+  </script>
   <script src="chroniken-auth.js"></script>
   <script src="chroniken-storage.js"></script>
   <script src="chroniken-sync.js" data-reload-on-change></script>
