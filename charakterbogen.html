@@ -2011,7 +2011,12 @@ async function waitForPortraitReady() {
     if (!img.complete) {
         await new Promise((resolve, reject) => {
             img.addEventListener("load", resolve, { once: true });
-            img.addEventListener("error", reject, { once: true })async function createPNG(name) {
+            img.addEventListener("error", reject, { once: true });
+        });
+    }
+}
+
+async function createPNG(name) {
     if (!(await ensureCharacterSubmissionOpen())) {
         characterSubmitBusy = false;
         return;
