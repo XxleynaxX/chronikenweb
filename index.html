@@ -640,6 +640,35 @@
       margin: -0.5rem 0 1rem;
       font-size: 0.92rem;
     }
+
+    .weather-gate-overlay {
+      position: absolute;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      padding: 0.55rem 0.75rem 0.7rem;
+      background: linear-gradient(to top, rgba(12, 4, 24, 0.92) 0%, rgba(12, 4, 24, 0.75) 60%, transparent 100%);
+      color: #f3e8ff;
+      font-size: 0.78rem;
+      line-height: 1.3;
+      pointer-events: none;
+      z-index: 2;
+    }
+    .weather-gate-overlay strong {
+      display: block;
+      color: #e9d5ff;
+      font-size: 0.9rem;
+      margin-bottom: 0.1rem;
+    }
+    .weather-gate-overlay small {
+      display: block;
+      margin-top: 0.15rem;
+      opacity: 0.9;
+    }
+    #weatherGate {
+      position: relative;
+    }
+
     .admin-tiles {
       display: grid;
       grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -649,43 +678,39 @@
       display: block;
       text-decoration: none;
       color: var(--text);
-      background: var(--bg-card);
-      border: 1px solid var(--border);
+      background: #1a0b2e;
+      border: 1px solid rgba(167, 139, 250, 0.35);
       border-radius: 14px;
-      padding: 1.2rem;
-      transition: transform .2s, border-color .2s, background .2s;
-      backdrop-filter: blur(10px);
+      padding: 0;
+      overflow: hidden;
+      aspect-ratio: 372 / 329;
+      transition: transform .25s ease, border-color .25s ease, box-shadow .25s ease;
+      box-shadow: 0 4px 22px rgba(0, 0, 0, 0.35), 0 0 0 1px rgba(139, 92, 246, 0.12);
     }
     .admin-tile:hover {
       transform: translateY(-3px);
-      border-color: var(--purple);
-      background: var(--bg-hover);
+      border-color: rgba(192, 132, 252, 0.7);
+      box-shadow: 0 16px 40px rgba(139, 92, 246, 0.38), 0 0 24px rgba(168, 85, 247, 0.22);
     }
     .admin-tile-card {
       display: block;
-      width: calc(100% + 2.4rem);
-      height: 180px;
-      margin: -1.2rem -1.2rem 1rem;
+      width: 100%;
+      height: 100%;
       object-fit: cover;
-      border-radius: 14px 14px 0 0;
-      border-bottom: 1px solid var(--border);
-      transition: transform .2s ease, filter .2s ease;
+      object-position: center;
+      transition: transform .45s ease, filter .35s ease;
+      filter: saturate(0.95) brightness(0.97);
     }
     .admin-tile:hover .admin-tile-card {
-      transform: scale(1.015);
-      filter: brightness(1.05);
+      transform: scale(1.04);
+      filter: saturate(1.08) brightness(1.05);
     }
 
     .admin-tile h3 {
-      margin: 0 0 .3rem;
-      color: var(--purple-bright);
-      font-size: 1.05rem;
+      display: none;
     }
     .admin-tile p {
-      margin: 0;
-      color: var(--text-muted);
-      font-size: .86rem;
-      line-height: 1.4;
+      display: none;
     }
     @media (max-width: 800px) {
       .admin-tiles { grid-template-columns: repeat(2, minmax(0, 1fr)); }
@@ -1054,12 +1079,16 @@
 
         weatherGate = document.createElement("a");
         weatherGate.href = "wetter.html";
-        weatherGate.className = "gate admin-gate";
+        weatherGate.className = "gate gate--illustrated admin-gate";
         weatherGate.id = "weatherGate";
+        weatherGate.setAttribute("aria-label", "Wetter verwalten");
         weatherGate.innerHTML = `
           <img class="gate-card" src="assets/portal/wetter-full.png" onerror="this.onerror=null;this.src='assets/portal/wetter-full.svg'" alt="Fantasy-Wetter" loading="lazy" decoding="async">
-          <h2>Wetter · <span id="weatherGateName">…</span></h2>
-          <p><span id="weatherGateDesc"></span><br><small>Nächster Wechsel in <strong id="weatherGateCountdown">--:--:--</strong> · verwalten</small></p>`;
+          <div class="weather-gate-overlay">
+            <strong id="weatherGateName">…</strong>
+            <span id="weatherGateDesc"></span>
+            <small>Nächster Wechsel in <strong id="weatherGateCountdown">--:--:--</strong></small>
+          </div>`;
         portalGates.appendChild(weatherGate);
 
         section = document.createElement("section");
