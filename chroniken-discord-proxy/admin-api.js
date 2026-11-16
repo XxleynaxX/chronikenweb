@@ -1,6 +1,7 @@
 'use strict';
 
 const db = require('./db');
+const { discordFetch } = require('./discord-rate-limit');
 
 function json(res, code, obj) {
   res.writeHead(code, { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store' });
@@ -52,7 +53,7 @@ function taskEmbed(action, task, actor) {
 async function notify(webhook, payload) {
   if (!webhook || !payload) return;
   try {
-    const r = await fetch(webhook, {
+    const r = await discordFetch(webhook, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(payload)
