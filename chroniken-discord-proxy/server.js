@@ -21,7 +21,7 @@ const MAX_BODY = 10 * 1024 * 1024; // 10 MB pro Speichervorgang (MySQL max_allow
 async function notifyBlacklistLogin(hit, user) {
   if (!BLACKLIST_WEBHOOK) return;
   try {
-    await fetch(BLACKLIST_WEBHOOK, {
+    await discordFetch(BLACKLIST_WEBHOOK, {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         username: 'Chroniken Blacklist',
