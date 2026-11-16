@@ -2119,9 +2119,19 @@ async function createPNG(name) {
         registerBirthdayForEvents(data);
         createCharacterEvent(data);
 
-        setCharacterLoadingStatus("Team wird benachrichtigt …");
-        const notified = await sendCharacterToDiscordProxy(data);
+        // Das PNG ist fertig. Der Nutzer soll nicht auf die Discord-Benachrichtigung warten.
         link.click();
+
+        // Discord-Benachrichtigung bewusst im Hintergrund senden.
+        // Ein langsamer oder vorübergehend nicht erreichbarer Proxy hält den Charakterbogen
+        // dadurch nicht mehr im Ladebildschirm fest.
+        setCharacterLoadingStatus("Charakterbogen fertig …");
+        const discordNoticePromise = Promise.resolve()
+            .then(() => sendCharacterToDiscordProxy(data))
+            .catch(e => {
+                console.warn("Discord-Benachrichtigung konnte im Hintergrund nicht gesendet werden:", e);
+                return false;
+            });
 
         const finalId = data.registryId || reg.id || "";
         const idBox = document.getElementById("successCharId");
@@ -2132,10 +2142,8 @@ async function createPNG(name) {
 
         const notice = document.getElementById("successNotice");
         if (notice) {
-            if (reg.centralOk && sheetOk && notified) {
-                notice.textContent = "✅ Das Team wurde benachrichtigt – dein Charakter ist registriert. Bitte nenne bei Rückfragen deine Charakter-ID.";
-            } else if (reg.centralOk && sheetOk) {
-                notice.textContent = "⚠️ Dein Charakter ist registriert, aber die Discord-Benachrichtigung konnte nicht gesendet werden. Bitte melde dich mit deiner Charakter-ID beim Team.";
+            if (reg.centralOk && sheetOk) {
+                notice.textContent = "✅ Dein Charakter ist registriert. Die Benachrichtigung an das Team wird im Hintergrund gesendet. Bitte nenne bei Rückfragen deine Charakter-ID.";
             } else {
                 notice.textContent = "⚠️ Dein Charakter konnte nicht vollständig zentral gespeichert werden (" + (reg.error || "Server nicht erreichbar") + "). Bitte melde dich mit deiner Charakter-ID und dem PNG beim Team oder versuche es später erneut.";
             }
