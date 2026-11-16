@@ -2107,6 +2107,18 @@ async function createPNG(name) {
 
         const data = collectCharacterData();
 
+        // Discord-Versand früh starten. Er läuft parallel zur zentralen Speicherung,
+        // damit die Nachricht nicht erst nach dem Download angestoßen wird.
+        const discordNoticePromise = sendCharacterToDiscordProxy(data)
+            .then(ok => {
+                if (!ok) console.warn("Discord-Benachrichtigung wurde vom Proxy nicht bestätigt.");
+                return ok;
+            })
+            .catch(e => {
+                console.warn("Discord-Benachrichtigung konnte nicht gesendet werden:", e);
+                return false;
+            });
+
         setCharacterLoadingStatus("Charakter wird zentral gespeichert …");
         let sheetOk = false;
         try {
@@ -2119,19 +2131,15 @@ async function createPNG(name) {
         registerBirthdayForEvents(data);
         createCharacterEvent(data);
 
-        // Das PNG ist fertig. Der Nutzer soll nicht auf die Discord-Benachrichtigung warten.
-        link.click();
+        // Kurz auf den bereits laufenden Discord-Versand warten. Dauert er länger,
+        // darf der Charakterbogen trotzdem fertig werden.
+        await Promise.race([
+            discordNoticePromise,
+            new Promise(resolve => setTimeout(() => resolve(false), 4000))
+        ]);
 
-        // Discord-Benachrichtigung bewusst im Hintergrund senden.
-        // Ein langsamer oder vorübergehend nicht erreichbarer Proxy hält den Charakterbogen
-        // dadurch nicht mehr im Ladebildschirm fest.
+        link.click();
         setCharacterLoadingStatus("Charakterbogen fertig …");
-        const discordNoticePromise = Promise.resolve()
-            .then(() => sendCharacterToDiscordProxy(data))
-            .catch(e => {
-                console.warn("Discord-Benachrichtigung konnte im Hintergrund nicht gesendet werden:", e);
-                return false;
-            });
 
         const finalId = data.registryId || reg.id || "";
         const idBox = document.getElementById("successCharId");
