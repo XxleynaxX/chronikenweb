@@ -125,7 +125,8 @@ const PLAYER_ROLES = (process.env.PLAYER_ROLE_IDS || process.env.PLAYER_ROLE_ID 
 const ALLOWED_ORIGINS = (process.env.ALLOWED_RETURN_ORIGINS ||
   'https://xxleynaxx.github.io,http://localhost:3000,http://127.0.0.1:3000')
   .split(',').map(s => s.trim().replace(/\/$/, '')).filter(Boolean);
-const SESSION_MS = (Number(process.env.SESSION_HOURS) || 12) * 3600 * 1000;
+const SESSION_HOURS = Math.max(1, Number(process.env.SESSION_HOURS) || 24);
+const SESSION_MS = SESSION_HOURS * 3600 * 1000;
 
 const oauthCallbackClaims = new Map();
 const OAUTH_CALLBACK_CLAIM_MS = 10 * 60 * 1000;
