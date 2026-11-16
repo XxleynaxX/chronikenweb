@@ -2016,6 +2016,35 @@ async function waitForPortraitReady() {
     }
 }
 
+(function initPortrait() {
+    const input = document.getElementById("portraitInput");
+    const clearBtn = document.getElementById("portraitClear");
+    if (!input) return;
+    input.addEventListener("change", function () {
+        const file = input.files && input.files[0];
+        if (!file) return;
+        const reader = new FileReader();
+        reader.onload = function () {
+            const img = new Image();
+            img.onload = function () {
+                const max = 700, k = Math.min(1, max / Math.max(img.width, img.height));
+                const c = document.createElement("canvas");
+                c.width = Math.round(img.width * k); c.height = Math.round(img.height * k);
+                c.getContext("2d").drawImage(img, 0, 0, c.width, c.height);
+                portraitData = c.toDataURL("image/jpeg", 0.88);
+                clearBtn.style.display = "inline-block";
+                renderPortrait();
+            };
+            img.src = reader.result;
+        };
+        reader.readAsDataURL(file);
+    });
+    clearBtn.addEventListener("click", function () {
+        portraitData = ""; input.value = ""; clearBtn.style.display = "none"; renderPortrait();
+    });
+    renderPortrait();
+})();
+
 async function createPNG(name) {
     if (!(await ensureCharacterSubmissionOpen())) {
         characterSubmitBusy = false;
@@ -2128,45 +2157,6 @@ async function createPNG(name) {
     }
 }
 
-ht im PNG) und ist in data.registryId.
-        let sheetOk = false;
-        try {
-            await saveCharacterSheetToCentral(data);
-            sheetOk = true;
-        } catch (e) {
-            console.warn("Zentrale Speicherung des vollständigen Charakterbogens fehlgeschlagen:", e);
-        }
-
-        registerBirthdayForEvents(data);
-        createCharacterEvent(data);
-        // Team in Discord benachrichtigen („Charakterbogen fertig“ inkl. ID) – über den Proxy
-        const notified = await sendCharacterToDiscordProxy(data);
-        link.click();
-
-        // ---- Erfolgsmeldung: ID genau einmal gross anzeigen + ehrlicher Status ----
-        const finalId = data.registryId || reg.id || "";
-        const idBox = document.getElementById("successCharId");
-        if (finalId && idBox) {
-            document.getElementById("successCharIdValue").textContent = finalId;
-            idBox.style.display = "block";
-        }
-        const notice = document.getElementById("successNotice");
-        if (notice) {
-            if (reg.centralOk && sheetOk && notified) {
-                notice.textContent = "✅ Das Team wurde benachrichtigt – dein Charakter ist registriert. Bitte nenne bei Rückfragen deine Charakter-ID.";
-            } else if (reg.centralOk && sheetOk) {
-                notice.textContent = "⚠️ Dein Charakter ist registriert, aber die Discord-Benachrichtigung konnte nicht gesendet werden. Bitte melde dich mit deiner Charakter-ID beim Team.";
-            } else {
-                notice.textContent = "⚠️ Dein Charakter konnte nicht vollständig zentral gespeichert werden (" + (reg.error || "Server nicht erreichbar") + "). Bitte melde dich mit deiner Charakter-ID und dem PNG beim Team oder versuche es später erneut.";
-            }
-        }
-        document.getElementById("success").style.display = "block";
-        characterSubmitBusy=false;
-        const submitBtn=document.querySelector('button[onclick="preCheckCharacter()"]');
-        if(submitBtn){submitBtn.disabled=false;submitBtn.textContent="📜 Charakter fertigstellen & als Bild speichern";}
-        document.getElementById("success").scrollIntoView({ behavior: "smooth" });
-    });
-}
 
 /** Vergibt die Charakter-ID (zentral abgestimmt) und legt den Registry-Eintrag zentral an. */
 async function registerCharacterCentrally() {
