@@ -9,6 +9,7 @@ const CHAR_WEBHOOK = process.env.CHAR_WEBHOOK || '';
 const HEILER_WEBHOOK = process.env.HEILER_WEBHOOK || '';
 const MOD_WEBHOOK = process.env.MOD_WEBHOOK || process.env.DISCORD_MOD_WEBHOOK || '';
 const MOD_WATCHER_SECRET = process.env.MOD_WATCHER_SECRET || '';
+const MOD_WATCHER_ENABLED = (process.env.MOD_WATCHER_ENABLED || '1') !== '0';
 const BLACKLIST_WEBHOOK = process.env.BLACKLIST_WEBHOOK || process.env.ADMIN_WEBHOOK || process.env.ADMIN_TASK_WEBHOOK || '';
 const BOT_API_URL = (process.env.BOT_API_URL || 'http://78.154.103.23:14071').replace(/\/$/, '');
 const BOT_API_SECRET = process.env.BOT_API_SECRET || '';
@@ -1202,6 +1203,20 @@ const server = http.createServer(async (req, res) => {
 
 server.listen(PORT, () => {
   console.log('Listening on', PORT);
+
+  // Mod-Watcher direkt mit dem Hauptservice starten.
+  // Dadurch ist kein zweiter Render-Service nötig.
+  if (MOD_WATCHER_ENABLED && MOD_WEBHOOK) {
+    try {
+      console.log('[MOD-WATCHER] Starte Mod-Watcher …');
+      require('./mod-watcher/index.js');
+    } catch (e) {
+      console.error('[MOD-WATCHER] Start fehlgeschlagen:', e);
+    }
+  } else if (MOD_WATCHER_ENABLED) {
+    console.warn('[MOD-WATCHER] Nicht gestartet: MOD_WEBHOOK fehlt.');
+  }
+
   if (db.configured()) {
     db.ensureSchema().catch(e => console.error('[DB] Einrichtung fehlgeschlagen:', e.message));
   } else {
