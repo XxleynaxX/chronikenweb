@@ -669,40 +669,51 @@
       position: relative;
     }
 
+    /* Admin-Kacheln: Die Bilder haben unterschiedliche Seitenverhältnisse und
+       den Text eingebrannt. Jede Kachel bekommt daher das echte Format ihres
+       Bildes (--r = Breite/Höhe), alle Kacheln haben dieselbe Höhe (--h),
+       nichts wird abgeschnitten. */
     .admin-tiles {
-      display: grid;
-      grid-template-columns: repeat(3, minmax(0, 1fr));
+      container-type: inline-size;
+      display: flex;
+      flex-direction: column;
       gap: 1rem;
+    }
+    .admin-row {
+      --gap: 1rem;
+      --h: calc((100cqw - 2 * var(--gap)) / 4.86); /* Zeile 1: Summe der Formate ≈ 4.853 */
+      display: flex;
+      justify-content: center;
+      gap: var(--gap);
     }
     .admin-tile {
       display: block;
+      flex: 0 0 auto;
+      width: calc(var(--r) * var(--h));
+      height: var(--h);
       text-decoration: none;
       color: var(--text);
-      background: #1a0b2e;
-      border: 1px solid rgba(167, 139, 250, 0.35);
+      background: #12081f;
       border-radius: 14px;
       padding: 0;
       overflow: hidden;
-      aspect-ratio: 372 / 329;
-      transition: transform .25s ease, border-color .25s ease, box-shadow .25s ease;
+      transition: transform .25s ease, box-shadow .25s ease;
       box-shadow: 0 4px 22px rgba(0, 0, 0, 0.35), 0 0 0 1px rgba(139, 92, 246, 0.12);
     }
     .admin-tile:hover {
       transform: translateY(-3px);
-      border-color: rgba(192, 132, 252, 0.7);
       box-shadow: 0 16px 40px rgba(139, 92, 246, 0.38), 0 0 24px rgba(168, 85, 247, 0.22);
     }
     .admin-tile-card {
       display: block;
       width: 100%;
       height: 100%;
-      object-fit: cover;
-      object-position: center;
+      object-fit: fill; /* Kachel hat exakt das Bildformat, daher keine Verzerrung/Beschnitt */
       transition: transform .45s ease, filter .35s ease;
       filter: saturate(0.95) brightness(0.97);
     }
     .admin-tile:hover .admin-tile-card {
-      transform: scale(1.04);
+      transform: scale(1.03);
       filter: saturate(1.08) brightness(1.05);
     }
 
@@ -713,10 +724,11 @@
       display: none;
     }
     @media (max-width: 800px) {
-      .admin-tiles { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      /* Schmale Bildschirme: eine Kachel pro Zeile, volle Breite, Originalformat */
+      .admin-row { flex-direction: column; align-items: center; }
+      .admin-tile { width: min(100%, 520px); height: auto; aspect-ratio: var(--r); }
     }
     @media (max-width: 520px) {
-      .admin-tiles { grid-template-columns: 1fr; }
       .admin-section { padding-left: 1rem; padding-right: 1rem; }
     }
 
@@ -921,11 +933,11 @@
       <a href="news.html" class="news-more">Alle News ansehen →</a>
     </section>
 
-    <section class="staedte-feature" aria-label="Städte">
-        <a href="staedte.html"><img src="assets/portal/staedte-full.svg" alt="Städte – Reiche, Heimaten und Stadtgeschichten" loading="lazy" decoding="async"></a>
-      </section>
-
-      <div class="portal-gates">
+    <div class="portal-gates">
+      <a href="staedte.html" class="gate gate--illustrated gate--cities" aria-label="Städte &amp; Reiche – Kaldheim, Rabennest, Sakura-Insel und Zahramir">
+        <img class="gate-card" src="assets/staedte/cities-preview-gate.jpg" alt="Städte &amp; Reiche" loading="lazy" decoding="async">
+        <span class="gate-cities-label"><strong>Städte &amp; Reiche</strong><em>Kaldheim · Rabennest · Sakura-Insel · Zahramir</em></span>
+      </a>
       <a href="events.html" class="gate gate--illustrated" aria-label="Events – Anstehende und vergangene Events">
         <img class="gate-card" src="assets/portal/events-full.png" alt="Events" loading="lazy" decoding="async">
       </a>
@@ -1201,13 +1213,15 @@
           <h2>🛡️ Administration</h2>
           <p class="admin-section-subtitle">Nur für Mitglieder mit Admin-Rechten sichtbar.</p>
           <div class="admin-tiles">
-
-            <a href="admin/aufgaben.html" class="admin-tile"><img class="admin-tile-card" src="assets/portal/aufgaben-full.png" alt="Aufgaben" loading="lazy" decoding="async"></a>
-            <a href="admin/projekte.html" class="admin-tile"><img class="admin-tile-card" src="assets/portal/projekte-full.png" alt="Projekte" loading="lazy" decoding="async"></a>
-            <a href="admin/tagebuch.html" class="admin-tile"><img class="admin-tile-card" src="assets/portal/admin-tagebuch-full.png" alt="Tagebuch Verwaltung" loading="lazy" decoding="async"></a>
-            <a href="admin/blacklist.html" class="admin-tile"><img class="admin-tile-card" src="assets/portal/blacklist-full.png" alt="Blacklist" loading="lazy" decoding="async"></a>
-            <a href="admin/aktivitaeten.html" class="admin-tile"><img class="admin-tile-card" src="assets/portal/aktivitaeten-full.png" alt="Aktivitäten" loading="lazy" decoding="async"></a>
-
+            <div class="admin-row">
+              <a href="admin/aufgaben.html" class="admin-tile" style="--r:1.255"><img class="admin-tile-card" src="assets/portal/aufgaben-full.png" alt="Aufgaben" loading="lazy" decoding="async"></a>
+              <a href="admin/projekte.html" class="admin-tile" style="--r:1.843"><img class="admin-tile-card" src="assets/portal/projekte-full.png" alt="Projekte" loading="lazy" decoding="async"></a>
+              <a href="admin/tagebuch.html" class="admin-tile" style="--r:1.755"><img class="admin-tile-card" src="assets/portal/admin-tagebuch-full.png" alt="Tagebuch Verwaltung" loading="lazy" decoding="async"></a>
+            </div>
+            <div class="admin-row">
+              <a href="admin/blacklist.html" class="admin-tile" style="--r:1.760"><img class="admin-tile-card" src="assets/portal/blacklist-full.png" alt="Blacklist" loading="lazy" decoding="async"></a>
+              <a href="admin/aktivitaeten.html" class="admin-tile" style="--r:1.715"><img class="admin-tile-card" src="assets/portal/aktivitaeten-full.png" alt="Aktivitäten" loading="lazy" decoding="async"></a>
+            </div>
           </div>`;
         section.hidden = false;
         section.style.setProperty("display", "block", "important");

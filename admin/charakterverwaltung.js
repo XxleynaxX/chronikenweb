@@ -294,7 +294,7 @@
   }
 
   const SHEET_FIELDS=[
-    ["Allgemein",[["Charaktername","name"],["Discord","discordName"],["Steam-ID","steamId"],["Geburtstag","@birthday"],["Alter","age"],["Geschlecht","gender"],["Größe","size"],["Gesinnung","alignment"],["Gott/Göttin","god"]]],
+    ["Allgemein",[["Charaktername","name"],["Discord","discordName"],["Steam-ID","steamId"],["Geburtstag","@birthday"],["Alter","age"],["Geschlecht","gender"],["Größe","size"],["Heimatstadt","@city"],["Gesinnung","alignment"],["Gott/Göttin","god"]]],
     ["Volk & Beruf",[["Volk","race"],["Unterarten","subraces"],["Hauptberuf","mainJob"],["Nebenberuf","subJob"]]],
     ["Verwandlung & Magie",[["Verwandlung","transformInput"],["Magieschulen","magicSchools"],["Magie-Details","magicDetails"],["Magieregeln akzeptiert","@magicRules"]]],
     ["Aussehen & Anhängsel",[["Haare","hairInput"],["Augen","eyesInput"],["Aussehen","appearanceInput"],["Ohren","earsInput"],["Flügel","wingsInput"],["Schwanz","tailInput"],["Sonstiges","otherInput"]]],
@@ -306,6 +306,7 @@
     if(key==="@magicRules")return d.magicRulesAccepted?"Ja"+(d.verifiedUsername?" – von "+d.verifiedUsername:""):"";
     if(key==="@sizeOk")return d.sizeConfirmed?"Ja"+(d.sizeVerifiedUsername?" – von "+d.sizeVerifiedUsername:""):"";
     if(key==="@consent")return d.consentAccepted?"Ja"+(d.consentVerifiedUsername?" – von "+d.consentVerifiedUsername:""):"";
+    if(key==="@city"){const id=d.cityId||"";const list=Array.isArray(window.CHRONIKEN_DEFAULT_CITIES)?window.CHRONIKEN_DEFAULT_CITIES:[];const c=list.find(x=>x.id===id);return c?c.name:(d.cityName||id||"");}
     const v=d[key];return Array.isArray(v)?v.join(", "):(v==null?"":String(v));
   }
 
@@ -364,7 +365,7 @@
     body.innerHTML=list.slice().sort((a,b)=>(a.id||"").localeCompare(b.id||"")).map(c=>{
       const w=Number(c.warnings)||0;
       const violationText=violationTexts(c).length?violationTexts(c).map(x=>esc(x)).join("<br>"):"—";
-      return '<tr><td><strong class="char-id">'+esc(c.id)+'</strong></td><td><strong>'+esc(c.name)+'</strong><div class="muted">'+esc(c.race||"")+'</div>'+((c.wantsHeiler&&!c.heiler)||(c.wantsBibliothek&&!c.bibliothek)?'<div class="muted">Rollenwunsch: '+[(c.wantsHeiler&&!c.heiler)?"🩺 Heiler":"",(c.wantsBibliothek&&!c.bibliothek)?"📚 Buchschreiber":""].filter(Boolean).join(" · ")+'</div>':'')+'</td><td>'+esc(c.player||"—")+'</td><td>'+esc(c.steamId||"—")+'</td><td><span class="warn-badge '+(w===0?"zero":"")+'">'+w+'</span></td><td>'+violationText+'</td><td>'+esc(c.status||"aktiv")+'</td><td class="char-actions"><button class="btn small" data-sheet="'+esc(c.id)+'">Bogen</button><button class="btn small" data-edit="'+esc(c.id)+'">Bearbeiten</button><button class="btn small danger" data-delete="'+esc(c.id)+'">Löschen</button></td></tr>'
+      const cityLabel=c.cityName||c.cityId||(c.characterData&&c.characterData.cityName)||"";return '<tr><td><strong class="char-id">'+esc(c.id)+'</strong></td><td><strong>'+esc(c.name)+'</strong><div class="muted">'+esc(c.race||"")+(cityLabel?' · 🏛 '+esc(cityLabel):'')+'</div>'+((c.wantsHeiler&&!c.heiler)||(c.wantsBibliothek&&!c.bibliothek)?'<div class="muted">Rollenwunsch: '+[(c.wantsHeiler&&!c.heiler)?"🩺 Heiler":"",(c.wantsBibliothek&&!c.bibliothek)?"📚 Buchschreiber":""].filter(Boolean).join(" · ")+'</div>':'')+'</td><td>'+esc(c.player||"—")+'</td><td>'+esc(c.steamId||"—")+'</td><td><span class="warn-badge '+(w===0?"zero":"")+'">'+w+'</span></td><td>'+violationText+'</td><td>'+esc(c.status||"aktiv")+'</td><td class="char-actions"><button class="btn small" data-sheet="'+esc(c.id)+'">Bogen</button><button class="btn small" data-edit="'+esc(c.id)+'">Bearbeiten</button><button class="btn small danger" data-delete="'+esc(c.id)+'">Löschen</button></td></tr>'
     }).join("");
     body.querySelectorAll("[data-sheet]").forEach(b=>b.onclick=()=>openSheet(b.dataset.sheet));
     body.querySelectorAll("[data-edit]").forEach(b=>b.onclick=()=>editChar(b.dataset.edit));
@@ -387,7 +388,7 @@
   async function editChar(id){
     const all=await remoteCharsOrAlert();if(!all)return;const c=all.find(x=>x.id===id);if(!c)return;
     get("charAdminEditId").value=c.id;get("charAdminId").value=c.id;get("charAdminName").value=c.name||"";
-    get("charAdminPlayer").value=c.player||"";get("charAdminSteam").value=c.steamId||"";get("charAdminRace").value=c.race||"";
+    get("charAdminPlayer").value=c.player||"";get("charAdminSteam").value=c.steamId||"";get("charAdminRace").value=c.race||"";if(get("charAdminCity"))get("charAdminCity").value=c.cityId||(c.characterData&&c.characterData.cityId)||"";
     get("charAdminWarnings").value=c.warnings??0;get("charAdminStatus").value=c.status||"aktiv";get("charAdminDiscord").value=c.discordName||"";get("charAdminHeiler").checked=!!c.heiler;get("charAdminBibliothek").checked=!!c.bibliothek;get("charAdminViolation").value=c.violationIds?.join(", ")||c.violation||"";updateViolationPreview();get("charAdminNotes").value=c.notes||"";
     get("charAdminTitle").textContent="Charakter bearbeiten · "+c.id;get("charAdminSave").textContent="Änderungen speichern";get("charAdminCancel").hidden=false;
     get("charAdminName").focus();
@@ -457,9 +458,13 @@
       const resolvedKnown=resolvedViolations.filter(r=>r.text && r.text!=="Unbekannte Regel-ID");
       const violationDetails=resolvedKnown.map(r=>r.id+" · "+r.text);
       const violationTextsStored=resolvedKnown.map(r=>r.text);
-      const payload={name,player:get("charAdminPlayer").value.trim(),discordName:get("charAdminDiscord").value.trim(),steamId:get("charAdminSteam").value.trim(),race:get("charAdminRace").value,status:get("charAdminStatus").value,warnings:Math.max(0,parseInt(get("charAdminWarnings").value,10)||0),violation:violationIds.join(", "),violationIds,violationDetails,violationTexts:violationTextsStored,notes:get("charAdminNotes").value.trim(),heiler:get("charAdminHeiler").checked,bibliothek:get("charAdminBibliothek").checked,updatedAt:new Date().toISOString()};
+      const cityId=get("charAdminCity")?get("charAdminCity").value:"";
+      const cityList=Array.isArray(window.CHRONIKEN_DEFAULT_CITIES)?window.CHRONIKEN_DEFAULT_CITIES:[];
+      const cityObj=cityList.find(x=>x.id===cityId);
+      const cityName=cityObj?cityObj.name:"";
+      const payload={name,player:get("charAdminPlayer").value.trim(),discordName:get("charAdminDiscord").value.trim(),steamId:get("charAdminSteam").value.trim(),race:get("charAdminRace").value,cityId,cityName,status:get("charAdminStatus").value,warnings:Math.max(0,parseInt(get("charAdminWarnings").value,10)||0),violation:violationIds.join(", "),violationIds,violationDetails,violationTexts:violationTextsStored,notes:get("charAdminNotes").value.trim(),heiler:get("charAdminHeiler").checked,bibliothek:get("charAdminBibliothek").checked,updatedAt:new Date().toISOString()};
       let saved,type="created";
-      if(editId){const i=list.findIndex(c=>c.id===editId);if(i<0)return;list[i]={...list[i],...payload};saved=list[i];type=payload.violation!==old?.violation||payload.warnings>(Number(old?.warnings)||0)?"violation":"updated"}
+      if(editId){const i=list.findIndex(c=>c.id===editId);if(i<0)return;const prev=list[i];const merged={...prev,...payload};if(prev.characterData&&typeof prev.characterData==="object"){merged.characterData={...prev.characterData,cityId:payload.cityId,cityName:payload.cityName};}list[i]=merged;saved=list[i];type=payload.violation!==old?.violation||payload.warnings>(Number(old?.warnings)||0)?"violation":"updated"}
       else{saved={id:nextId(list),createdAt:new Date().toISOString(),...payload};list.push(saved)}
       if(!await writeChars(list)){alert("Speichern in der Datenbank fehlgeschlagen – bitte erneut anmelden / später versuchen. Der Eintrag wurde NICHT zentral gespeichert.");return}
       await syncDiscordNameToSheet(saved);

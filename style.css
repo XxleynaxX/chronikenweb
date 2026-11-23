@@ -1136,5 +1136,64 @@ nav .nav-menu button[data-logout] { color: #fda4af; border-top: 1px solid var(--
 
 
 /* Städte-Portalbild: bewusst keine Kachel */
-.staedte-feature{max-width:1100px;margin:0 auto 2rem;border:1px solid rgba(168,85,247,.4);border-radius:18px;overflow:hidden;background:rgba(12,7,23,.8);box-shadow:0 18px 45px rgba(0,0,0,.35)}
-.staedte-feature a{display:block;line-height:0}.staedte-feature img{display:block;width:100%;height:auto;max-height:520px;object-fit:cover;transition:transform .35s ease}.staedte-feature a:hover img{transform:scale(1.015)}
+/* Städte-Kacheln auf der Startseite: vier Bilder im Originalformat (784:1168), nichts wird beschnitten */
+.staedte-feature{max-width:1100px;margin:0 auto 2rem;padding:0 1.5rem}
+.staedte-head{display:flex;align-items:baseline;justify-content:space-between;gap:1rem;flex-wrap:wrap;margin-bottom:1rem}
+.staedte-head h2{margin:0;color:var(--purple-bright,#c084fc);font-size:1.4rem}
+.staedte-head a{color:var(--text-muted,#b794f4);font-size:.92rem;text-decoration:none}
+.staedte-head a:hover{color:#f3e8ff}
+.city-showcase{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:1rem}
+.city-tile{position:relative;display:block;aspect-ratio:784/1168;border-radius:14px;overflow:hidden;background:#12081f;border:1px solid rgba(168,85,247,.4);box-shadow:0 4px 22px rgba(0,0,0,.35);text-decoration:none;transition:transform .25s ease,box-shadow .25s ease,border-color .25s ease}
+.city-tile:hover,.city-tile:focus-visible{transform:translateY(-4px);border-color:rgba(192,132,252,.8);box-shadow:0 16px 40px rgba(139,92,246,.4),0 0 24px rgba(168,85,247,.22);outline:none}
+.city-tile img{display:block;width:100%;height:100%;object-fit:cover;transition:transform .45s ease,filter .35s ease;filter:saturate(.98) brightness(.97)}
+.city-tile:hover img{transform:scale(1.04);filter:saturate(1.1) brightness(1.06)}
+.city-tile-label{position:absolute;left:0;right:0;bottom:0;padding:2.6rem 1rem .95rem;text-align:center;background:linear-gradient(to top,rgba(10,4,20,.94) 0%,rgba(10,4,20,.72) 55%,transparent 100%);pointer-events:none}
+.city-tile-label strong{display:block;color:#f8f0ff;font-family:Georgia,'Cinzel',serif;font-size:1.25rem;letter-spacing:.03em;text-shadow:0 2px 10px rgba(0,0,0,.85)}
+.city-tile-label span{display:block;margin-top:.15rem;color:#d8b4fe;font-size:.82rem;font-style:italic}
+@media(max-width:900px){.city-showcase{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:520px){.staedte-feature{padding:0 1rem}.city-showcase{gap:.7rem}.city-tile-label{padding:2rem .5rem .7rem}.city-tile-label strong{font-size:1.05rem}.city-tile-label span{font-size:.74rem}}
+.city-showcase--single{grid-template-columns:1fr;max-width:640px;margin:0 auto}
+.city-tile--preview{aspect-ratio:1/1}
+.city-tile--preview img{object-fit:cover}
+.city-tile--preview .city-tile-label strong{font-size:1.45rem}
+.city-tile--preview .city-tile-label span{font-size:.9rem;letter-spacing:.02em}
+@media(max-width:520px){.city-showcase--single{max-width:100%}.city-tile--preview .city-tile-label strong{font-size:1.15rem}.city-tile--preview .city-tile-label span{font-size:.78rem}}
+
+/* Städte-Kachel im Portal-Grid (gleiche Größe wie andere Gates) */
+.portal-gates .gate.gate--cities{
+  position:relative;
+  aspect-ratio:372/329;
+}
+.portal-gates .gate.gate--cities .gate-card{
+  width:100%;
+  height:100%;
+  aspect-ratio:372/329;
+  object-fit:cover;
+  object-position:center;
+  display:block;
+}
+.portal-gates .gate.gate--cities .gate-cities-label{
+  position:absolute;
+  left:0;right:0;bottom:0;
+  padding:1.6rem .75rem .7rem;
+  text-align:center;
+  background:linear-gradient(to top,rgba(10,4,20,.95) 0%,rgba(10,4,20,.7) 55%,transparent 100%);
+  pointer-events:none;
+  z-index:2;
+}
+.portal-gates .gate.gate--cities .gate-cities-label strong{
+  display:block;
+  color:#f8f0ff;
+  font-family:Georgia,'Cinzel',serif;
+  font-size:1.05rem;
+  letter-spacing:.03em;
+  text-shadow:0 2px 8px rgba(0,0,0,.85);
+}
+.portal-gates .gate.gate--cities .gate-cities-label em{
+  display:block;
+  margin-top:.15rem;
+  color:#d8b4fe;
+  font-size:.72rem;
+  font-style:italic;
+  font-weight:normal;
+}

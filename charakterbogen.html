@@ -401,6 +401,68 @@ textarea { min-height: 120px; resize: vertical; }
 @media(max-width: 700px) {
     .grid, .info-list { grid-template-columns: 1fr; }
 }
+
+.img-city-badge {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-top: 12px;
+  padding: 8px 10px;
+  border-radius: 10px;
+  background: rgba(88, 28, 135, 0.35);
+  border: 1px solid rgba(168, 85, 247, 0.4);
+}
+.img-city-badge img {
+  width: 52px;
+  height: 78px;
+  object-fit: cover;
+  border-radius: 6px;
+  border: 1px solid rgba(192, 132, 252, 0.5);
+}
+.img-city-badge span {
+  color: #f3e8ff;
+  font-weight: bold;
+  font-size: 0.95rem;
+}
+.city-info-modal {
+  display: none;
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  background: rgba(0,0,0,.72);
+  align-items: center;
+  justify-content: center;
+  padding: 1rem;
+}
+.city-info-modal.open { display: flex; }
+.city-info-box {
+  max-width: 720px;
+  width: 100%;
+  max-height: 90vh;
+  overflow: auto;
+  background: linear-gradient(145deg, #1a0b2e, #0c0718);
+  border: 1px solid rgba(168,85,247,.5);
+  border-radius: 16px;
+  padding: 1.2rem 1.4rem 1.4rem;
+  box-shadow: 0 20px 50px rgba(0,0,0,.5);
+}
+.city-info-box h3 { margin: 0 0 .4rem; color: #f5eaff; font-family: Georgia, serif; }
+.city-info-box .sub { color: #d8b4fe; font-style: italic; margin-bottom: .8rem; }
+.city-info-grid { display: grid; grid-template-columns: 140px 1fr; gap: 1rem; margin-bottom: 1rem; }
+.city-info-grid img { width: 140px; height: 210px; object-fit: cover; border-radius: 10px; border: 1px solid rgba(168,85,247,.4); }
+.city-info-details label { display: block; color: #a78bfa; font-size: .75rem; margin-top: .35rem; }
+.city-info-details span { color: #eee6f8; font-size: .9rem; }
+.city-info-lore { color: #ddd6fe; font-size: .88rem; line-height: 1.5; margin-top: .6rem; }
+.city-info-actions { display: flex; gap: .6rem; justify-content: flex-end; margin-top: 1rem; flex-wrap: wrap; }
+.city-info-list { display: grid; gap: .8rem; }
+.city-info-card {
+  display: grid; grid-template-columns: 72px 1fr auto; gap: .75rem; align-items: center;
+  padding: .6rem; border-radius: 12px; border: 1px solid rgba(168,85,247,.35); background: rgba(36,16,62,.6); cursor: pointer;
+}
+.city-info-card:hover { border-color: rgba(192,132,252,.7); background: rgba(88,28,135,.35); }
+.city-info-card img { width: 72px; height: 108px; object-fit: cover; border-radius: 8px; }
+.city-info-card strong { color: #f8f0ff; display: block; }
+.city-info-card span { color: #d8b4fe; font-size: .82rem; font-style: italic; }
 </style>
 </head>
 <body>
@@ -506,6 +568,24 @@ textarea { min-height: 120px; resize: vertical; }
                         <span class="info-note">(Klicke ℹ️ für Größenvergleich)</span>
                     </label>
                     <input id="size" type="text" placeholder="z. B. 1,75 m">
+                </div>
+                <div class="field full">
+                    <label>
+                        Heimatstadt / Reich
+                        <button type="button" class="info-button" onclick="openCityInfo()" title="Infos zu den Städten">i</button>
+                        <span class="info-note">(Klicke ℹ️ für Stadt-Infos)</span>
+                    </label>
+                    <select id="cityId" onchange="onCityChange()">
+                        <option value="">– Stadt wählen –</option>
+                        <option value="kaldheim">Kaldheim – Die Stadt des ewigen Winters</option>
+                        <option value="rabennest">Rabennest – Heimat der Vlachara</option>
+                        <option value="sakura">Sakura-Insel – Land der Kitsunen-Damen</option>
+                        <option value="zahramir">Zahramir – Die Stadt des goldenen Sandes</option>
+                    </select>
+                    <div id="cityPreview" class="city-preview" style="display:none;margin-top:10px;">
+                        <img id="cityPreviewImg" alt="" style="width:120px;height:180px;object-fit:cover;border-radius:10px;border:1px solid rgba(168,85,247,.45);box-shadow:0 4px 16px rgba(0,0,0,.35);">
+                        <div id="cityPreviewText" style="margin-top:6px;color:#d8b4fe;font-size:.9rem;"></div>
+                    </div>
                 </div>
                 <div class="field full">
                     <label>🎂 Geburtstag (Ingame-Kalender)</label>
@@ -1010,6 +1090,11 @@ textarea { min-height: 120px; resize: vertical; }
                     <div class="img-field-row"><span class="img-field-label">Geschlecht:</span> <span id="imgGender">-</span></div>
                     <div class="img-field-row"><span class="img-field-label">Größe:</span> <span id="imgSize">-</span></div>
                     <div class="img-field-row"><span class="img-field-label">Gesinnung:</span> <span id="imgAlignment">-</span></div>
+                    <div class="img-field-row"><span class="img-field-label">Heimatstadt:</span> <span id="imgCity">-</span></div>
+                </div>
+                <div id="imgCityBadge" class="img-city-badge" style="display:none;">
+                    <img id="imgCityImg" alt="" src="">
+                    <span id="imgCityName"></span>
                 </div>
                 <div id="imgSizeStatus" class="img-status-badge" style="display:none;"></div>
             </div>
@@ -1663,6 +1748,22 @@ function generateCharacterFinal() {
     document.getElementById("imgGender").textContent = document.getElementById("gender").value || "-";
     document.getElementById("imgSize").textContent = document.getElementById("size").value || "-";
     document.getElementById("imgAlignment").textContent = document.getElementById("alignment").value || "-";
+    const cityIdVal = document.getElementById("cityId")?.value || "";
+    const cityObj = typeof getCityById === "function" ? getCityById(cityIdVal) : null;
+    const cityNameVal = cityObj ? cityObj.name : (cityIdVal || "-");
+    if (document.getElementById("imgCity")) document.getElementById("imgCity").textContent = cityNameVal || "-";
+    const cityBadge = document.getElementById("imgCityBadge");
+    const cityImg = document.getElementById("imgCityImg");
+    const cityNameEl = document.getElementById("imgCityName");
+    if (cityBadge) {
+      if (cityObj && cityObj.image) {
+        cityBadge.style.display = "flex";
+        if (cityImg) { cityImg.src = cityObj.image; cityImg.alt = cityObj.name || ""; }
+        if (cityNameEl) cityNameEl.textContent = cityObj.name || "";
+      } else {
+        cityBadge.style.display = "none";
+      }
+    }
     document.getElementById("imgGod").textContent = document.getElementById("god")?.value || "-";
 
     // Größen-Status
@@ -1851,6 +1952,8 @@ function registerCharacterInManagement(data, centralList) {
         wantsHeiler: !!data.wantsHeiler,
         wantsBibliothek: !!data.wantsBibliothek,
         race: data.race || "",
+        cityId: data.cityId || "",
+        cityName: data.cityName || "",
         god: data.god || "",
         mainJob: data.mainJob || "",
         subJob: data.subJob || "",
@@ -2340,6 +2443,67 @@ function registerBirthdayForEvents(data) {
 }
 
 
+
+/* ===================== STADT / HEIMAT ===================== */
+function getCityList(){
+  return Array.isArray(window.CHRONIKEN_DEFAULT_CITIES) ? window.CHRONIKEN_DEFAULT_CITIES : [];
+}
+function getCityById(id){
+  return getCityList().find(c => c.id === id) || null;
+}
+function onCityChange(){
+  const id = document.getElementById("cityId")?.value || "";
+  const box = document.getElementById("cityPreview");
+  const img = document.getElementById("cityPreviewImg");
+  const txt = document.getElementById("cityPreviewText");
+  const c = getCityById(id);
+  if(!c || !box){ if(box) box.style.display = "none"; return; }
+  box.style.display = "block";
+  if(img){ img.src = c.image || ""; img.alt = c.name || ""; }
+  if(txt){ txt.textContent = (c.subtitle || "") + (c.short ? " — " + c.short : ""); }
+}
+function openCityInfo(focusId){
+  const modal = document.getElementById("cityInfoModal");
+  const body = document.getElementById("cityInfoBody");
+  const title = document.getElementById("cityInfoTitle");
+  if(!modal || !body) return;
+  const list = getCityList();
+  const selected = focusId || document.getElementById("cityId")?.value || "";
+  if(selected && getCityById(selected)){
+    renderCityInfoDetail(selected);
+  } else {
+    title.textContent = "Städte & Reiche";
+    body.innerHTML = '<p style="color:#c4b5fd;margin:0 0 .8rem;">Wähle eine Stadt als Heimat deines Charakters. Tippe auf eine Karte für Details.</p><div class="city-info-list">' +
+      list.map(c => `<div class="city-info-card" onclick="renderCityInfoDetail('${c.id}')"><img src="${c.image||''}" alt=""><div><strong>${c.name||''}</strong><span>${c.subtitle||''}</span></div><button type="button" class="secondary-button" style="width:auto;padding:6px 10px;font-size:12px;" onclick="event.stopPropagation();selectCity('${c.id}')">Wählen</button></div>`).join("") +
+      '</div>';
+  }
+  modal.classList.add("open");
+}
+function renderCityInfoDetail(id){
+  const c = getCityById(id);
+  const body = document.getElementById("cityInfoBody");
+  const title = document.getElementById("cityInfoTitle");
+  if(!c || !body) return;
+  title.textContent = c.name || "Stadt";
+  const details = (c.details||[]).map(r => `<div><label>${r[0]||""}</label><span>${r[1]||""}</span></div>`).join("");
+  const lore = (c.lore||[]).map(p => `<p>${p}</p>`).join("");
+  body.innerHTML = `<div class="city-info-grid"><img src="${c.image||''}" alt="${c.name||''}"><div class="city-info-details"><div class="sub">${c.subtitle||""}</div>${details}<div class="city-info-lore">${lore}</div></div></div>
+    <div class="city-info-actions"><button type="button" class="secondary-button" onclick="openCityInfo('')">← Alle Städte</button>
+    <button type="button" class="secondary-button" onclick="selectCity('${c.id}')">Diese Stadt wählen</button></div>`;
+}
+function selectCity(id){
+  const sel = document.getElementById("cityId");
+  if(sel){ sel.value = id; onCityChange(); }
+  closeCityInfo();
+}
+function closeCityInfo(){
+  document.getElementById("cityInfoModal")?.classList.remove("open");
+}
+function cityLabelFromId(id){
+  const c = getCityById(id);
+  return c ? c.name : (id || "");
+}
+
 /* ===================== LOCALSTORAGE & JSON ===================== */
 function collectCharacterData() {
     return {
@@ -2387,7 +2551,9 @@ function collectCharacterData() {
         consentVerifiedUsername: consentVerifiedUsername,
         birthdayDay: document.getElementById("birthdayDay") ? document.getElementById("birthdayDay").value : "",
         birthdayMonth: document.getElementById("birthdayMonth") ? document.getElementById("birthdayMonth").value : "",
-        birthdayYear: document.getElementById("birthdayYear") ? document.getElementById("birthdayYear").value : ""
+        birthdayYear: document.getElementById("birthdayYear") ? document.getElementById("birthdayYear").value : "",
+        cityId: document.getElementById("cityId") ? document.getElementById("cityId").value : "",
+        cityName: (function(){ const id = document.getElementById("cityId") ? document.getElementById("cityId").value : ""; return cityLabelFromId(id); })()
     };
 }
 
@@ -2405,6 +2571,10 @@ function applyCharacterData(data) {
     document.getElementById("age").value = data.age || "";
     document.getElementById("gender").value = data.gender || "";
     document.getElementById("size").value = data.size || "";
+    if (document.getElementById("cityId")) {
+        document.getElementById("cityId").value = data.cityId || "";
+        try { onCityChange(); } catch (e) {}
+    }
     if (document.getElementById("birthdayDay")) {
         document.getElementById("birthdayDay").value = data.birthdayDay || "";
         document.getElementById("birthdayMonth").value = (data.birthdayMonth !== undefined && data.birthdayMonth !== null) ? data.birthdayMonth : "";
@@ -2606,6 +2776,18 @@ document.addEventListener("DOMContentLoaded", () => { renderDynamicRaceOptions()
   <p>© 2026 Kiyasha · Chroniken – Alle Rechte vorbehalten · <a href="#" class="legal-link" onclick="openLegalNotice(); return false;">Hinweis</a></p>
 </footer>
 
+
+<div id="cityInfoModal" class="city-info-modal" onclick="if(event.target===this)closeCityInfo()">
+  <div class="city-info-box" role="dialog" aria-modal="true" aria-labelledby="cityInfoTitle">
+    <h3 id="cityInfoTitle">Städte &amp; Reiche</h3>
+    <div id="cityInfoBody"></div>
+    <div class="city-info-actions">
+      <button type="button" class="secondary-button" onclick="closeCityInfo()">Schließen</button>
+    </div>
+  </div>
+</div>
+
+<script src="chroniken-staedte.js?v=20261123-1"></script>
 <script src="chroniken-storage.js?v=20261108-2"></script>
 <script src="chroniken-sync.js?v=20261108-2"></script>
 <script src="legal-notice.js"></script>
