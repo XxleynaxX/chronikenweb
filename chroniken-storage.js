@@ -165,10 +165,10 @@
   }
 
   async function ensureMain() {
-    const all = await loadMany(["wiki","bibliothek","voelker","berufe","goetter","kreaturen","regeln","news"]);
+    const all = await loadMany(["wiki","bibliothek","voelker","berufe","goetter","kreaturen","regeln","news","staedte"]);
     return {
       wiki:all.wiki, bibliothek:all.library, voelker:all.races, berufe:all.professions,
-      goetter:all.gods, kreaturen:all.creatures, regeln:all.rules, news:all.news
+      goetter:all.gods, kreaturen:all.creatures, regeln:all.rules, news:all.news, staedte:all.cities
     };
   }
 
