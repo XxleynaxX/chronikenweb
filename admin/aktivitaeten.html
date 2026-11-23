@@ -11,6 +11,7 @@
 </div>
 <div class="nav-group"><div class="nav-title">System</div>
 <a class="active" href="aktivitaeten.html"><span>📜</span><span><b>Aktivitäten</b><small>Änderungsverlauf</small></span></a>
+<a href="../staedte.html"><span>🏰</span><span><b>Städte</b><small>Städte verwalten</small></span></a>
 <a href="../index.html"><span>↩</span><span><b>Zur Webseite</b><small>Admin verlassen</small></span></a>
 </div>
 </nav></aside><main class="main"><header class="top"><div><h1>Aktivitäten</h1><p>Wer hat was im Admin-System geändert?</p></div></header><section id="locked" class="panel locked" hidden><h2>🔒 Nur für Admins</h2><a class="btn" id="login">Mit Discord anmelden</a></section><div id="app" hidden><section class="panel"><div id="list"></div></section></div></main></div><script src="admin.js"></script><script>(async()=>{if(!await guard())return;const d=await api('/admin/activity?limit=200');document.getElementById('list').innerHTML=(d.activities||[]).map(a=>'<div class="activity"><strong>'+esc(a.action)+'</strong><div class="muted">Discord: '+esc(a.discord_id)+' · '+fmtDate(a.created_at)+'</div><div>'+esc(a.details||'')+'</div></div>').join('')||'<div class="muted">Keine Aktivitäten.</div>'})()</script></body></html>
