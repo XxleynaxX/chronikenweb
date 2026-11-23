@@ -40,7 +40,8 @@ INSERT INTO chroniken_data (`key`, `value`, label, description) VALUES
   ('characters',        JSON_ARRAY(),  'Charakter-Register',     'Öffentliches Charakter-Register'),
   ('character_sheets',  JSON_ARRAY(),  'Charakterbögen',         'Ausgefüllte Charakterbögen'),
   ('healer_records',    JSON_ARRAY(),  'Heilerakten',            'Medizinische RP-Aufzeichnungen'),
-  ('map',               JSON_ARRAY(),  'Karte',                  'Kartenmarker und Orte')
+  ('map',               JSON_ARRAY(),  'Karte',                  'Kartenmarker und Orte'),
+  ('cities',            JSON_ARRAY(),  'Städte',                 'Städte, Reiche und Stadt-Lore')
 ON DUPLICATE KEY UPDATE label = VALUES(label), description = VALUES(description);
 
 -- Übersicht: Schlüssel + Anzahl Einträge
