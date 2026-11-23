@@ -40,6 +40,7 @@ const KEYS = {
   character_sheets:  { label: 'Charakterbögen',         description: 'Ausgefüllte Charakterbögen',                             type: 'array',  write: 'public' },
   healer_records:    { label: 'Heilerakten',            description: 'Medizinische RP-Aufzeichnungen',                         type: 'array',  write: 'healer' },
   map:               { label: 'Karte',                  description: 'Kartenmarker und Orte',                                  type: 'array',  write: 'lib' },
+  cities:            { label: 'Städte',                 description: 'Städte, Reiche und Stadt-Lore',                           type: 'array',  write: 'admin' },
   admin_projects:       { label: 'Admin · Projekte',        description: 'Projekte der Administration',                       type: 'array', write: 'admin' },
   admin_tasks:          { label: 'Admin · Aufgaben',        description: 'Aufgaben der Administration',                       type: 'array', write: 'admin' },
   admin_task_comments:  { label: 'Admin · Kommentare',      description: 'Kommentare zu Admin-Aufgaben',                     type: 'array', write: 'admin' },
