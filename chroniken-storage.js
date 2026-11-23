@@ -29,7 +29,7 @@
     news:"news", events:"events", characterEvents:"character_events",
     birthdays:"birthdays", calendar:"calendar", disabledHolidays:"disabled_holidays",
     weather:"weather", moon:"moon", characters:"characters",
-    characterSheets:"character_sheets", heiler:"healer_records", map:"map", characterSubmission:"character_submission"
+    characterSheets:"character_sheets", heiler:"healer_records", map:"map", staedte:"cities", cities:"cities", characterSubmission:"character_submission"
   };
 
   const OBJECT_KEYS = new Set(["weather", "moon"]);
@@ -193,7 +193,7 @@
     options = options || {};
     const overwrite = options.overwrite === true;
     const keys = ["characters","characterSheets","events","birthdays","calendar","disabledHolidays",
-      "voelker","berufe","goetter","kreaturen","bibliothek","wiki","regeln","heiler","weather","news","map","characterEvents"];
+      "voelker","berufe","goetter","kreaturen","bibliothek","wiki","regeln","heiler","weather","news","map","staedte","characterEvents"];
     const report = { imported:[], skipped:[], empty:[], failed:[] };
     let existing;
     try { existing = Object.assign(Object.create(null), await fetchAll()); }
