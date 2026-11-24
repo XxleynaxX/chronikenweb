@@ -25,7 +25,7 @@
 <main class="wrap">
 <section class="city-hero"><h1>Städte</h1><p>Die bekannten Städte und Reiche der Chroniken. Jede Stadt trägt ihre eigene Geschichte, Kultur, Landschaft und Art zu leben.</p></section>
 <section class="admin-city" id="adminCity"><div class="admin-form">
-<h2 id="formTitle">Neue Stadt</h2><p class="hint">Städte hinzufügen, einpflegen und überarbeiten</p>
+<h2 id="formTitle">Neue Stadt</h2><p class="hint">Als Admin kannst du die Stadtdaten zentral bearbeiten. Änderungen werden über ChronikenStorage in MySQL gespeichert. Der Bildpfad wird ebenfalls zentral gespeichert.</p>
 <div class="admin-toolbar"><button class="btn secondary" id="seedBtn" type="button">Standardstädte in DB übernehmen</button><button class="btn secondary" id="newBtn" type="button">+ Neue Stadt</button></div>
 <div class="city-form-grid">
 <div><label>Name *</label><input id="fName" placeholder="z. B. Kaldheim"></div><div><label>Bezeichnung</label><input id="fSubtitle" placeholder="Die Stadt des ewigen Winters"></div>
@@ -52,7 +52,7 @@ async function loadCities(){try{const r=await ChronikenStorage.load(KEY);cities=
 async function saveCities(next){$("saveStatus").textContent="Speichere …";await ChronikenStorage.save(KEY,next);cities=next;render();$("saveStatus").textContent="✓ In der Datenbank gespeichert";}
 $("saveBtn").onclick=async()=>{try{const item=readForm();await saveCities(editId?cities.map(c=>c.id===editId?item:c):cities.concat(item));resetForm();}catch(e){$("saveStatus").textContent="✕ "+e.message}};
 $("cancelBtn").onclick=resetForm;$("newBtn").onclick=resetForm;
-$("seedBtn").onclick=async()=>{if(!confirm("Die vier Standardstädte in die Datenbank übernehmen? Vorhandene Stadtdaten werden dabei ersetzt."))return;try{await saveCities(JSON.parse(JSON.stringify(window.CHRONIKEN_DEFAULT_CITIES||[])));resetForm();}catch(e){$("saveStatus").textContent="✕ "+e.message}};
+$("seedBtn").onclick=async()=>{if(!confirm("Die fünf Standardstädte in die Datenbank übernehmen? Vorhandene Stadtdaten werden dabei ersetzt."))return;try{await saveCities(JSON.parse(JSON.stringify(window.CHRONIKEN_DEFAULT_CITIES||[])));resetForm();}catch(e){$("saveStatus").textContent="✕ "+e.message}};
 $("deleteBtn").onclick=async()=>{if(!editId)return;const c=cities.find(x=>x.id===editId);if(!c||!confirm("Stadt "+c.name+" wirklich löschen?"))return;try{await saveCities(cities.filter(x=>x.id!==editId));resetForm();}catch(e){$("saveStatus").textContent="✕ "+e.message}};
 document.addEventListener("keydown",e=>{if(e.key==="Escape"){$("cityDetail").classList.remove("open");if(location.hash)history.replaceState(null,"",location.pathname+location.search);}});window.addEventListener("hashchange",openFromHash);loadCities().then(openFromHash);
 </script>
