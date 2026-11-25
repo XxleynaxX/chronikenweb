@@ -351,6 +351,20 @@ async function handleAuth(req, res, url) {
       oauthLog(requestId, 'callback', 'missing_code', callbackStartedAt, { status: 400 });
       return backWithError(res, ret, 'Kein Code von Discord erhalten.');
     }
+    // Vor dem Verbrauch des einmaligen OAuth-Codes prüfen, ob Discord
+    // bereits einen globalen Cooldown gesetzt hat. Ein Callback während
+    // eines langen 429 soll nicht noch einen Token-Exchange auslösen.
+    const oauthCooldown = discordOAuthCooldownStatus();
+    if (oauthCooldown.retryAfterMs > 0) {
+      oauthLog(requestId, 'callback', 'rate_limit_cooldown_active', callbackStartedAt, {
+        status: 429,
+        retryAfterMs: oauthCooldown.retryAfterMs,
+        resumeAt: oauthCooldown.resumeAt
+      });
+      res.setHeader('Retry-After', String(Math.ceil(oauthCooldown.retryAfterMs / 1000)));
+      return backWithError(res, ret, oauthCooldownMessage(oauthCooldown.retryAfterMs));
+    }
+
     if (!claimOAuthCallback(code)) {
       oauthLog(requestId, 'callback', 'duplicate_code_rejected', callbackStartedAt, {
         status: ret && returnAllowed(ret) ? 302 : 400
