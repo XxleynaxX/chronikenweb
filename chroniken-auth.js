@@ -19,6 +19,8 @@
   const NAME_KEY = "chroniken_discord_name";
   const USERNAME_KEY = "chroniken_discord_username";
   const HANDOFF_KEY = "chroniken_auth_handoff";
+  const SESSION_CACHE_KEY = "chroniken_auth_session_cache";
+  const SESSION_CACHE_TTL_MS = 30000;
   const POPUP_PARAM = "discord_popup";
   const DEFAULT_PROXY = "https://chronikenweb-1.onrender.com";
 
@@ -40,7 +42,8 @@
   function clear() {
     try {
       [ADMIN_KEY, LIB_KEY, HEALER_KEY, PLAYER_KEY, TOKEN_KEY, NAME_KEY,
-       "chroniken_discord_roles", "discord_roles", "discord_username", "portal_discord_user", USERNAME_KEY
+       "chroniken_discord_roles", "discord_roles", "discord_username", "portal_discord_user", USERNAME_KEY,
+       SESSION_CACHE_KEY
       ].forEach(function (k) { sessionStorage.removeItem(k); });
     } catch (e) {}
     try { localStorage.removeItem(HANDOFF_KEY); } catch (e) {}
@@ -208,18 +211,47 @@
   }
 
   // ---------- Token übernehmen ----------
+  function readSessionCache() {
+    try {
+      const raw = sessionStorage.getItem(SESSION_CACHE_KEY);
+      if (!raw) return null;
+      const cached = JSON.parse(raw);
+      if (!cached || !cached.cachedAt || Date.now() - Number(cached.cachedAt) > SESSION_CACHE_TTL_MS || !cached.info || !cached.info.ok) {
+        sessionStorage.removeItem(SESSION_CACHE_KEY);
+        return null;
+      }
+      return cached.info;
+    } catch (e) {
+      return null;
+    }
+  }
+
+  function writeSessionCache(info) {
+    try {
+      sessionStorage.setItem(SESSION_CACHE_KEY, JSON.stringify({ cachedAt: Date.now(), info: info }));
+    } catch (e) {}
+  }
+
+  async function fetchSession() {
+    const cached = readSessionCache();
+    if (cached) return cached;
+    const res = await fetch(proxyBase() + "/auth/me", {
+      cache: "no-store",
+      credentials: "include"
+    });
+    const info = await res.json().catch(function () { return {}; });
+    if (!res.ok || !info.ok) throw new Error("Session ungültig");
+    writeSessionCache(info);
+    return info;
+  }
+
   async function finish(kind, val) {
     if (finishing) return;
     if (kind === "auth_error") { setLoading(false); showError(val); return; }
     finishing = true;
     setLoading(true, "Anmeldung wird geprüft …");
     try {
-      const res = await fetch(proxyBase() + "/auth/me", {
-        cache: "no-store",
-        credentials: "include"
-      });
-      const info = await res.json().catch(function () { return {}; });
-      if (!res.ok || !info.ok) throw new Error("Session ungültig");
+      const info = await fetchSession();
       try { localStorage.removeItem(LOGOUT_KEY); } catch (e) {}
       sessionStorage.removeItem(TOKEN_KEY);
       sessionStorage.setItem(NAME_KEY, info.name || "");
@@ -380,12 +412,8 @@
 
   async function restoreSession() {
     try {
-      const res = await fetch(proxyBase() + "/auth/me", {
-        cache: "no-store",
-        credentials: "include"
-      });
-      const info = await res.json().catch(function () { return {}; });
-      if (!res.ok || !info.ok) {
+      const info = await fetchSession();
+      {
         sessionStorage.removeItem(TOKEN_KEY);
         sessionStorage.removeItem(NAME_KEY);
         sessionStorage.removeItem(ADMIN_KEY);
@@ -407,6 +435,10 @@
     }
   }
 
+  async function getSession() {
+    try { return await fetchSession(); } catch (e) { return null; }
+  }
+
   function isPlayer() {
     try { return sessionStorage.getItem(PLAYER_KEY) === "1" || sessionStorage.getItem(ADMIN_KEY) === "1"; } catch (e) { return false; }
   }
@@ -416,7 +448,7 @@
 
   let readyResolve;
   const ready = new Promise(function (r) { readyResolve = r; });
-  global.ChronikenAuth = { ready: ready, syncAdminNav: syncAdminNav, login: login, clear: clear, logout: logout, name: name, isPlayer: isPlayer, isAdmin: isAdminFlag, PLAYER_KEY: PLAYER_KEY };
+  global.ChronikenAuth = { ready: ready, syncAdminNav: syncAdminNav, login: login, clear: clear, logout: logout, name: name, isPlayer: isPlayer, isAdmin: isAdminFlag, getSession: getSession, PLAYER_KEY: PLAYER_KEY };
   async function start() {
     if (handleReturn()) { readyResolve(false); return; }
     await restoreSession();
