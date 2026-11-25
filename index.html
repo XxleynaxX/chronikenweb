@@ -1246,12 +1246,10 @@
           return;
         }
         try {
-          const res = await fetch(proxy + "/auth/me", {
-            cache: "no-store",
-            credentials: "include"
-          });
-          const info = await res.json().catch(() => ({}));
-          if (res.ok && info.ok && info.admin === true) {
+          const info = (window.ChronikenAuth && typeof ChronikenAuth.getSession === "function")
+            ? await ChronikenAuth.getSession()
+            : null;
+          if (info && info.ok && info.admin === true) {
             buildAdminUI();
             // Menüleiste (Login-Knopf) mit der Server-Prüfung abgleichen:
             // gültige Admin-Session, aber leerer sessionStorage → einmal neu laden.
@@ -1285,7 +1283,9 @@
 
       checkAdmin();
       window.addEventListener("chroniken-auth-changed", checkAdmin);
-      window.addEventListener("pageshow", checkAdmin);
+      window.addEventListener("pageshow", function(event) {
+        if (event.persisted) checkAdmin();
+      });
     })();
 
     // ===== WETTER (nur Admin) =====
