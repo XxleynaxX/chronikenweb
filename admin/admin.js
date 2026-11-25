@@ -7,14 +7,28 @@ async function api(path,options={}){
   if(!r.ok)throw new Error(d.error||'API-Fehler '+r.status);
   return d
 }
+let meCache=null;
+let meCacheAt=0;
+let meRequest=null;
+const ME_CACHE_TTL=30000;
 async function me(){
-  const controller=typeof AbortController!=='undefined'?new AbortController():null;
-  const timer=controller?setTimeout(()=>controller.abort(),8000):null;
-  try{
-    return await api('/auth/me',controller?{signal:controller.signal}:{});
-  }finally{
-    if(timer)clearTimeout(timer);
-  }
+  const now=Date.now();
+  if(meCache&&now-meCacheAt<ME_CACHE_TTL)return meCache;
+  if(meRequest)return meRequest;
+  meRequest=(async()=>{
+    const controller=typeof AbortController!=='undefined'?new AbortController():null;
+    const timer=controller?setTimeout(()=>controller.abort(),8000):null;
+    try{
+      const result=await api('/auth/me',controller?{signal:controller.signal}:{});
+      meCache=result;
+      meCacheAt=Date.now();
+      return result;
+    }finally{
+      if(timer)clearTimeout(timer);
+      meRequest=null;
+    }
+  })();
+  return meRequest;
 }
 function login(){location.href=ADMIN_API+'/auth/login?return='+encodeURIComponent(location.href.split('#')[0])}
 async function guard(){
