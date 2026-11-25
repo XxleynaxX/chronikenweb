@@ -232,17 +232,26 @@
     } catch (e) {}
   }
 
+  let sessionRequest = null;
   async function fetchSession() {
     const cached = readSessionCache();
     if (cached) return cached;
-    const res = await fetch(proxyBase() + "/auth/me", {
-      cache: "no-store",
-      credentials: "include"
-    });
-    const info = await res.json().catch(function () { return {}; });
-    if (!res.ok || !info.ok) throw new Error("Session ungültig");
-    writeSessionCache(info);
-    return info;
+    if (sessionRequest) return sessionRequest;
+    sessionRequest = (async function () {
+      try {
+        const res = await fetch(proxyBase() + "/auth/me", {
+          cache: "no-store",
+          credentials: "include"
+        });
+        const info = await res.json().catch(function () { return {}; });
+        if (!res.ok || !info.ok) throw new Error("Session ungültig");
+        writeSessionCache(info);
+        return info;
+      } finally {
+        sessionRequest = null;
+      }
+    })();
+    return sessionRequest;
   }
 
   async function finish(kind, val) {
@@ -398,7 +407,13 @@
 
   // Render-Server im Hintergrund aufwecken, damit der Klick schnell geht
   function warmUp() {
-    try { fetch(proxyBase() + "/auth/ping", { cache: "no-store" }).catch(function () {}); } catch (e) {}
+    try {
+      const key = "chroniken_auth_ping_at";
+      const last = Number(sessionStorage.getItem(key) || 0);
+      if (Date.now() - last < 30000) return;
+      sessionStorage.setItem(key, String(Date.now()));
+      fetch(proxyBase() + "/auth/ping", { cache: "no-store" }).catch(function () {});
+    } catch (e) {}
   }
 
   // Browser-Back/Forward-Cache kann eine alte, bereits angemeldete Seite
@@ -413,7 +428,7 @@
   async function restoreSession() {
     try {
       const info = await fetchSession();
-      {
+      if (!info || !info.ok) {
         sessionStorage.removeItem(TOKEN_KEY);
         sessionStorage.removeItem(NAME_KEY);
         sessionStorage.removeItem(ADMIN_KEY);
