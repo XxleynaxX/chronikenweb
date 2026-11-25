@@ -218,7 +218,10 @@
     document.getElementById('locked').hidden=true;
     document.getElementById('app').hidden=false;
     try{
-      const me=await api('/auth/me');
+      const me=(window.ChronikenAuth&&typeof ChronikenAuth.getSession==='function')
+        ? await ChronikenAuth.getSession()
+        : await api('/auth/me');
+      if(!me||!me.ok) throw new Error('Session ungültig');
       document.getElementById('diaryDiscordName').textContent=
         'Discord: '+(me.discord_username||me.discord_tag||me.name||'angemeldet');
       await loadDiary();
