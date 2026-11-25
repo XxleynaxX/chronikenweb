@@ -18,6 +18,14 @@ let webhookGlobalBlockedUntil = 0;
 let oauthBlockedUntil = 0;
 let oauthNextRequestAt = 0;
 let oauthQueue = Promise.resolve();
+let oauthRequestInFlight = false;
+
+// OAuth ist absichtlich deutlich langsamer als Webhooks. Discords OAuth-
+// Endpunkte reagieren bei zu vielen Anfragen mit einem globalen 429.
+const OAUTH_MIN_INTERVAL_MS = Math.max(
+  500,
+  Number(process.env.DISCORD_OAUTH_MIN_REQUEST_INTERVAL_MS) || 1500
+);
 
 const MIN_INTERVAL_MS = Math.max(
   100,
@@ -241,6 +249,18 @@ function discordOAuthFetch(url, options = {}) {
   const job = oauthQueue.then(async () => {
     const now = Date.now();
 
+    // Kein neuer Discord-OAuth-Request während eines bekannten Cooldowns.
+    // Dadurch wird insbesondere verhindert, dass mehrere Callback-Aufrufe
+    // nach einem globalen 429 Discord weiter bombardieren.
+    if (now < oauthBlockedUntil) {
+      const error = new Error(
+        'Discord OAuth ist wegen eines Rate-Limits vorübergehend pausiert.'
+      );
+      error.code = 'DISCORD_RATE_LIMITED';
+      error.retryAfterMs = oauthBlockedUntil - now;
+      throw error;
+    }
+
     if (now < oauthBlockedUntil) {
       const error = new Error(
         'Discord OAuth ist wegen eines Rate-Limits vorübergehend pausiert.'
@@ -257,9 +277,15 @@ function discordOAuthFetch(url, options = {}) {
       await delay(wait);
     }
 
-    oauthNextRequestAt = Date.now() + 250;
+    oauthNextRequestAt = Date.now() + OAUTH_MIN_INTERVAL_MS;
+    oauthRequestInFlight = true;
 
-    const response = await fetch(url, options);
+    let response;
+    try {
+      response = await fetch(url, options);
+    } finally {
+      oauthRequestInFlight = false;
+    }
 
     if (response.status === 429) {
       const bodyText = await response.clone().text().catch(() => '');
@@ -300,7 +326,9 @@ function discordOAuthCooldownStatus() {
     retryAfterMs: remaining,
     resumeAt: remaining > 0
       ? new Date(Date.now() + remaining).toISOString()
-      : null
+      : null,
+    requestInFlight: oauthRequestInFlight,
+    nextRequestAt: oauthNextRequestAt
   };
 }
 
