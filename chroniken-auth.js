@@ -9,6 +9,11 @@
    ist angemeldet. Ohne Popup (blockiert) → normale Weiterleitung.
    ============================================================ */
 (function (global) {
+  // Verhindert, dass die Auth-Datei bei versehentlicher Mehrfach-Einbindung
+  // mehrfach initialisiert und dadurch mehrere /auth/me- und /auth/ping-Requests auslöst.
+  if (global.__CHRONIKEN_AUTH_INITIALIZED__) return;
+  global.__CHRONIKEN_AUTH_INITIALIZED__ = true;
+
   const ADMIN_KEY = "portal_admin_auth";
   const LIB_KEY = "portal_bibliothek_auth";
   const HEALER_KEY = "portal_heiler_auth";
