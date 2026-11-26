@@ -669,28 +669,23 @@
       position: relative;
     }
 
-    /* Admin-Kacheln: Die Bilder haben unterschiedliche Seitenverhältnisse und
-       den Text eingebrannt. Jede Kachel bekommt daher das echte Format ihres
-       Bildes (--r = Breite/Höhe), alle Kacheln haben dieselbe Höhe (--h),
-       nichts wird abgeschnitten. */
+    /* Einheitliche Kachelgröße für das gesamte Portal.
+       Alle Kacheln verwenden dasselbe Seitenverhältnis wie die normalen
+       Portal-Kacheln. Die unterschiedlichen Bilddateien werden dadurch
+       in eine gemeinsame, saubere Form gebracht. */
     .admin-tiles {
-      container-type: inline-size;
-      display: flex;
-      flex-direction: column;
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
       gap: 1rem;
+      width: 100%;
     }
     .admin-row {
-      --gap: 1rem;
-      --h: calc((100cqw - 2 * var(--gap)) / 4.86); /* Zeile 1: Summe der Formate ≈ 4.853 */
-      display: flex;
-      justify-content: center;
-      gap: var(--gap);
+      display: contents;
     }
     .admin-tile {
       display: block;
-      flex: 0 0 auto;
-      width: calc(var(--r) * var(--h));
-      height: var(--h);
+      width: 100%;
+      aspect-ratio: 372 / 329;
       text-decoration: none;
       color: var(--text);
       background: #12081f;
@@ -708,7 +703,8 @@
       display: block;
       width: 100%;
       height: 100%;
-      object-fit: fill; /* Kachel hat exakt das Bildformat, daher keine Verzerrung/Beschnitt */
+      object-fit: fill;
+      object-position: center;
       transition: transform .45s ease, filter .35s ease;
       filter: saturate(0.95) brightness(0.97);
     }
@@ -724,12 +720,15 @@
       display: none;
     }
     @media (max-width: 800px) {
-      /* Schmale Bildschirme: eine Kachel pro Zeile, volle Breite, Originalformat */
-      .admin-row { flex-direction: column; align-items: center; }
-      .admin-tile { width: min(100%, 520px); height: auto; aspect-ratio: var(--r); }
+      .admin-tiles {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
     }
     @media (max-width: 520px) {
       .admin-section { padding-left: 1rem; padding-right: 1rem; }
+      .admin-tiles {
+        grid-template-columns: 1fr;
+      }
     }
 
 
@@ -1214,13 +1213,13 @@
           <p class="admin-section-subtitle">Nur für Mitglieder mit Admin-Rechten sichtbar.</p>
           <div class="admin-tiles">
             <div class="admin-row">
-              <a href="admin/aufgaben.html" class="admin-tile" style="--r:1.255"><img class="admin-tile-card" src="assets/portal/aufgaben-full.png" alt="Aufgaben" loading="lazy" decoding="async"></a>
-              <a href="admin/projekte.html" class="admin-tile" style="--r:1.843"><img class="admin-tile-card" src="assets/portal/projekte-full.png" alt="Projekte" loading="lazy" decoding="async"></a>
-              <a href="admin/tagebuch.html" class="admin-tile" style="--r:1.755"><img class="admin-tile-card" src="assets/portal/admin-tagebuch-full.png" alt="Tagebuch Verwaltung" loading="lazy" decoding="async"></a>
+              <a href="admin/aufgaben.html" class="admin-tile"><img class="admin-tile-card" src="assets/portal/aufgaben-full.png" alt="Aufgaben" loading="lazy" decoding="async"></a>
+              <a href="admin/projekte.html" class="admin-tile"><img class="admin-tile-card" src="assets/portal/projekte-full.png" alt="Projekte" loading="lazy" decoding="async"></a>
+              <a href="admin/tagebuch.html" class="admin-tile"><img class="admin-tile-card" src="assets/portal/admin-tagebuch-full.png" alt="Tagebuch Verwaltung" loading="lazy" decoding="async"></a>
             </div>
             <div class="admin-row">
-              <a href="admin/blacklist.html" class="admin-tile" style="--r:1.760"><img class="admin-tile-card" src="assets/portal/blacklist-full.png" alt="Blacklist" loading="lazy" decoding="async"></a>
-              <a href="admin/aktivitaeten.html" class="admin-tile" style="--r:1.715"><img class="admin-tile-card" src="assets/portal/aktivitaeten-full.png" alt="Aktivitäten" loading="lazy" decoding="async"></a>
+              <a href="admin/blacklist.html" class="admin-tile"><img class="admin-tile-card" src="assets/portal/blacklist-full.png" alt="Blacklist" loading="lazy" decoding="async"></a>
+              <a href="admin/aktivitaeten.html" class="admin-tile"><img class="admin-tile-card" src="assets/portal/aktivitaeten-full.png" alt="Aktivitäten" loading="lazy" decoding="async"></a>
             </div>
           </div>`;
         section.hidden = false;
